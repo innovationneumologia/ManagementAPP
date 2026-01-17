@@ -4164,7 +4164,80 @@ createApp({
                 throw error;
             }
         };
+        // TEMPORARY FIX: Create missing auth user and fix IDs
+async function fixMissingAuthUser() {
+    try {
+        const email = 'viewing.doctor@hospital.com';
+        const password = 'neumo'; // We'll use this password
         
+        console.log('Creating missing auth user for:', email);
+        
+        // Try to create the auth user
+        const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+                data: {
+                    full_name: 'Dr. James Rodriguez',
+                    user_role: 'viewing_doctor'
+                }
+            }
+        });
+        
+        if (authError) {
+            if (authError.message.includes('User already registered')) {
+                console.log('User already exists in auth, trying to sign in');
+                // Try to sign in to get the user ID
+                const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (signInError) {
+                    console.error('Cannot sign in:', signInError.message);
+                    console.log('Password might be different. Need to use "Forgot Password" flow.');
+                    return;
+                }
+                
+                // Update app_users with correct auth ID
+                await updateAppUserId(signInData.user.id, email);
+            } else {
+                console.error('Auth error:', authError);
+            }
+            return;
+        }
+        
+        // Successfully created auth user
+        console.log('Auth user created, ID:', authData.user.id);
+        
+        // Update app_users with correct auth ID
+        await updateAppUserId(authData.user.id, email);
+        
+    } catch (error) {
+        console.error('Error fixing user:', error);
+    }
+}
+
+async function updateAppUserId(authId, email) {
+    try {
+        const { error } = await supabaseClient
+            .from('app_users')
+            .update({ id: authId })
+            .eq('email', email);
+        
+        if (error) {
+            console.error('Error updating app_users:', error);
+        } else {
+            console.log('✅ Updated app_users with auth ID:', authId);
+            showToast('User account fixed successfully', 'success');
+        }
+    } catch (error) {
+        console.error('Error updating ID:', error);
+    }
+}
+
+// Run this once
+fixMissingAuthUser();
         const saveAssignment = async () => {
             saving.value = true;
             
