@@ -3676,62 +3676,119 @@ createApp({
         };
         
         // Medical Staff API
-        const loadMedicalStaff = async () => {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('medical_staff')
-                    .select('*')
-                    .order('full_name');
-                
-                if (error) throw error;
-                medicalStaff.value = data;
-            } catch (error) {
-                console.error('Error loading medical staff:', error);
-                throw error;
-            }
+      const loadMedicalStaff = async () => {
+    try {
+        console.log('Loading medical staff...');
+        
+        const { data, error } = await supabaseClient
+            .from('medical_staff')
+            .select('*')
+            .order('full_name');
+        
+        if (error) {
+            console.error('Supabase error loading medical staff:', error);
+            throw error;
+        }
+        
+        console.log('Medical staff loaded:', data);
+        medicalStaff.value = data || [];
+        
+        // Log the data to verify
+        if (data && data.length > 0) {
+            console.log('First staff member:', data[0]);
+        } else {
+            console.log('No medical staff found in database');
+        }
+        
+    } catch (error) {
+        console.error('Error loading medical staff:', error);
+        showToast('Error loading medical staff: ' + error.message, 'error');
+        throw error;
+    }
+};
+        
+      const saveMedicalStaff = async () => {
+    saving.value = true;
+    
+    try {
+        console.log('Saving medical staff with data:', medicalStaffForm.value);
+        
+        // Prepare the data
+        const staffData = {
+            full_name: medicalStaffForm.value.full_name,
+            professional_email: medicalStaffForm.value.professional_email,
+            staff_type: medicalStaffForm.value.staff_type,
+            resident_category: medicalStaffForm.value.staff_type === 'medical_resident' ? medicalStaffForm.value.resident_category : null,
+            training_year: medicalStaffForm.value.staff_type === 'medical_resident' ? parseInt(medicalStaffForm.value.training_year) : null,
+            primary_clinic: medicalStaffForm.value.primary_clinic || '',
+            work_phone: medicalStaffForm.value.work_phone || '',
+            can_supervise_residents: medicalStaffForm.value.can_supervise_residents || false,
+            employment_status: medicalStaffForm.value.employment_status || 'active',
+            special_notes: medicalStaffForm.value.special_notes || ''
         };
         
-        const saveMedicalStaff = async () => {
-            saving.value = true;
+        console.log('Processed staff data:', staffData);
+        
+        if (editingMedicalStaff.value) {
+            // Update existing staff
+            console.log('Updating staff with ID:', editingMedicalStaff.value);
+            const { data, error } = await supabaseClient
+                .from('medical_staff')
+                .update(staffData)
+                .eq('id', editingMedicalStaff.value)
+                .select();
             
-            try {
-                if (editingMedicalStaff.value) {
-                    // Update existing staff
-                    const { error } = await supabaseClient
-                        .from('medical_staff')
-                        .update(medicalStaffForm.value)
-                        .eq('id', editingMedicalStaff.value);
-                    
-                    if (error) throw error;
-                    showToast('Medical staff updated successfully', 'success');
-                } else {
-                    // Add new staff
-                    const newStaff = {
-                        ...medicalStaffForm.value,
-                        staff_id: generateSystemId(medicalStaffForm.value.staff_type === 'medical_resident' ? 'RES' : 'STAFF')
-                    };
-                    
-                    const { data, error } = await supabaseClient
-                        .from('medical_staff')
-                        .insert([newStaff])
-                        .select()
-                        .single();
-                    
-                    if (error) throw error;
-                    medicalStaff.value.push(data);
-                    showToast('Medical staff added successfully', 'success');
-                }
-                
-                closeMedicalStaffModal();
-                await loadMedicalStaff();
-                
-            } catch (error) {
-                console.error('Error saving medical staff:', error);
-                showToast('Error saving medical staff: ' + error.message, 'error');
-            } finally {
-                saving.value = false;
+            if (error) {
+                console.error('Supabase update error:', error);
+                throw error;
             }
-        };
+            
+            console.log('Update successful:', data);
+            showToast('Medical staff updated successfully', 'success');
+        } else {
+            // Add new staff - generate staff_id
+            const newStaff = {
+                ...staffData,
+                staff_id: generateSystemId(staffData.staff_type === 'medical_resident' ? 'RES' : 'STAFF')
+            };
+            
+            console.log('Inserting new staff:', newStaff);
+            const { data, error } = await supabaseClient
+                .from('medical_staff')
+                .insert([newStaff])
+                .select();
+            
+            if (error) {
+                console.error('Supabase insert error:', error);
+                throw error;
+            }
+            
+            console.log('Insert successful:', data);
+            
+            if (data && data.length > 0) {
+                medicalStaff.value.push(data[0]);
+                showToast('Medical staff added successfully', 'success');
+            } else {
+                throw new Error('No data returned after insert');
+            }
+        }
+        
+        closeMedicalStaffModal();
+        await loadMedicalStaff(); // Reload the list
+        
+    } catch (error) {
+        console.error('Error saving medical staff:', error);
+        console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+        });
+        showToast('Error saving medical staff: ' + error.message, 'error');
+    } finally {
+        saving.value = false;
+    }
+};
         
         const editMedicalStaff = (staff) => {
             editingMedicalStaff.value = staff.id;
