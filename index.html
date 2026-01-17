@@ -2709,13 +2709,19 @@
 <script>
 const { createApp, ref, computed, onMounted } = Vue;
 
-// Supabase Configuration - Declare this once
+// Supabase Configuration - DECLARED ONCE AT TOP LEVEL
 const supabaseUrl = 'https://vssmguzuvekkecbmwcjw.supabase.co';
 const supabaseAnonKey = 'sb_publishable_QDZP5eQTlHHn0SZibWFvCQ_6RqH2f01';
 
-// Create Supabase client - Only once
-const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+// Create Supabase client - ONLY DECLARED ONCE HERE
+let supabase;
+try {
+    supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+} catch (error) {
+    console.error('Failed to initialize Supabase:', error);
+}
 
+// Create Vue App
 createApp({
     setup() {
         // ============ STATE MANAGEMENT ============
@@ -2827,6 +2833,7 @@ createApp({
             publish_end_date: '',
             visible_to_roles: []
         });
+        
         
         // Editing State
         const editingMedicalStaff = ref(null);
@@ -4474,6 +4481,7 @@ createApp({
         // ============ RETURN ============
         return {
             // State
+             supabase, // ← ADD THIS LINE to your existing return statement
             currentUser,
             loginForm,
             loading,
