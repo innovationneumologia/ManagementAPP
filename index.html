@@ -2709,11 +2709,9 @@
 <script>
 const { createApp, ref, computed, onMounted } = Vue;
 
-// Use a different name to avoid conflict
+// Supabase configuration
 const supabaseUrl = 'https://vssmguzuvekkecbmwcjw.supabase.co';
 const supabaseAnonKey = 'sb_publishable_QDZP5eQTlHHn0SZibWFvCQ_6RqH2f01';
-
-// Use supabaseClient instead of supabase
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
 createApp({
@@ -2724,13 +2722,13 @@ createApp({
         const loginForm = ref({
             email: '',
             password: '',
-            user_role: 'resident_manager'
+            user_role: ''
         });
         const loading = ref(false);
         const saving = ref(false);
         
         // Navigation
-        const currentView = ref('medical_staff');
+        const currentView = ref('login');
         const sidebarCollapsed = ref(false);
         const mobileMenuOpen = ref(false);
         const searchQuery = ref('');
@@ -2743,6 +2741,8 @@ createApp({
         const leaveRequests = ref([]);
         const onCallSchedule = ref([]);
         const announcements = ref([]);
+        const departments = ref([]);
+        const clinics = ref([]);
         
         // Modals
         const showMedicalStaffModal = ref(false);
@@ -2757,24 +2757,24 @@ createApp({
         const medicalStaffForm = ref({
             full_name: '',
             professional_email: '',
-            staff_type: 'medical_resident',
-            resident_category: 'department_internal',
-            training_year: '1',
-            primary_clinic: '',
+            staff_type: '',
+            resident_category: '',
+            training_year: '',
+            primary_clinic_id: '',
             work_phone: '',
             can_supervise_residents: false,
-            employment_status: 'active',
+            employment_status: '',
             special_notes: ''
         });
         
         const trainingUnitForm = ref({
             unit_code: '',
             unit_name: '',
-            department_name: 'Pulmonology',
-            maximum_residents: 4,
+            department_id: '',
+            maximum_residents: 1,
             default_supervisor_id: '',
             unit_description: '',
-            unit_status: 'active'
+            unit_status: ''
         });
         
         const rotationForm = ref({
@@ -2783,23 +2783,23 @@ createApp({
             supervising_attending_id: '',
             rotation_start_date: '',
             rotation_end_date: '',
-            rotation_category: 'clinical_rotation',
+            rotation_category: '',
             clinical_notes: ''
         });
         
         const assignmentForm = ref({
             assignment_date: '',
-            assignment_type: 'outpatient_clinic',
-            start_time: '08:00',
-            end_time: '17:00',
-            location_name: '',
+            assignment_type: '',
+            start_time: '',
+            end_time: '',
+            location_id: '',
             staff_member_id: '',
             supervising_attending_id: '',
             assignment_notes: ''
         });
         
         const leaveRequestForm = ref({
-            leave_category: 'vacation_leave',
+            leave_category: '',
             staff_member_id: '',
             leave_start_date: '',
             leave_end_date: '',
@@ -2810,9 +2810,9 @@ createApp({
         
         const onCallForm = ref({
             duty_date: '',
-            shift_type: 'primary_call',
-            start_time: '17:00',
-            end_time: '08:00',
+            shift_type: '',
+            start_time: '',
+            end_time: '',
             primary_physician_id: '',
             backup_physician_id: '',
             coverage_notes: ''
@@ -2821,13 +2821,12 @@ createApp({
         const announcementForm = ref({
             announcement_title: '',
             announcement_content: '',
-            announcement_type: 'general_notice',
-            priority_level: 'normal',
+            announcement_type: '',
+            priority_level: '',
             publish_start_date: '',
             publish_end_date: '',
             visible_to_roles: []
         });
-        
         
         // Editing State
         const editingMedicalStaff = ref(null);
@@ -2924,7 +2923,8 @@ createApp({
         
         const formatTime = (timeString) => {
             if (!timeString) return '';
-            return timeString;
+            const [hours, minutes] = timeString.split(':');
+            return `${parseInt(hours) % 12 || 12}:${minutes} ${hours >= 12 ? 'PM' : 'AM'}`;
         };
         
         const formatTimeRange = (start, end) => {
@@ -2960,7 +2960,9 @@ createApp({
                 resident_manager: 'Resident Manager',
                 department_head: 'Head of Department',
                 system_admin: 'System Administrator',
-                viewing_doctor: 'Viewing Doctor'
+                viewing_doctor: 'Viewing Doctor',
+                medical_resident: 'Medical Resident',
+                attending_physician: 'Attending Physician'
             };
             return roles[role] || role;
         };
@@ -3037,25 +3039,30 @@ createApp({
         };
         
         // ============ COMPUTED PROPERTIES ============
-        // Permission Checks
+        // Permission Checks - Dynamic based on user role
         const canEditMedicalStaff = computed(() => {
-            return ['resident_manager', 'department_head', 'system_admin'].includes(currentUser.value?.user_role);
+            if (!currentUser.value) return false;
+            return ['resident_manager', 'department_head', 'system_admin'].includes(currentUser.value.user_role);
         });
         
         const canEditTrainingUnits = computed(() => {
-            return ['resident_manager', 'department_head', 'system_admin'].includes(currentUser.value?.user_role);
+            if (!currentUser.value) return false;
+            return ['resident_manager', 'department_head', 'system_admin'].includes(currentUser.value.user_role);
         });
         
         const canEditResidentRotations = computed(() => {
-            return ['resident_manager', 'department_head', 'system_admin'].includes(currentUser.value?.user_role);
+            if (!currentUser.value) return false;
+            return ['resident_manager', 'department_head', 'system_admin'].includes(currentUser.value.user_role);
         });
         
         const canEditDailyAssignments = computed(() => {
-            return ['resident_manager', 'department_head', 'system_admin'].includes(currentUser.value?.user_role);
+            if (!currentUser.value) return false;
+            return ['resident_manager', 'department_head', 'system_admin'].includes(currentUser.value.user_role);
         });
         
         const canEditOnCallSchedule = computed(() => {
-            return ['resident_manager', 'department_head', 'system_admin'].includes(currentUser.value?.user_role);
+            if (!currentUser.value) return false;
+            return ['resident_manager', 'department_head', 'system_admin'].includes(currentUser.value.user_role);
         });
         
         const canCreateLeaveRequest = computed(() => {
@@ -3063,28 +3070,43 @@ createApp({
         });
         
         const canEditLeaveRequests = computed(() => {
-            return ['resident_manager', 'department_head', 'system_admin'].includes(currentUser.value?.user_role);
+            if (!currentUser.value) return false;
+            return ['resident_manager', 'department_head', 'system_admin'].includes(currentUser.value.user_role);
         });
         
         const canApproveLeaveRequest = computed(() => {
-            return ['department_head', 'system_admin'].includes(currentUser.value?.user_role);
+            if (!currentUser.value) return false;
+            return ['department_head', 'system_admin'].includes(currentUser.value.user_role);
         });
         
         const canEditAnnouncements = computed(() => {
-            return ['department_head', 'system_admin'].includes(currentUser.value?.user_role);
+            if (!currentUser.value) return false;
+            return ['department_head', 'system_admin'].includes(currentUser.value.user_role);
         });
         
-        // Stats for Dashboard
+        // Stats for Dashboard - Calculated from actual data
         const stats = computed(() => {
             const residents = medicalStaff.value.filter(s => s.staff_type === 'medical_resident' && s.employment_status === 'active');
             const attendings = medicalStaff.value.filter(s => s.staff_type === 'attending_physician' && s.employment_status === 'active');
             const supervisors = medicalStaff.value.filter(s => s.can_supervise_residents && s.employment_status === 'active');
+            const activeUnits = trainingUnits.value.filter(u => u.unit_status === 'active');
+            const occupiedUnits = trainingUnits.value.filter(u => {
+                const unitResidents = residentRotations.value.filter(r => 
+                    r.training_unit_id === u.id && 
+                    ['active', 'scheduled'].includes(r.rotation_status)
+                ).length;
+                return unitResidents >= u.maximum_residents;
+            });
             
             return {
                 totalStaff: medicalStaff.value.length,
                 activeResidents: residents.length,
                 attendings: attendings.length,
-                availableSupervisors: supervisors.length
+                availableSupervisors: supervisors.length,
+                activeUnits: activeUnits.length,
+                occupiedUnits: occupiedUnits.length,
+                occupancyRate: activeUnits.length > 0 ? 
+                    Math.round((occupiedUnits.length / activeUnits.length) * 100) : 0
             };
         });
         
@@ -3092,9 +3114,24 @@ createApp({
             const residents = medicalStaff.value.filter(s => s.staff_type === 'medical_resident' && s.employment_status === 'active');
             const attendings = medicalStaff.value.filter(s => s.staff_type === 'attending_physician' && s.employment_status === 'active');
             const activeUnits = trainingUnits.value.filter(u => u.unit_status === 'active');
-            const occupiedUnits = trainingUnits.value.filter(u => 
-                (u.current_residents || 0) >= u.maximum_residents
-            );
+            const occupiedUnits = trainingUnits.value.filter(u => {
+                const unitResidents = residentRotations.value.filter(r => 
+                    r.training_unit_id === u.id && 
+                    ['active', 'scheduled'].includes(r.rotation_status)
+                ).length;
+                return unitResidents >= u.maximum_residents;
+            });
+            
+            const today = new Date().toISOString().split('T')[0];
+            const activeLeave = leaveRequests.value.filter(l => 
+                l.approval_status === 'approved' && 
+                l.leave_start_date <= today && 
+                l.leave_end_date >= today
+            ).length;
+            
+            const totalStaff = residents.length + attendings.length;
+            const coverageToday = totalStaff > 0 ? 
+                Math.round(((totalStaff - activeLeave) / totalStaff) * 100) : 0;
             
             return {
                 totalStaff: medicalStaff.value.length,
@@ -3104,20 +3141,25 @@ createApp({
                 occupiedUnits: occupiedUnits.length,
                 occupancyRate: activeUnits.length > 0 ? 
                     Math.round((occupiedUnits.length / activeUnits.length) * 100) : 0,
-                coverageToday: 95,
-                onLeave: leaveRequests.value.filter(l => l.approval_status === 'approved' && 
-                    new Date(l.leave_end_date) >= new Date()).length,
-                compliance: 92,
-                dutyHourAlerts: 2
+                coverageToday: coverageToday,
+                onLeave: activeLeave,
+                compliance: 100, // Would be calculated from actual duty hour data
+                dutyHourAlerts: 0 // Would be calculated from actual data
             };
         });
         
         const leaveStats = computed(() => {
             const pending = leaveRequests.value.filter(l => l.approval_status === 'pending_review').length;
-            const active = leaveRequests.value.filter(l => l.approval_status === 'approved' && 
-                new Date(l.leave_end_date) >= new Date()).length;
-            const upcoming = leaveRequests.value.filter(l => l.approval_status === 'approved' && 
-                new Date(l.leave_start_date) > new Date()).length;
+            const today = new Date().toISOString().split('T')[0];
+            const active = leaveRequests.value.filter(l => 
+                l.approval_status === 'approved' && 
+                l.leave_start_date <= today && 
+                l.leave_end_date >= today
+            ).length;
+            const upcoming = leaveRequests.value.filter(l => 
+                l.approval_status === 'approved' && 
+                l.leave_start_date > today
+            ).length;
             const needsCoverage = leaveRequests.value.filter(l => l.coverage_required && !l.coverage_assigned).length;
             const coverageAssigned = leaveRequests.value.filter(l => l.coverage_assigned).length;
             
@@ -3138,7 +3180,7 @@ createApp({
                 const search = staffSearch.value.toLowerCase();
                 filtered = filtered.filter(s => 
                     s.full_name.toLowerCase().includes(search) ||
-                    s.staff_id.toLowerCase().includes(search)
+                    (s.staff_id && s.staff_id.toLowerCase().includes(search))
                 );
             }
             
@@ -3153,10 +3195,9 @@ createApp({
             return filtered;
         });
         
-        // Supervisors
+        // Supervisors - Dynamic from database
         const supervisors = computed(() => {
             return medicalStaff.value.filter(s => 
-                s.staff_type === 'attending_physician' && 
                 s.can_supervise_residents && 
                 s.employment_status === 'active'
             );
@@ -3166,7 +3207,7 @@ createApp({
         const unplacedResidents = computed(() => {
             const residentsWithActiveRotation = new Set(
                 residentRotations.value
-                    .filter(r => r.rotation_status === 'active' || r.rotation_status === 'scheduled')
+                    .filter(r => ['active', 'scheduled'].includes(r.rotation_status))
                     .map(r => r.resident_id)
             );
             
@@ -3181,14 +3222,14 @@ createApp({
         const availableUnits = computed(() => {
             return trainingUnits.value.filter(u => 
                 u.unit_status === 'active' && 
-                (u.current_residents || 0) < u.maximum_residents
+                getUnitResidents(u.id).length < u.maximum_residents
             );
         });
         
         // Active placements
         const activePlacements = computed(() => {
             return residentRotations.value
-                .filter(r => r.rotation_status === 'active' || r.rotation_status === 'scheduled')
+                .filter(r => ['active', 'scheduled'].includes(r.rotation_status))
                 .map(r => ({
                     ...r,
                     resident_name: getResidentName(r.resident_id),
@@ -3200,13 +3241,15 @@ createApp({
         // Available staff for assignments
         const availableResidentsForAssignment = computed(() => {
             return medicalStaff.value.filter(s => 
-                s.staff_type === 'medical_resident' && s.employment_status === 'active'
+                s.staff_type === 'medical_resident' && 
+                s.employment_status === 'active'
             );
         });
         
         const availableAttendingsForAssignment = computed(() => {
             return medicalStaff.value.filter(s => 
-                s.staff_type === 'attending_physician' && s.employment_status === 'active'
+                s.staff_type === 'attending_physician' && 
+                s.employment_status === 'active'
             );
         });
         
@@ -3219,7 +3262,8 @@ createApp({
         
         const availableResidentsForRotation = computed(() => {
             return medicalStaff.value.filter(s => 
-                s.staff_type === 'medical_resident' && s.employment_status === 'active'
+                s.staff_type === 'medical_resident' && 
+                s.employment_status === 'active'
             );
         });
         
@@ -3304,6 +3348,22 @@ createApp({
                 }));
         });
         
+        // Department list - Dynamic from database
+        const departmentList = computed(() => {
+            return departments.value.map(dept => ({
+                value: dept.id,
+                label: dept.department_name
+            }));
+        });
+        
+        // Clinic list - Dynamic from database
+        const clinicList = computed(() => {
+            return clinics.value.map(clinic => ({
+                value: clinic.id,
+                label: clinic.clinic_name
+            }));
+        });
+        
         // Form helpers
         const isResidentSelected = computed(() => {
             const staffId = assignmentForm.value.staff_member_id;
@@ -3336,7 +3396,7 @@ createApp({
         const getUnitResidents = (unitId) => {
             const unitRotations = residentRotations.value.filter(r => 
                 r.training_unit_id === unitId && 
-                (r.rotation_status === 'active' || r.rotation_status === 'scheduled')
+                ['active', 'scheduled'].includes(r.rotation_status)
             );
             
             return unitRotations.map(r => {
@@ -3352,7 +3412,7 @@ createApp({
         const getSupervisorResidentsCount = (supervisorId) => {
             return residentRotations.value.filter(r => 
                 r.supervising_attending_id === supervisorId && 
-                (r.rotation_status === 'active' || r.rotation_status === 'scheduled')
+                ['active', 'scheduled'].includes(r.rotation_status)
             ).length;
         };
         
@@ -3366,9 +3426,16 @@ createApp({
                         staff_name: staff ? staff.full_name : 'Unknown',
                         person_role: staff ? staff.staff_type : 'unknown',
                         supervisor_name: assignment.supervising_attending_id ? 
-                            getSupervisorName(assignment.supervising_attending_id) : null
+                            getSupervisorName(assignment.supervising_attending_id) : null,
+                        location_name: assignment.location_id ? 
+                            getClinicName(assignment.location_id) : assignment.location_name
                     };
                 });
+        };
+        
+        const getClinicName = (clinicId) => {
+            const clinic = clinics.value.find(c => c.id === clinicId);
+            return clinic ? clinic.clinic_name : 'Unknown Location';
         };
         
         const getDaysRemaining = (endDate) => {
@@ -3395,6 +3462,7 @@ createApp({
         
         const getCurrentTitle = () => {
             const titles = {
+                login: 'Login',
                 medical_staff: 'Medical Staff Management',
                 training_units: 'Training Units',
                 resident_rotations: 'Resident Rotations',
@@ -3413,6 +3481,7 @@ createApp({
         
         const getCurrentSubtitle = () => {
             const subtitles = {
+                login: 'Academic Pulmonary Management System',
                 medical_staff: 'Manage medical staff and supervisors',
                 training_units: 'Configure training units and capacities',
                 resident_rotations: 'View and manage resident rotations',
@@ -3462,56 +3531,140 @@ createApp({
             // Search is handled by computed property
         };
         
-        // ============ API FUNCTIONS ============
-        
-        // Authentication
+        // ============ AUTHENTICATION FUNCTIONS ============
         const handleLogin = async () => {
             loading.value = true;
             
             try {
-                // Sign in with Supabase Auth
-                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                    email: loginForm.value.email,
-                    password: loginForm.value.password
+                const email = loginForm.value.email.trim().toLowerCase();
+                const password = loginForm.value.password;
+                const selectedRole = loginForm.value.user_role;
+                
+                // Validate inputs
+                if (!email || !password || !selectedRole) {
+                    throw new Error('Please fill in all fields');
+                }
+                
+                // Try Supabase authentication
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
                 });
                 
-                if (authError) throw authError;
+                if (authError) {
+                    // If authentication fails, try to sign up
+                    if (authError.message.includes('Invalid login credentials')) {
+                        // User doesn't exist, create new account
+                        const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+                            email: email,
+                            password: password,
+                            options: {
+                                data: {
+                                    user_role: selectedRole,
+                                    full_name: email.split('@')[0].replace(/\./g, ' ')
+                                }
+                            }
+                        });
+                        
+                        if (signUpError) throw signUpError;
+                        
+                        if (signUpData.user) {
+                            // Create user profile in app_users table
+                            const { data: userProfile, error: profileError } = await supabaseClient
+                                .from('app_users')
+                                .insert([{
+                                    id: signUpData.user.id,
+                                    email: signUpData.user.email,
+                                    full_name: signUpData.user.user_metadata?.full_name || email.split('@')[0].replace(/\./g, ' '),
+                                    user_role: selectedRole
+                                }])
+                                .select()
+                                .single();
+                                
+                            if (profileError) throw profileError;
+                            
+                            currentUser.value = userProfile;
+                            showToast('Account created successfully! Welcome!', 'success');
+                        }
+                    } else {
+                        throw authError;
+                    }
+                } else {
+                    // Authentication successful, get user profile
+                    const { data: userProfile, error: profileError } = await supabaseClient
+                        .from('app_users')
+                        .select('*')
+                        .eq('email', email)
+                        .single();
+                        
+                    if (profileError) {
+                        // Profile doesn't exist, create it
+                        const { data: newProfile, error: createError } = await supabaseClient
+                            .from('app_users')
+                            .insert([{
+                                id: authData.user.id,
+                                email: authData.user.email,
+                                full_name: authData.user.user_metadata?.full_name || email.split('@')[0].replace(/\./g, ' '),
+                                user_role: selectedRole
+                            }])
+                            .select()
+                            .single();
+                            
+                        if (createError) throw createError;
+                        currentUser.value = newProfile;
+                    } else {
+                        currentUser.value = userProfile;
+                    }
+                    
+                    showToast(`Welcome back, ${currentUser.value.full_name}!`, 'success');
+                }
                 
-                // Get user profile
-                const { data: userData, error: userError } = await supabase
-                    .from('app_users')
-                    .select('*')
-                    .eq('user_id', authData.user.id)
-                    .single();
-                
-                if (userError) throw userError;
-                
-                currentUser.value = {
-                    ...userData,
-                    user_role: loginForm.value.user_role
-                };
-                
-                // Load initial data
+                // Load initial application data
                 await loadInitialData();
+                
+                // Set up auth state listener
+                supabaseClient.auth.onAuthStateChange((event, session) => {
+                    if (event === 'SIGNED_OUT') {
+                        currentUser.value = null;
+                        currentView.value = 'login';
+                        showToast('Logged out successfully', 'info');
+                    }
+                });
                 
                 // Set initial view based on role
                 if (currentUser.value.user_role === 'resident_manager') {
                     currentView.value = 'medical_staff';
                 } else if (currentUser.value.user_role === 'department_head') {
                     currentView.value = 'department_overview';
+                } else if (currentUser.value.user_role === 'viewing_doctor') {
+                    currentView.value = 'daily_assignments';
+                } else {
+                    currentView.value = 'medical_staff';
                 }
-                
-                showToast(`Welcome, ${currentUser.value.full_name}!`, 'success');
                 
             } catch (error) {
                 console.error('Login error:', error);
-                showToast('Login failed. Please check your credentials.', 'error');
+                showToast(error.message || 'Login failed. Please check your credentials.', 'error');
             } finally {
                 loading.value = false;
             }
         };
         
-        // Load Initial Data
+        const handleLogout = async () => {
+            try {
+                const { error } = await supabaseClient.auth.signOut();
+                if (error) throw error;
+                
+                currentUser.value = null;
+                currentView.value = 'login';
+                showToast('Logged out successfully', 'success');
+            } catch (error) {
+                console.error('Logout error:', error);
+                showToast('Logout failed', 'error');
+            }
+        };
+        
+        // ============ DATA LOADING FUNCTIONS ============
         const loadInitialData = async () => {
             loading.value = true;
             try {
@@ -3522,7 +3675,9 @@ createApp({
                     loadDailyAssignments(),
                     loadLeaveRequests(),
                     loadOnCallSchedule(),
-                    loadAnnouncements()
+                    loadAnnouncements(),
+                    loadDepartments(),
+                    loadClinics()
                 ]);
             } catch (error) {
                 console.error('Error loading initial data:', error);
@@ -3567,7 +3722,7 @@ createApp({
         // Medical Staff API
         const loadMedicalStaff = async () => {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('medical_staff')
                     .select('*')
                     .order('full_name');
@@ -3584,25 +3739,27 @@ createApp({
             saving.value = true;
             
             try {
+                const staffData = {
+                    ...medicalStaffForm.value,
+                    staff_id: generateSystemId(medicalStaffForm.value.staff_type === 'medical_resident' ? 'RES' : 'STAFF'),
+                    created_by: currentUser.value.id,
+                    created_at: new Date().toISOString()
+                };
+                
                 if (editingMedicalStaff.value) {
                     // Update existing staff
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('medical_staff')
-                        .update(medicalStaffForm.value)
+                        .update(staffData)
                         .eq('id', editingMedicalStaff.value);
                     
                     if (error) throw error;
                     showToast('Medical staff updated successfully', 'success');
                 } else {
                     // Add new staff
-                    const newStaff = {
-                        ...medicalStaffForm.value,
-                        staff_id: generateSystemId(medicalStaffForm.value.staff_type === 'medical_resident' ? 'RES' : 'STAFF')
-                    };
-                    
-                    const { data, error } = await supabase
+                    const { data, error } = await supabaseClient
                         .from('medical_staff')
-                        .insert([newStaff])
+                        .insert([staffData])
                         .select()
                         .single();
                     
@@ -3622,43 +3779,10 @@ createApp({
             }
         };
         
-        const editMedicalStaff = (staff) => {
-            editingMedicalStaff.value = staff.id;
-            medicalStaffForm.value = { ...staff };
-            showMedicalStaffModal.value = true;
-        };
-        
-        const closeMedicalStaffModal = () => {
-            showMedicalStaffModal.value = false;
-            editingMedicalStaff.value = null;
-            medicalStaffForm.value = {
-                full_name: '',
-                professional_email: '',
-                staff_type: 'medical_resident',
-                resident_category: 'department_internal',
-                training_year: '1',
-                primary_clinic: '',
-                work_phone: '',
-                can_supervise_residents: false,
-                employment_status: 'active',
-                special_notes: ''
-            };
-        };
-        
-        const handleStaffTypeChange = () => {
-            if (medicalStaffForm.value.staff_type !== 'medical_resident') {
-                medicalStaffForm.value.resident_category = null;
-                medicalStaffForm.value.training_year = null;
-            }
-            if (medicalStaffForm.value.staff_type !== 'attending_physician') {
-                medicalStaffForm.value.can_supervise_residents = false;
-            }
-        };
-        
         // Training Units API
         const loadTrainingUnits = async () => {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('training_units')
                     .select('*')
                     .order('unit_name');
@@ -3675,20 +3799,26 @@ createApp({
             saving.value = true;
             
             try {
+                const unitData = {
+                    ...trainingUnitForm.value,
+                    created_by: currentUser.value.id,
+                    created_at: new Date().toISOString()
+                };
+                
                 if (editingTrainingUnit.value) {
                     // Update existing unit
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('training_units')
-                        .update(trainingUnitForm.value)
+                        .update(unitData)
                         .eq('id', editingTrainingUnit.value);
                     
                     if (error) throw error;
                     showToast('Training unit updated successfully', 'success');
                 } else {
                     // Add new unit
-                    const { data, error } = await supabase
+                    const { data, error } = await supabaseClient
                         .from('training_units')
-                        .insert([trainingUnitForm.value])
+                        .insert([unitData])
                         .select()
                         .single();
                     
@@ -3708,49 +3838,10 @@ createApp({
             }
         };
         
-        const editTrainingUnit = (unit) => {
-            editingTrainingUnit.value = unit.id;
-            trainingUnitForm.value = { ...unit };
-            showTrainingUnitModal.value = true;
-        };
-        
-        const closeTrainingUnitModal = () => {
-            showTrainingUnitModal.value = false;
-            editingTrainingUnit.value = null;
-            trainingUnitForm.value = {
-                unit_code: '',
-                unit_name: '',
-                department_name: 'Pulmonology',
-                maximum_residents: 4,
-                default_supervisor_id: '',
-                unit_description: '',
-                unit_status: 'active'
-            };
-        };
-        
-        const toggleUnitStatus = async (unit) => {
-            try {
-                const newStatus = unit.unit_status === 'active' ? 'inactive' : 'active';
-                const { error } = await supabase
-                    .from('training_units')
-                    .update({ unit_status: newStatus })
-                    .eq('id', unit.id);
-                
-                if (error) throw error;
-                
-                unit.unit_status = newStatus;
-                showToast(`Unit ${newStatus}`, 'success');
-                
-            } catch (error) {
-                console.error('Error toggling unit status:', error);
-                showToast('Error updating unit status', 'error');
-            }
-        };
-        
         // Resident Rotations API
         const loadResidentRotations = async () => {
             try {
-                let query = supabase
+                let query = supabaseClient
                     .from('resident_rotations')
                     .select('*')
                     .order('rotation_start_date', { ascending: false });
@@ -3782,12 +3873,14 @@ createApp({
             try {
                 const rotationData = {
                     ...rotationForm.value,
-                    rotation_status: 'scheduled'
+                    rotation_status: 'scheduled',
+                    created_by: currentUser.value.id,
+                    created_at: new Date().toISOString()
                 };
                 
                 if (editingPlacement.value) {
                     // Update existing rotation
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('resident_rotations')
                         .update(rotationData)
                         .eq('id', editingPlacement.value);
@@ -3801,7 +3894,7 @@ createApp({
                         rotation_id: generateSystemId('ROT')
                     };
                     
-                    const { data, error } = await supabase
+                    const { data, error } = await supabaseClient
                         .from('resident_rotations')
                         .insert([newRotation])
                         .select()
@@ -3823,60 +3916,10 @@ createApp({
             }
         };
         
-        const extendRotation = async (rotation) => {
-            const newEndDate = prompt('Enter new end date (YYYY-MM-DD):', rotation.rotation_end_date);
-            if (newEndDate) {
-                try {
-                    const { error } = await supabase
-                        .from('resident_rotations')
-                        .update({ 
-                            rotation_end_date: newEndDate,
-                            rotation_status: 'extended'
-                        })
-                        .eq('id', rotation.id);
-                    
-                    if (error) throw error;
-                    
-                    rotation.rotation_end_date = newEndDate;
-                    rotation.rotation_status = 'extended';
-                    showToast('Rotation extended successfully', 'success');
-                    
-                } catch (error) {
-                    console.error('Error extending rotation:', error);
-                    showToast('Error extending rotation', 'error');
-                }
-            }
-        };
-        
-        const endRotation = async (rotation) => {
-            if (confirm('End this rotation early?')) {
-                try {
-                    const { error } = await supabase
-                        .from('resident_rotations')
-                        .update({ 
-                            rotation_end_date: new Date().toISOString().split('T')[0],
-                            rotation_status: 'terminated_early',
-                            clinical_notes: rotation.clinical_notes + ' (Ended early)'
-                        })
-                        .eq('id', rotation.id);
-                    
-                    if (error) throw error;
-                    
-                    rotation.rotation_status = 'terminated_early';
-                    showToast('Rotation ended successfully', 'success');
-                    await loadResidentRotations();
-                    
-                } catch (error) {
-                    console.error('Error ending rotation:', error);
-                    showToast('Error ending rotation', 'error');
-                }
-            }
-        };
-        
         // Daily Assignments API
         const loadDailyAssignments = async () => {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('daily_assignments')
                     .select('*')
                     .order('assignment_date', { ascending: true });
@@ -3889,55 +3932,10 @@ createApp({
             }
         };
         
-        const saveAssignment = async () => {
-            saving.value = true;
-            
-            try {
-                const newAssignment = {
-                    ...assignmentForm.value,
-                    assignment_id: generateSystemId('ASSIGN')
-                };
-                
-                const { data, error } = await supabase
-                    .from('daily_assignments')
-                    .insert([newAssignment])
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                
-                dailyAssignments.value.push(data);
-                showToast('Assignment created successfully', 'success');
-                closeAssignmentModal();
-                
-            } catch (error) {
-                console.error('Error creating assignment:', error);
-                showToast('Error creating assignment: ' + error.message, 'error');
-            } finally {
-                saving.value = false;
-            }
-        };
-        
-        const updateAssignmentSupervisor = () => {
-            if (isResidentSelected.value && assignmentForm.value.staff_member_id) {
-                const resident = medicalStaff.value.find(s => s.id === assignmentForm.value.staff_member_id);
-                if (resident) {
-                    // Find active rotation for this resident
-                    const activeRotation = residentRotations.value.find(r => 
-                        r.resident_id === resident.id && 
-                        (r.rotation_status === 'active' || r.rotation_status === 'scheduled')
-                    );
-                    if (activeRotation) {
-                        assignmentForm.value.supervising_attending_id = activeRotation.supervising_attending_id;
-                    }
-                }
-            }
-        };
-        
         // Leave Requests API
         const loadLeaveRequests = async () => {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('leave_requests')
                     .select('*')
                     .order('leave_start_date', { ascending: false });
@@ -3950,90 +3948,10 @@ createApp({
             }
         };
         
-        const saveLeaveRequest = async () => {
-            saving.value = true;
-            
-            try {
-                const newLeaveRequest = {
-                    ...leaveRequestForm.value,
-                    request_id: generateSystemId('LEAVE'),
-                    total_days: Math.ceil(
-                        (new Date(leaveRequestForm.value.leave_end_date) - 
-                         new Date(leaveRequestForm.value.leave_start_date)) / 
-                        (1000 * 60 * 60 * 24)
-                    ) + 1,
-                    approval_status: 'pending_review',
-                    coverage_assigned: !leaveRequestForm.value.coverage_required
-                };
-                
-                const { data, error } = await supabase
-                    .from('leave_requests')
-                    .insert([newLeaveRequest])
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                
-                leaveRequests.value.unshift(data);
-                showToast('Leave request submitted successfully', 'success');
-                closeLeaveModal();
-                
-            } catch (error) {
-                console.error('Error submitting leave request:', error);
-                showToast('Error submitting leave request: ' + error.message, 'error');
-            } finally {
-                saving.value = false;
-            }
-        };
-        
-        const approveLeaveRequest = async (request) => {
-            try {
-                const { error } = await supabase
-                    .from('leave_requests')
-                    .update({ 
-                        approval_status: 'approved',
-                        reviewed_by: currentUser.value.id,
-                        reviewed_at: new Date().toISOString()
-                    })
-                    .eq('id', request.id);
-                
-                if (error) throw error;
-                
-                request.approval_status = 'approved';
-                showToast('Leave request approved', 'success');
-                
-            } catch (error) {
-                console.error('Error approving leave request:', error);
-                showToast('Error approving leave request', 'error');
-            }
-        };
-        
-        const rejectLeaveRequest = async (request) => {
-            try {
-                const { error } = await supabase
-                    .from('leave_requests')
-                    .update({ 
-                        approval_status: 'rejected',
-                        reviewed_by: currentUser.value.id,
-                        reviewed_at: new Date().toISOString()
-                    })
-                    .eq('id', request.id);
-                
-                if (error) throw error;
-                
-                request.approval_status = 'rejected';
-                showToast('Leave request rejected', 'success');
-                
-            } catch (error) {
-                console.error('Error rejecting leave request:', error);
-                showToast('Error rejecting leave request', 'error');
-            }
-        };
-        
         // On-call Schedule API
         const loadOnCallSchedule = async () => {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('oncall_schedule')
                     .select('*')
                     .order('duty_date', { ascending: true });
@@ -4046,40 +3964,11 @@ createApp({
             }
         };
         
-        const saveOnCallAssignment = async () => {
-            saving.value = true;
-            
-            try {
-                const newOnCall = {
-                    ...onCallForm.value,
-                    schedule_id: generateSystemId('ONCALL')
-                };
-                
-                const { data, error } = await supabase
-                    .from('oncall_schedule')
-                    .insert([newOnCall])
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                
-                onCallSchedule.value.push(data);
-                showToast('On-call assignment created successfully', 'success');
-                closeOnCallModal();
-                
-            } catch (error) {
-                console.error('Error creating on-call assignment:', error);
-                showToast('Error creating on-call assignment: ' + error.message, 'error');
-            } finally {
-                saving.value = false;
-            }
-        };
-        
         // Announcements API
         const loadAnnouncements = async () => {
             try {
                 const today = new Date().toISOString().split('T')[0];
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('department_announcements')
                     .select('*')
                     .lte('publish_start_date', today)
@@ -4095,64 +3984,42 @@ createApp({
             }
         };
         
-        const saveAnnouncement = async () => {
-            saving.value = true;
-            
+        // Departments API
+        const loadDepartments = async () => {
             try {
-                const announcementData = {
-                    ...announcementForm.value,
-                    announcement_id: generateSystemId('ANN'),
-                    created_by: currentUser.value.id,
-                    visible_to_roles: JSON.stringify(announcementForm.value.visible_to_roles)
-                };
+                const { data, error } = await supabaseClient
+                    .from('departments')
+                    .select('*')
+                    .order('department_name');
                 
-                if (editingAnnouncement.value) {
-                    // Update existing announcement
-                    const { error } = await supabase
-                        .from('department_announcements')
-                        .update(announcementData)
-                        .eq('id', editingAnnouncement.value);
-                    
-                    if (error) throw error;
-                    showToast('Announcement updated successfully', 'success');
-                } else {
-                    // Create new announcement
-                    const { data, error } = await supabase
-                        .from('department_announcements')
-                        .insert([announcementData])
-                        .select()
-                        .single();
-                    
-                    if (error) throw error;
-                    announcements.value.unshift(data);
-                    showToast('Announcement published successfully', 'success');
-                }
-                
-                closeAnnouncementModal();
-                
+                if (error) throw error;
+                departments.value = data;
             } catch (error) {
-                console.error('Error saving announcement:', error);
-                showToast('Error saving announcement: ' + error.message, 'error');
-            } finally {
-                saving.value = false;
+                console.error('Error loading departments:', error);
+                // If departments table doesn't exist, create default entries
+                if (error.code === '42P01') {
+                    // Table doesn't exist - would need to be created
+                    console.warn('Departments table does not exist');
+                }
             }
         };
         
-        const archiveAnnouncement = async (announcement) => {
+        // Clinics API
+        const loadClinics = async () => {
             try {
-                const { error } = await supabase
-                    .from('department_announcements')
-                    .update({ publish_end_date: new Date().toISOString().split('T')[0] })
-                    .eq('id', announcement.id);
+                const { data, error } = await supabaseClient
+                    .from('clinics')
+                    .select('*')
+                    .order('clinic_name');
                 
                 if (error) throw error;
-                
-                announcement.publish_end_date = new Date().toISOString().split('T')[0];
-                showToast('Announcement archived', 'success');
-                
+                clinics.value = data;
             } catch (error) {
-                console.error('Error archiving announcement:', error);
-                showToast('Error archiving announcement', 'error');
+                console.error('Error loading clinics:', error);
+                // If clinics table doesn't exist, create default entries
+                if (error.code === '42P01') {
+                    console.warn('Clinics table does not exist');
+                }
             }
         };
         
@@ -4164,16 +4031,49 @@ createApp({
             medicalStaffForm.value = {
                 full_name: '',
                 professional_email: '',
-                staff_type: 'medical_resident',
-                resident_category: 'department_internal',
-                training_year: '1',
-                primary_clinic: '',
+                staff_type: '',
+                resident_category: '',
+                training_year: '',
+                primary_clinic_id: '',
                 work_phone: '',
                 can_supervise_residents: false,
-                employment_status: 'active',
+                employment_status: '',
                 special_notes: ''
             };
             showMedicalStaffModal.value = true;
+        };
+        
+        const editMedicalStaff = (staff) => {
+            editingMedicalStaff.value = staff.id;
+            medicalStaffForm.value = { ...staff };
+            showMedicalStaffModal.value = true;
+        };
+        
+        const closeMedicalStaffModal = () => {
+            showMedicalStaffModal.value = false;
+            editingMedicalStaff.value = null;
+            medicalStaffForm.value = {
+                full_name: '',
+                professional_email: '',
+                staff_type: '',
+                resident_category: '',
+                training_year: '',
+                primary_clinic_id: '',
+                work_phone: '',
+                can_supervise_residents: false,
+                employment_status: '',
+                special_notes: ''
+            };
+        };
+        
+        const handleStaffTypeChange = () => {
+            if (medicalStaffForm.value.staff_type !== 'medical_resident') {
+                medicalStaffForm.value.resident_category = '';
+                medicalStaffForm.value.training_year = '';
+            }
+            if (medicalStaffForm.value.staff_type !== 'attending_physician') {
+                medicalStaffForm.value.can_supervise_residents = false;
+            }
         };
         
         // Training Unit Management
@@ -4182,13 +4082,52 @@ createApp({
             trainingUnitForm.value = {
                 unit_code: '',
                 unit_name: '',
-                department_name: 'Pulmonology',
-                maximum_residents: 4,
+                department_id: '',
+                maximum_residents: 1,
                 default_supervisor_id: '',
                 unit_description: '',
-                unit_status: 'active'
+                unit_status: ''
             };
             showTrainingUnitModal.value = true;
+        };
+        
+        const editTrainingUnit = (unit) => {
+            editingTrainingUnit.value = unit.id;
+            trainingUnitForm.value = { ...unit };
+            showTrainingUnitModal.value = true;
+        };
+        
+        const closeTrainingUnitModal = () => {
+            showTrainingUnitModal.value = false;
+            editingTrainingUnit.value = null;
+            trainingUnitForm.value = {
+                unit_code: '',
+                unit_name: '',
+                department_id: '',
+                maximum_residents: 1,
+                default_supervisor_id: '',
+                unit_description: '',
+                unit_status: ''
+            };
+        };
+        
+        const toggleUnitStatus = async (unit) => {
+            try {
+                const newStatus = unit.unit_status === 'active' ? 'inactive' : 'active';
+                const { error } = await supabaseClient
+                    .from('training_units')
+                    .update({ unit_status: newStatus })
+                    .eq('id', unit.id);
+                
+                if (error) throw error;
+                
+                unit.unit_status = newStatus;
+                showToast(`Unit ${newStatus}`, 'success');
+                
+            } catch (error) {
+                console.error('Error toggling unit status:', error);
+                showToast('Error updating unit status', 'error');
+            }
         };
         
         // Rotation/Placement Management
@@ -4204,7 +4143,7 @@ createApp({
                 supervising_attending_id: '',
                 rotation_start_date: today.toISOString().split('T')[0],
                 rotation_end_date: threeMonthsLater.toISOString().split('T')[0],
-                rotation_category: 'clinical_rotation',
+                rotation_category: '',
                 clinical_notes: ''
             };
             showPlacementModal.value = true;
@@ -4221,7 +4160,7 @@ createApp({
                 supervising_attending_id: '',
                 rotation_start_date: today.toISOString().split('T')[0],
                 rotation_end_date: threeMonthsLater.toISOString().split('T')[0],
-                rotation_category: 'clinical_rotation',
+                rotation_category: '',
                 clinical_notes: ''
             };
             showPlacementModal.value = true;
@@ -4250,7 +4189,7 @@ createApp({
                 supervising_attending_id: '',
                 rotation_start_date: '',
                 rotation_end_date: '',
-                rotation_category: 'clinical_rotation',
+                rotation_category: '',
                 clinical_notes: ''
             };
         };
@@ -4264,15 +4203,65 @@ createApp({
             }
         };
         
+        const extendRotation = async (rotation) => {
+            const newEndDate = prompt('Enter new end date (YYYY-MM-DD):', rotation.rotation_end_date);
+            if (newEndDate) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('resident_rotations')
+                        .update({ 
+                            rotation_end_date: newEndDate,
+                            rotation_status: 'extended'
+                        })
+                        .eq('id', rotation.id);
+                    
+                    if (error) throw error;
+                    
+                    rotation.rotation_end_date = newEndDate;
+                    rotation.rotation_status = 'extended';
+                    showToast('Rotation extended successfully', 'success');
+                    
+                } catch (error) {
+                    console.error('Error extending rotation:', error);
+                    showToast('Error extending rotation', 'error');
+                }
+            }
+        };
+        
+        const endRotation = async (rotation) => {
+            if (confirm('End this rotation early?')) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('resident_rotations')
+                        .update({ 
+                            rotation_end_date: new Date().toISOString().split('T')[0],
+                            rotation_status: 'terminated_early',
+                            clinical_notes: (rotation.clinical_notes || '') + ' (Ended early)'
+                        })
+                        .eq('id', rotation.id);
+                    
+                    if (error) throw error;
+                    
+                    rotation.rotation_status = 'terminated_early';
+                    showToast('Rotation ended successfully', 'success');
+                    await loadResidentRotations();
+                    
+                } catch (error) {
+                    console.error('Error ending rotation:', error);
+                    showToast('Error ending rotation', 'error');
+                }
+            }
+        };
+        
         // Daily Assignments
         const showNewAssignmentModal = () => {
             const today = new Date();
             assignmentForm.value = {
                 assignment_date: today.toISOString().split('T')[0],
-                assignment_type: 'outpatient_clinic',
-                start_time: '08:00',
-                end_time: '17:00',
-                location_name: '',
+                assignment_type: '',
+                start_time: '',
+                end_time: '',
+                location_id: '',
                 staff_member_id: '',
                 supervising_attending_id: '',
                 assignment_notes: ''
@@ -4284,11 +4273,58 @@ createApp({
             showAssignmentModal.value = false;
         };
         
+        const saveAssignment = async () => {
+            saving.value = true;
+            
+            try {
+                const newAssignment = {
+                    ...assignmentForm.value,
+                    assignment_id: generateSystemId('ASSIGN'),
+                    created_by: currentUser.value.id,
+                    created_at: new Date().toISOString()
+                };
+                
+                const { data, error } = await supabaseClient
+                    .from('daily_assignments')
+                    .insert([newAssignment])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                dailyAssignments.value.push(data);
+                showToast('Assignment created successfully', 'success');
+                closeAssignmentModal();
+                
+            } catch (error) {
+                console.error('Error creating assignment:', error);
+                showToast('Error creating assignment: ' + error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+        
+        const updateAssignmentSupervisor = () => {
+            if (isResidentSelected.value && assignmentForm.value.staff_member_id) {
+                const resident = medicalStaff.value.find(s => s.id === assignmentForm.value.staff_member_id);
+                if (resident) {
+                    // Find active rotation for this resident
+                    const activeRotation = residentRotations.value.find(r => 
+                        r.resident_id === resident.id && 
+                        ['active', 'scheduled'].includes(r.rotation_status)
+                    );
+                    if (activeRotation) {
+                        assignmentForm.value.supervising_attending_id = activeRotation.supervising_attending_id;
+                    }
+                }
+            }
+        };
+        
         // Leave Requests
         const showNewLeaveModal = () => {
             const today = new Date();
             leaveRequestForm.value = {
-                leave_category: 'vacation_leave',
+                leave_category: '',
                 staff_member_id: '',
                 leave_start_date: today.toISOString().split('T')[0],
                 leave_end_date: today.toISOString().split('T')[0],
@@ -4303,14 +4339,97 @@ createApp({
             showLeaveModal.value = false;
         };
         
+        const saveLeaveRequest = async () => {
+            saving.value = true;
+            
+            try {
+                const startDate = new Date(leaveRequestForm.value.leave_start_date);
+                const endDate = new Date(leaveRequestForm.value.leave_end_date);
+                const timeDiff = endDate.getTime() - startDate.getTime();
+                const totalDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+                
+                const newLeaveRequest = {
+                    ...leaveRequestForm.value,
+                    request_id: generateSystemId('LEAVE'),
+                    total_days: totalDays,
+                    approval_status: 'pending_review',
+                    coverage_assigned: !leaveRequestForm.value.coverage_required,
+                    requested_by: currentUser.value.id,
+                    requested_at: new Date().toISOString()
+                };
+                
+                const { data, error } = await supabaseClient
+                    .from('leave_requests')
+                    .insert([newLeaveRequest])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                leaveRequests.value.unshift(data);
+                showToast('Leave request submitted successfully', 'success');
+                closeLeaveModal();
+                
+            } catch (error) {
+                console.error('Error submitting leave request:', error);
+                showToast('Error submitting leave request: ' + error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+        
+        const approveLeaveRequest = async (request) => {
+            try {
+                const { error } = await supabaseClient
+                    .from('leave_requests')
+                    .update({ 
+                        approval_status: 'approved',
+                        reviewed_by: currentUser.value.id,
+                        reviewed_at: new Date().toISOString()
+                    })
+                    .eq('id', request.id);
+                
+                if (error) throw error;
+                
+                request.approval_status = 'approved';
+                showToast('Leave request approved', 'success');
+                
+            } catch (error) {
+                console.error('Error approving leave request:', error);
+                showToast('Error approving leave request', 'error');
+            }
+        };
+        
+        const rejectLeaveRequest = async (request) => {
+            try {
+                const { error } = await supabaseClient
+                    .from('leave_requests')
+                    .update({ 
+                        approval_status: 'rejected',
+                        reviewed_by: currentUser.value.id,
+                        reviewed_at: new Date().toISOString()
+                    })
+                    .eq('id', request.id);
+                
+                if (error) throw error;
+                
+                request.approval_status = 'rejected';
+                showToast('Leave request rejected', 'success');
+                
+            } catch (error) {
+                console.error('Error rejecting leave request:', error);
+                showToast('Error rejecting leave request', 'error');
+            }
+        };
+        
         // On-call Schedule
         const showNewOnCallModal = () => {
             const today = new Date();
             onCallForm.value = {
                 duty_date: today.toISOString().split('T')[0],
-                shift_type: 'primary_call',
-                start_time: '17:00',
-                end_time: '08:00',
+                shift_type: '',
+                start_time: '',
+                end_time: '',
                 primary_physician_id: '',
                 backup_physician_id: '',
                 coverage_notes: ''
@@ -4322,6 +4441,37 @@ createApp({
             showOnCallModal.value = false;
         };
         
+        const saveOnCallAssignment = async () => {
+            saving.value = true;
+            
+            try {
+                const newOnCall = {
+                    ...onCallForm.value,
+                    schedule_id: generateSystemId('ONCALL'),
+                    created_by: currentUser.value.id,
+                    created_at: new Date().toISOString()
+                };
+                
+                const { data, error } = await supabaseClient
+                    .from('oncall_schedule')
+                    .insert([newOnCall])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                onCallSchedule.value.push(data);
+                showToast('On-call assignment created successfully', 'success');
+                closeOnCallModal();
+                
+            } catch (error) {
+                console.error('Error creating on-call assignment:', error);
+                showToast('Error creating on-call assignment: ' + error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+        
         // Announcements
         const showNewAnnouncementModal = () => {
             editingAnnouncement.value = null;
@@ -4329,11 +4479,11 @@ createApp({
             announcementForm.value = {
                 announcement_title: '',
                 announcement_content: '',
-                announcement_type: 'general_notice',
-                priority_level: 'normal',
+                announcement_type: '',
+                priority_level: '',
                 publish_start_date: today.toISOString().split('T')[0],
                 publish_end_date: '',
-                visible_to_roles: ['resident_manager', 'department_head', 'viewing_doctor']
+                visible_to_roles: []
             };
             showAnnouncementModal.value = true;
         };
@@ -4353,12 +4503,74 @@ createApp({
             announcementForm.value = {
                 announcement_title: '',
                 announcement_content: '',
-                announcement_type: 'general_notice',
-                priority_level: 'normal',
+                announcement_type: '',
+                priority_level: '',
                 publish_start_date: '',
                 publish_end_date: '',
                 visible_to_roles: []
             };
+        };
+        
+        const saveAnnouncement = async () => {
+            saving.value = true;
+            
+            try {
+                const announcementData = {
+                    ...announcementForm.value,
+                    announcement_id: generateSystemId('ANN'),
+                    created_by: currentUser.value.id,
+                    created_at: new Date().toISOString(),
+                    visible_to_roles: JSON.stringify(announcementForm.value.visible_to_roles)
+                };
+                
+                if (editingAnnouncement.value) {
+                    // Update existing announcement
+                    const { error } = await supabaseClient
+                        .from('department_announcements')
+                        .update(announcementData)
+                        .eq('id', editingAnnouncement.value);
+                    
+                    if (error) throw error;
+                    showToast('Announcement updated successfully', 'success');
+                } else {
+                    // Create new announcement
+                    const { data, error } = await supabaseClient
+                        .from('department_announcements')
+                        .insert([announcementData])
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    announcements.value.unshift(data);
+                    showToast('Announcement published successfully', 'success');
+                }
+                
+                closeAnnouncementModal();
+                
+            } catch (error) {
+                console.error('Error saving announcement:', error);
+                showToast('Error saving announcement: ' + error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+        
+        const archiveAnnouncement = async (announcement) => {
+            try {
+                const { error } = await supabaseClient
+                    .from('department_announcements')
+                    .update({ publish_end_date: new Date().toISOString().split('T')[0] })
+                    .eq('id', announcement.id);
+                
+                if (error) throw error;
+                
+                announcement.publish_end_date = new Date().toISOString().split('T')[0];
+                showToast('Announcement archived', 'success');
+                
+            } catch (error) {
+                console.error('Error archiving announcement:', error);
+                showToast('Error archiving announcement', 'error');
+            }
         };
         
         // Schedule Navigation
@@ -4460,22 +4672,72 @@ createApp({
         
         // ============ INITIALIZATION ============
         onMounted(() => {
-            // Set default dates
-            const today = new Date();
-            assignmentForm.value.assignment_date = today.toISOString().split('T')[0];
-            leaveRequestForm.value.leave_start_date = today.toISOString().split('T')[0];
-            leaveRequestForm.value.leave_end_date = today.toISOString().split('T')[0];
-            onCallForm.value.duty_date = today.toISOString().split('T')[0];
-            announcementForm.value.publish_start_date = today.toISOString().split('T')[0];
+            // Check if user is already logged in
+            supabaseClient.auth.getSession().then(({ data: { session } }) => {
+                if (session) {
+                    // User is already logged in, load their profile
+                    loadUserProfile(session.user.id);
+                } else {
+                    // No session, show login
+                    currentView.value = 'login';
+                }
+            });
+            
+            // Set up auth state listener
+            supabaseClient.auth.onAuthStateChange(async (event, session) => {
+                if (event === 'SIGNED_IN' && session) {
+                    await loadUserProfile(session.user.id);
+                } else if (event === 'SIGNED_OUT') {
+                    currentUser.value = null;
+                    currentView.value = 'login';
+                }
+            });
             
             // Update week range
             updateWeekRange();
         });
         
+        const loadUserProfile = async (userId) => {
+            try {
+                const { data: userProfile, error } = await supabaseClient
+                    .from('app_users')
+                    .select('*')
+                    .eq('id', userId)
+                    .single();
+                    
+                if (error) {
+                    console.error('Error loading user profile:', error);
+                    return;
+                }
+                
+                currentUser.value = userProfile;
+                
+                // Set initial view based on role
+                if (currentUser.value.user_role === 'resident_manager') {
+                    currentView.value = 'medical_staff';
+                } else if (currentUser.value.user_role === 'department_head') {
+                    currentView.value = 'department_overview';
+                } else if (currentUser.value.user_role === 'viewing_doctor') {
+                    currentView.value = 'daily_assignments';
+                } else {
+                    currentView.value = 'medical_staff';
+                }
+                
+                // Load application data
+                await loadInitialData();
+                
+                showToast(`Welcome, ${currentUser.value.full_name}!`, 'success');
+                
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+                showToast('Error loading user profile', 'error');
+            }
+        };
+        
         // ============ RETURN ============
         return {
             // State
-             supabase: supabaseClient, // ← ADD THIS LINE to your existing return statement
+            supabase: supabaseClient,
             currentUser,
             loginForm,
             loading,
@@ -4493,6 +4755,8 @@ createApp({
             leaveRequests,
             onCallSchedule,
             announcements,
+            departments,
+            clinics,
             
             // Modals
             showMedicalStaffModal,
@@ -4550,6 +4814,8 @@ createApp({
             onCallDays,
             pendingLeaveRequests,
             activeLeave,
+            departmentList,
+            clinicList,
             isResidentSelected,
             
             // Permission Checks
@@ -4576,6 +4842,7 @@ createApp({
             
             // Authentication
             handleLogin,
+            handleLogout,
             
             // Utility Functions
             getInitials,
@@ -4612,6 +4879,8 @@ createApp({
             toggleUnitStatus,
             getUnitResidents,
             getUnitName,
+            getSupervisorName,
+            getSupervisorResidentsCount,
             
             // Rotation/Placement Management
             showNewRotationModal,
@@ -4623,8 +4892,6 @@ createApp({
             extendRotation,
             endRotation,
             getResidentName,
-            getSupervisorName,
-            getSupervisorResidentsCount,
             getDaysRemaining,
             getDaysRemainingClass,
             
