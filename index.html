@@ -3485,88 +3485,141 @@ createApp({
         
         // ============ AUTHENTICATION FUNCTIONS ============
         const handleLogin = async () => {
-            loading.value = true;
-            
-            try {
-                const email = loginForm.value.email.trim().toLowerCase();
-                const password = loginForm.value.password;
-                const selectedRole = loginForm.value.user_role;
+    state.loading.value = true;
+    
+    try {
+        const email = state.loginForm.value.email.trim().toLowerCase();
+        const password = state.loginForm.value.password;
+        const selectedRole = state.loginForm.value.user_role;
+        
+        // Validate inputs
+        if (!email || !password || !selectedRole) {
+            throw new Error('Please fill in all fields');
+        }
+        
+        console.log('Attempting login with:', { email, selectedRole });
+        
+        // FIRST: Try to authenticate with Supabase
+        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+        
+        if (authError) {
+            // Check if it's invalid credentials error
+            if (authError.message.includes('Invalid login credentials')) {
+                // Check if user already exists in app_users table
+                const { data: existingUser, error: userCheckError } = await supabaseClient
+                    .from('app_users')
+                    .select('*')
+                    .eq('email', email)
+                    .maybeSingle();
                 
-                // Validate inputs
-                if (!email || !password || !selectedRole) {
-                    throw new Error('Please fill in all fields');
+                if (userCheckError) {
+                    console.warn('Error checking user:', userCheckError);
+                    // Try to sign up
+                    await auth.handleSignUp(email, password, selectedRole);
+                    return;
                 }
                 
-                console.log('Attempting login with:', { email, selectedRole });
-                
-                // Try Supabase authentication
-                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                if (existingUser) {
+                    // User exists in app_users but not in auth system
+                    // Try to sign up with same email (will fail gracefully)
+                    await auth.handleSignUp(email, password, selectedRole);
+                    return;
+                } else {
+                    // New user - sign up
+                    await auth.handleSignUp(email, password, selectedRole);
+                    return;
+                }
+            }
+            throw authError;
+        }
+        
+        // Authentication successful
+        await auth.handleAuthenticatedUser(authData.user, selectedRole);
+        
+    } catch (error) {
+        console.error('Login error:', error);
+        utils.showToast(error.message || 'Login failed. Please check your credentials.', 'error');
+        state.loading.value = false;
+    }
+};
+        
+        const handleSignUp = async (email, password, selectedRole) => {
+    try {
+        // FIRST try to sign up with Supabase Auth
+        const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+                data: {
+                    full_name: email.split('@')[0].replace(/\./g, ' '),
+                    user_role: selectedRole
+                }
+            }
+        });
+        
+        if (signUpError) {
+            // If sign up fails, check if it's because user already exists
+            if (signUpError.message.includes('User already registered')) {
+                // Try to sign in instead
+                const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
                 
-                if (authError) {
-                    // Check if it's an invalid credentials error
-                    if (authError.message.includes('Invalid login credentials')) {
-                        // Try to sign up as a new user
-                        await handleSignUp(email, password, selectedRole);
-                        return;
-                    }
-                    throw authError;
-                }
+                if (signInError) throw signInError;
                 
-                // Authentication successful
-                await handleAuthenticatedUser(authData.user, selectedRole);
-                
-            } catch (error) {
-                console.error('Login error:', error);
-                showToast(error.message || 'Login failed. Please check your credentials.', 'error');
-                loading.value = false;
+                // Successfully signed in with existing account
+                await auth.handleAuthenticatedUser(signInData.user, selectedRole);
+                return;
             }
-        };
+            throw signUpError;
+        }
         
-        const handleSignUp = async (email, password, selectedRole) => {
-            try {
-                // Try to sign up as a new user
-                const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: {
-                        data: {
-                            full_name: email.split('@')[0].replace(/\./g, ' '),
-                            user_role: selectedRole
-                        }
-                    }
-                });
-                
-                if (signUpError) throw signUpError;
-                
-                if (signUpData.user) {
-                    // Create user profile in app_users
-                    const { data: userProfile, error: profileError } = await supabaseClient
+        if (signUpData.user) {
+            // Check if user already exists in app_users
+            const { data: existingUser } = await supabaseClient
+                .from('app_users')
+                .select('*')
+                .eq('email', email)
+                .maybeSingle();
+            
+            if (!existingUser) {
+                // Create user profile in app_users
+                try {
+                    const { error: profileError } = await supabaseClient
                         .from('app_users')
                         .insert([{
                             id: signUpData.user.id,
                             email: signUpData.user.email,
                             full_name: signUpData.user.user_metadata?.full_name || email.split('@')[0].replace(/\./g, ' '),
                             user_role: selectedRole
-                        }])
-                        .select()
-                        .single();
+                        }]);
                         
                     if (profileError) {
                         console.warn('Could not create user profile:', profileError);
-                        // Still proceed with login
                     }
-                    
-                    await handleAuthenticatedUser(signUpData.user, selectedRole);
+                } catch (profileError) {
+                    console.warn('Profile creation error:', profileError);
                 }
-                
-            } catch (error) {
-                console.error('Sign up error:', error);
-                throw new Error('Unable to create account. Please try again.');
             }
-        };
+            
+            await auth.handleAuthenticatedUser(signUpData.user, selectedRole);
+        }
+        
+    } catch (error) {
+        console.error('Sign up error:', error);
+        
+        // If it's a duplicate key error, try to login instead
+        if (error.code === '23505' || error.message.includes('already exists')) {
+            utils.showToast('User already exists. Please use a different email or sign in.', 'error');
+        } else {
+            throw new Error('Unable to create account. Please try again.');
+        }
+    }
+};
         
         const handleAuthenticatedUser = async (authUser, selectedRole) => {
             try {
