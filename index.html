@@ -4226,34 +4226,41 @@ createApp({
         };
         
         const saveOnCallAssignment = async () => {
-            saving.value = true;
-            
-            try {
-                const newOnCall = {
-                    ...onCallForm.value,
-                    schedule_id: generateSystemId('ONCALL')
-                };
-                
-                const { data, error } = await supabaseClient
-                    .from('oncall_schedule')
-                    .insert([newOnCall])
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                
-                onCallSchedule.value.push(data);
-                showToast('On-call assignment created successfully', 'success');
-                closeOnCallModal();
-                
-            } catch (error) {
-                console.error('Error creating on-call assignment:', error);
-                showToast('Error creating on-call assignment: ' + error.message, 'error');
-            } finally {
-                saving.value = false;
-            }
+    saving.value = true;
+    
+    try {
+        const newOnCall = {
+            ...onCallForm.value,
+            schedule_id: generateSystemId('ONCALL'),
+            created_by: currentUser.value.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
         
+        console.log('Inserting on-call:', newOnCall);
+        
+        const { data, error } = await supabaseClient
+            .from('oncall_schedule')
+            .insert([newOnCall])
+            .select()
+            .single();
+        
+        if (error) {
+            console.error('Supabase error:', error);
+            throw error;
+        }
+        
+        onCallSchedule.value.push(data);
+        showToast('On-call assignment created successfully', 'success');
+        closeOnCallModal();
+        
+    } catch (error) {
+        console.error('Error creating on-call assignment:', error);
+        showToast('Error creating on-call assignment: ' + error.message, 'error');
+    } finally {
+        saving.value = false;
+    }
+};
         // Announcements API
         const loadAnnouncements = async () => {
             try {
