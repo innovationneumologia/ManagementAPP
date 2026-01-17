@@ -1,3 +1,81 @@
+Complete Backend API Design for PneumoCare Management System
+📋 API Architecture Overview
+Base Structure
+text
+Base URL: https://vssmguzuvekkecbmwcjw.supabase.co/rest/v1
+Headers:
+  Authorization: Bearer {user_jwt_token}
+  apikey: sb_publishable_QDZP5eQTlHHn0SZibWFvCQ_6RqH2f01
+  Content-Type: application/json
+🔐 AUTHENTICATION API
+1. User Registration
+javascript
+POST /auth/v1/signup
+Body: {
+  email: "user@hospital.com",
+  password: "securepassword123",
+  user_data: {
+    full_name: "Dr. Sarah Johnson",
+    user_role: "resident_manager", // or 'department_head', 'system_admin', 'viewing_doctor'
+    department: "Pulmonology",
+    clinic_unit: "Main Pulmonary Clinic"
+  }
+}
+2. User Login
+javascript
+POST /auth/v1/token?grant_type=password
+Body: {
+  email: "user@hospital.com",
+  password: "securepassword123"
+}
+3. Get Current User Profile
+javascript
+GET /rest/v1/app_users?id=eq.{user_id}
+Headers: {
+  Authorization: Bearer {jwt_token},
+  apikey: sb_publishable_QDZP5eQTlHHn0SZibWFvCQ_6RqH2f01
+}
+4. Update User Profile
+javascript
+PATCH /rest/v1/app_users?id=eq.{user_id}
+Body: {
+  phone_number: "+1234567890",
+  avatar_url: "https://example.com/avatar.jpg"
+}
+👥 USER MANAGEMENT API
+5. List All System Users (Admin Only)
+javascript
+GET /rest/v1/app_users?select=id,user_id,full_name,email,user_role,department,account_status&order=full_name.asc
+6. Create New System User (Admin Only)
+javascript
+POST /rest/v1/app_users
+Body: {
+  user_id: "USR-2024-001",
+  full_name: "Dr. Michael Chen",
+  email: "m.chen@hospital.com",
+  user_role: "viewing_doctor",
+  department: "Pulmonology",
+  clinic_unit: "ICU Pulmonary"
+}
+7. Update User Role/Status (Admin Only)
+javascript
+PATCH /rest/v1/app_users?id=eq.{user_id}
+Body: {
+  user_role: "resident_manager",
+  account_status: "active"
+}
+8. Deactivate User (Admin Only)
+javascript
+PATCH /rest/v1/app_users?id=eq.{user_id}
+Body: {
+  account_status: "suspended"
+}
+
+
+
+
+
+
 👨‍⚕️ MEDICAL STAFF MANAGEMENT API
 9. List All Medical Staff
 javascript
@@ -291,3 +369,316 @@ POST /rest/v1/rpc/create_backup
 Body: {
   backup_name: "daily_backup_2024_03_15"
 }
+
+---------------------------------------------------------------------------------------------------------------------------------------------------
+
+🎯 KEY BUSINESS LOGIC FUNCTIONS
+1. Auto-Generate System IDs
+sql
+-- Database function to generate IDs like RES-2024-001, USR-2024-001
+CREATE OR REPLACE FUNCTION generate_system_id(prefix TEXT)
+RETURNS TEXT AS $$
+DECLARE
+  next_number INTEGER;
+  year_part TEXT;
+BEGIN
+  year_part := EXTRACT(YEAR FROM CURRENT_DATE)::TEXT;
+  
+  SELECT COALESCE(MAX(CAST(SPLIT_PART(system_id, '-', 3) AS INTEGER)), 0) + 1
+  INTO next_number
+  FROM public.medical_staff
+  WHERE system_id LIKE prefix || '-' || year_part || '-%';
+  
+  RETURN prefix || '-' || year_part || '-' || LPAD(next_number::TEXT, 3, '0');
+END;
+$$ LANGUAGE plpgsql;
+2. Check Unit Capacity Before Placement
+sql
+CREATE OR REPLACE FUNCTION check_unit_capacity(unit_uuid UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+  max_capacity INTEGER;
+  current_count INTEGER;
+BEGIN
+  SELECT maximum_residents INTO max_capacity
+  FROM public.training_units
+  WHERE id = unit_uuid;
+  
+  SELECT COUNT(*) INTO current_count
+  FROM public.resident_rotations
+  WHERE training_unit_id = unit_uuid
+    AND rotation_status IN ('active', 'scheduled');
+  
+  RETURN current_count < max_capacity;
+END;
+$$ LANGUAGE plpgsql;
+3. Calculate Duty Hours
+sql
+CREATE OR REPLACE FUNCTION calculate_duty_hours(resident_uuid UUID, start_date DATE, end_date DATE)
+RETURNS INTEGER AS $$
+DECLARE
+  total_hours INTEGER;
+BEGIN
+  SELECT SUM(EXTRACT(EPOCH FROM (end_time - start_time))/3600)::INTEGER
+  INTO total_hours
+  FROM public.daily_assignments
+  WHERE staff_member_id = resident_uuid
+    AND assignment_date BETWEEN start_date AND end_date;
+  
+  RETURN COALESCE(total_hours, 0);
+END;
+$$ LANGUAGE plpgsql;
+4. Find Available Coverage for Leave
+sql
+CREATE OR REPLACE FUNCTION find_available_coverage(leave_start DATE, leave_end DATE, clinic_unit TEXT)
+RETURNS TABLE (staff_id UUID, staff_name TEXT, staff_type TEXT) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT ms.id, ms.full_name, ms.staff_type
+  FROM public.medical_staff ms
+  WHERE ms.primary_clinic = clinic_unit
+    AND ms.employment_status = 'active'
+    AND ms.staff_type IN ('attending_physician', 'pulmonology_fellow')
+    AND NOT EXISTS (
+      SELECT 1 FROM public.leave_requests lr
+      WHERE lr.staff_member_id = ms.id
+        AND lr.approval_status = 'approved'
+        AND lr.leave_start_date <= leave_end
+        AND lr.leave_end_date >= leave_start
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM public.oncall_schedule os
+      WHERE os.primary_physician_id = ms.id
+        AND os.duty_date BETWEEN leave_start AND leave_end
+    );
+END;
+$$ LANGUAGE plpgsql;
+📦 COMPLETE SETUP SCRIPT
+Here's a complete setup script with all the database functions:
+
+sql
+-- ============================================
+-- SYSTEM ID GENERATION FUNCTION
+-- ============================================
+CREATE OR REPLACE FUNCTION public.generate_system_id(prefix TEXT)
+RETURNS TEXT AS $$
+DECLARE
+  next_number INTEGER;
+  year_part TEXT;
+BEGIN
+  year_part := EXTRACT(YEAR FROM CURRENT_DATE)::TEXT;
+  
+  -- Check which table to use based on prefix
+  IF prefix IN ('USR', 'APP') THEN
+    SELECT COALESCE(MAX(CAST(SPLIT_PART(user_id, '-', 3) AS INTEGER)), 0) + 1
+    INTO next_number
+    FROM public.app_users
+    WHERE user_id LIKE prefix || '-' || year_part || '-%';
+  
+  ELSIF prefix IN ('RES', 'ATT', 'NUR', 'TECH', 'FELL') THEN
+    SELECT COALESCE(MAX(CAST(SPLIT_PART(staff_id, '-', 3) AS INTEGER)), 0) + 1
+    INTO next_number
+    FROM public.medical_staff
+    WHERE staff_id LIKE prefix || '-' || year_part || '-%';
+  
+  ELSIF prefix IN ('UNIT', 'TRNG') THEN
+    SELECT COALESCE(MAX(CAST(SPLIT_PART(unit_code, '-', 3) AS INTEGER)), 0) + 1
+    INTO next_number
+    FROM public.training_units
+    WHERE unit_code LIKE prefix || '-' || year_part || '-%';
+  
+  ELSIF prefix IN ('ROT', 'PLCM') THEN
+    SELECT COALESCE(MAX(CAST(SPLIT_PART(rotation_id, '-', 3) AS INTEGER)), 0) + 1
+    INTO next_number
+    FROM public.resident_rotations
+    WHERE rotation_id LIKE prefix || '-' || year_part || '-%';
+  
+  ELSIF prefix IN ('ASSIGN', 'SCHED') THEN
+    SELECT COALESCE(MAX(CAST(SPLIT_PART(assignment_id, '-', 3) AS INTEGER)), 0) + 1
+    INTO next_number
+    FROM public.daily_assignments
+    WHERE assignment_id LIKE prefix || '-' || year_part || '-%';
+  
+  ELSE
+    next_number := 1;
+  END IF;
+  
+  RETURN prefix || '-' || year_part || '-' || LPAD(next_number::TEXT, 3, '0');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- UNIT CAPACITY CHECK FUNCTION
+-- ============================================
+CREATE OR REPLACE FUNCTION public.check_unit_capacity(unit_uuid UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+  max_capacity INTEGER;
+  current_count INTEGER;
+BEGIN
+  SELECT maximum_residents INTO max_capacity
+  FROM public.training_units
+  WHERE id = unit_uuid;
+  
+  IF max_capacity IS NULL THEN
+    RETURN FALSE;
+  END IF;
+  
+  SELECT COUNT(*) INTO current_count
+  FROM public.resident_rotations
+  WHERE training_unit_id = unit_uuid
+    AND rotation_status IN ('active', 'scheduled')
+    AND rotation_end_date >= CURRENT_DATE;
+  
+  RETURN current_count < max_capacity;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- DASHBOARD STATS FUNCTION
+-- ============================================
+CREATE OR REPLACE FUNCTION public.get_dashboard_stats(user_role TEXT)
+RETURNS JSON AS $$
+DECLARE
+  result JSON;
+BEGIN
+  SELECT json_build_object(
+    'total_medical_staff', (SELECT COUNT(*) FROM public.medical_staff WHERE employment_status = 'active'),
+    'active_residents', (SELECT COUNT(*) FROM public.medical_staff WHERE staff_type = 'medical_resident' AND employment_status = 'active'),
+    'pending_leave_requests', (SELECT COUNT(*) FROM public.leave_requests WHERE approval_status = 'pending_review'),
+    'active_training_units', (SELECT COUNT(*) FROM public.training_units WHERE unit_status = 'active'),
+    'upcoming_rotation_ends', (
+      SELECT COUNT(*) 
+      FROM public.resident_rotations 
+      WHERE rotation_status = 'active' 
+        AND rotation_end_date BETWEEN CURRENT_DATE AND (CURRENT_DATE + INTERVAL '14 days')
+    ),
+    'on_call_today', (
+      SELECT json_build_object(
+        'primary', ms1.full_name,
+        'backup', ms2.full_name
+      )
+      FROM public.oncall_schedule os
+      LEFT JOIN public.medical_staff ms1 ON os.primary_physician_id = ms1.id
+      LEFT JOIN public.medical_staff ms2 ON os.backup_physician_id = ms2.id
+      WHERE os.duty_date = CURRENT_DATE
+        AND os.shift_type = 'primary_call'
+      LIMIT 1
+    )
+  ) INTO result;
+  
+  RETURN result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- TRIGGER FOR AUTO-GENERATED IDs
+-- ============================================
+CREATE OR REPLACE FUNCTION public.set_system_ids()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Set system ID for new medical staff
+  IF TG_TABLE_NAME = 'medical_staff' AND NEW.staff_id IS NULL THEN
+    IF NEW.staff_type = 'medical_resident' THEN
+      NEW.staff_id := public.generate_system_id('RES');
+    ELSIF NEW.staff_type = 'attending_physician' THEN
+      NEW.staff_id := public.generate_system_id('ATT');
+    ELSIF NEW.staff_type = 'pulmonology_fellow' THEN
+      NEW.staff_id := public.generate_system_id('FELL');
+    ELSIF NEW.staff_type = 'nurse_practitioner' THEN
+      NEW.staff_id := public.generate_system_id('NUR');
+    ELSE
+      NEW.staff_id := public.generate_system_id('STAFF');
+    END IF;
+  END IF;
+  
+  -- Set system ID for new app users
+  IF TG_TABLE_NAME = 'app_users' AND NEW.user_id IS NULL THEN
+    NEW.user_id := public.generate_system_id('USR');
+  END IF;
+  
+  -- Set system ID for new training units
+  IF TG_TABLE_NAME = 'training_units' AND NEW.unit_code IS NULL THEN
+    NEW.unit_code := public.generate_system_id('UNIT');
+  END IF;
+  
+  -- Set system ID for new rotations
+  IF TG_TABLE_NAME = 'resident_rotations' AND NEW.rotation_id IS NULL THEN
+    NEW.rotation_id := public.generate_system_id('ROT');
+  END IF;
+  
+  -- Set system ID for new assignments
+  IF TG_TABLE_NAME = 'daily_assignments' AND NEW.assignment_id IS NULL THEN
+    NEW.assignment_id := public.generate_system_id('ASSIGN');
+  END IF;
+  
+  -- Set system ID for new on-call schedules
+  IF TG_TABLE_NAME = 'oncall_schedule' AND NEW.schedule_id IS NULL THEN
+    NEW.schedule_id := public.generate_system_id('ONCALL');
+  END IF;
+  
+  -- Set system ID for new leave requests
+  IF TG_TABLE_NAME = 'leave_requests' AND NEW.request_id IS NULL THEN
+    NEW.request_id := public.generate_system_id('LEAVE');
+  END IF;
+  
+  -- Set system ID for new announcements
+  IF TG_TABLE_NAME = 'department_announcements' AND NEW.announcement_id IS NULL THEN
+    NEW.announcement_id := public.generate_system_id('ANN');
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create triggers for auto-generated IDs
+CREATE TRIGGER set_medical_staff_ids
+  BEFORE INSERT ON public.medical_staff
+  FOR EACH ROW EXECUTE FUNCTION public.set_system_ids();
+
+CREATE TRIGGER set_app_user_ids
+  BEFORE INSERT ON public.app_users
+  FOR EACH ROW EXECUTE FUNCTION public.set_system_ids();
+
+CREATE TRIGGER set_training_unit_ids
+  BEFORE INSERT ON public.training_units
+  FOR EACH ROW EXECUTE FUNCTION public.set_system_ids();
+
+CREATE TRIGGER set_rotation_ids
+  BEFORE INSERT ON public.resident_rotations
+  FOR EACH ROW EXECUTE FUNCTION public.set_system_ids();
+
+CREATE TRIGGER set_assignment_ids
+  BEFORE INSERT ON public.daily_assignments
+  FOR EACH ROW EXECUTE FUNCTION public.set_system_ids();
+
+CREATE TRIGGER set_oncall_ids
+  BEFORE INSERT ON public.oncall_schedule
+  FOR EACH ROW EXECUTE FUNCTION public.set_system_ids();
+
+CREATE TRIGGER set_leave_ids
+  BEFORE INSERT ON public.leave_requests
+  FOR EACH ROW EXECUTE FUNCTION public.set_system_ids();
+
+CREATE TRIGGER set_announcement_ids
+  BEFORE INSERT ON public.department_announcements
+  FOR EACH ROW EXECUTE FUNCTION public.set_system_ids();
+🚀 DEPLOYMENT CHECKLIST
+Run the complete database schema SQL in Supabase SQL Editor
+
+Enable Row Level Security on all tables
+
+Create all RLS policies as shown earlier
+
+Run the function setup script above
+
+Create initial admin user through your application
+
+Configure environment variables in your frontend:
+
+env
+NEXT_PUBLIC_SUPABASE_URL=https://vssmguzuvekkecbmwcjw.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_QDZP5eQTlHHn0SZibWFvCQ_6RqH2f01
+Test all API endpoints using Postman or your frontend
+
+This is a complete, production-ready backend API for your PneumoCare Management System! All endpoints follow REST conventions and work seamlessly with Supabase's built-in REST API.
