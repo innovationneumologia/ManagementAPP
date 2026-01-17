@@ -2712,8 +2712,19 @@ const { createApp, ref, computed, onMounted } = Vue;
 // Supabase configuration
 const supabaseUrl = 'https://vssmguzuvekkecbmwcjw.supabase.co';
 const supabaseAnonKey = 'sb_publishable_QDZP5eQTlHHn0SZibWFvCQ_6RqH2f01';
-const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
-
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false
+    },
+    global: {
+        headers: {
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'apikey': supabaseAnonKey
+        }
+    }
+});
 createApp({
     setup() {
         // ============ STATE MANAGEMENT ============
