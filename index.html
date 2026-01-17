@@ -1619,18 +1619,32 @@
     </div>
 
     <script>
-    const { createApp, ref, computed, onMounted } = Vue;
+// Replace your Supabase configuration with this:
+const supabaseUrl = 'https://vssmguzuvekkecbmwcjw.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
 
-    // Supabase configuration
-    const supabaseUrl = 'https://vssmguzuvekkecbmwcjw.supabase.co';
-    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
-    const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-            detectSessionInUrl: false
-        }
-    });
+// Create Supabase client with better error handling
+const createSupabaseClient = () => {
+    try {
+        return window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false,
+                detectSessionInUrl: false
+            },
+            global: {
+                headers: {
+                    'apikey': supabaseAnonKey
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Failed to create Supabase client:', error);
+        return null;
+    }
+};
+
+const supabaseClient = createSupabaseClient();
 
     createApp({
         setup() {
