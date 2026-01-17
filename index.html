@@ -3159,7 +3159,8 @@ createApp({
                 const search = staffSearch.value.toLowerCase();
                 filtered = filtered.filter(s => 
                     s.full_name.toLowerCase().includes(search) ||
-                    (s.staff_id && s.staff_id.toLowerCase().includes(search))
+                    (s.staff_id && s.staff_id.toLowerCase().includes(search)) ||
+                    (s.professional_email && s.professional_email.toLowerCase().includes(search))
                 );
             }
             
@@ -3481,6 +3482,10 @@ createApp({
             // Search is handled by computed properties
         };
         
+        const handleStaffSearch = () => {
+            // Handled by filteredMedicalStaff computed property
+        };
+        
         // ============ AUTHENTICATION FUNCTIONS ============
         const handleLogin = async () => {
             loading.value = true;
@@ -3519,6 +3524,18 @@ createApp({
                         // Create session for existing user
                         currentUser.value = existingUser;
                         showToast(`Welcome back, ${existingUser.full_name}!`, 'success');
+                        
+                        // Load application data
+                        await loadInitialData();
+                        
+                        // Set initial view based on role
+                        if (currentUser.value.user_role === 'resident_manager') {
+                            currentView.value = 'medical_staff';
+                        } else if (currentUser.value.user_role === 'department_head') {
+                            currentView.value = 'department_overview';
+                        } else {
+                            currentView.value = 'medical_staff';
+                        }
                     } else {
                         throw new Error('Invalid credentials. Please try again.');
                     }
@@ -3560,24 +3577,23 @@ createApp({
                     }
                     
                     showToast(`Welcome, ${currentUser.value.full_name}!`, 'success');
-                }
-                
-                // Load application data
-                await loadInitialData();
-                
-                // Set initial view based on role
-                if (currentUser.value.user_role === 'resident_manager') {
-                    currentView.value = 'medical_staff';
-                } else if (currentUser.value.user_role === 'department_head') {
-                    currentView.value = 'department_overview';
-                } else {
-                    currentView.value = 'medical_staff';
+                    
+                    // Load application data
+                    await loadInitialData();
+                    
+                    // Set initial view based on role
+                    if (currentUser.value.user_role === 'resident_manager') {
+                        currentView.value = 'medical_staff';
+                    } else if (currentUser.value.user_role === 'department_head') {
+                        currentView.value = 'department_overview';
+                    } else {
+                        currentView.value = 'medical_staff';
+                    }
                 }
                 
             } catch (error) {
                 console.error('Login error:', error);
                 showToast(error.message || 'Login failed. Please check your credentials.', 'error');
-            } finally {
                 loading.value = false;
             }
         };
@@ -3607,9 +3623,10 @@ createApp({
                     loadOnCallSchedule(),
                     loadAnnouncements()
                 ]);
+                showToast('System data loaded successfully', 'success');
             } catch (error) {
                 console.error('Error loading initial data:', error);
-                showToast('Error loading system data', 'error');
+                showToast('Error loading system data: ' + error.message, 'error');
             } finally {
                 loading.value = false;
             }
@@ -3643,7 +3660,7 @@ createApp({
                 }
             } catch (error) {
                 console.error(`Error loading ${view} data:`, error);
-                showToast(`Error loading ${view} data`, 'error');
+                showToast(`Error loading ${view} data: ` + error.message, 'error');
             }
         };
         
@@ -3691,7 +3708,9 @@ createApp({
                 };
                 
                 if (editingMedicalStaff.value) {
-                    // Update existing staff
+                    // Update existing staff - don't regenerate staff_id
+                    delete staffData.staff_id;
+                    
                     const { data, error } = await supabaseClient
                         .from('medical_staff')
                         .update(staffData)
@@ -3726,7 +3745,37 @@ createApp({
         
         const editMedicalStaff = (staff) => {
             editingMedicalStaff.value = staff.id;
-            medicalStaffForm.value = { ...staff };
+            medicalStaffForm.value = { 
+                full_name: staff.full_name,
+                professional_email: staff.professional_email || '',
+                staff_type: staff.staff_type,
+                resident_category: staff.resident_category || 'department_internal',
+                training_year: staff.training_year ? staff.training_year.toString() : '1',
+                primary_clinic: staff.primary_clinic || '',
+                work_phone: staff.work_phone || '',
+                medical_license: staff.medical_license || '',
+                can_supervise_residents: staff.can_supervise_residents || false,
+                employment_status: staff.employment_status || 'active',
+                special_notes: staff.special_notes || ''
+            };
+            showMedicalStaffModal.value = true;
+        };
+        
+        const showAddMedicalStaffModal = () => {
+            editingMedicalStaff.value = null;
+            medicalStaffForm.value = {
+                full_name: '',
+                professional_email: '',
+                staff_type: 'medical_resident',
+                resident_category: 'department_internal',
+                training_year: '1',
+                primary_clinic: '',
+                work_phone: '',
+                medical_license: '',
+                can_supervise_residents: false,
+                employment_status: 'active',
+                special_notes: ''
+            };
             showMedicalStaffModal.value = true;
         };
         
@@ -3758,6 +3807,10 @@ createApp({
             }
         };
         
+        const viewStaffSchedule = (staff) => {
+            showToast(`Schedule for ${staff.full_name} would open here`, 'info');
+        };
+        
         // Training Units API
         const loadTrainingUnits = async () => {
             try {
@@ -3767,7 +3820,7 @@ createApp({
                     .order('unit_name');
                 
                 if (error) throw error;
-                trainingUnits.value = data;
+                trainingUnits.value = data || [];
             } catch (error) {
                 console.error('Error loading training units:', error);
                 throw error;
@@ -3815,6 +3868,20 @@ createApp({
             showTrainingUnitModal.value = true;
         };
         
+        const showAddTrainingUnitModal = () => {
+            editingTrainingUnit.value = null;
+            trainingUnitForm.value = {
+                unit_code: '',
+                unit_name: '',
+                department_name: 'Pulmonology',
+                maximum_residents: 4,
+                default_supervisor_id: '',
+                unit_description: '',
+                unit_status: 'active'
+            };
+            showTrainingUnitModal.value = true;
+        };
+        
         const closeTrainingUnitModal = () => {
             showTrainingUnitModal.value = false;
             editingTrainingUnit.value = null;
@@ -3840,7 +3907,7 @@ createApp({
                 if (error) throw error;
                 
                 unit.unit_status = newStatus;
-                showToast(`Unit ${newStatus}`, 'success');
+                showToast(`Unit ${newStatus === 'active' ? 'activated' : 'deactivated'}`, 'success');
                 
             } catch (error) {
                 console.error('Error toggling unit status:', error);
@@ -3869,7 +3936,7 @@ createApp({
                 const { data, error } = await query;
                 
                 if (error) throw error;
-                residentRotations.value = data;
+                residentRotations.value = data || [];
             } catch (error) {
                 console.error('Error loading resident rotations:', error);
                 throw error;
@@ -3917,375 +3984,6 @@ createApp({
             }
         };
         
-        const extendRotation = async (rotation) => {
-            const newEndDate = prompt('Enter new end date (YYYY-MM-DD):', rotation.rotation_end_date);
-            if (newEndDate) {
-                try {
-                    const { error } = await supabaseClient
-                        .from('resident_rotations')
-                        .update({ 
-                            rotation_end_date: newEndDate,
-                            rotation_status: 'extended'
-                        })
-                        .eq('id', rotation.id);
-                    
-                    if (error) throw error;
-                    
-                    rotation.rotation_end_date = newEndDate;
-                    rotation.rotation_status = 'extended';
-                    showToast('Rotation extended successfully', 'success');
-                    
-                } catch (error) {
-                    console.error('Error extending rotation:', error);
-                    showToast('Error extending rotation', 'error');
-                }
-            }
-        };
-        
-        const endRotation = async (rotation) => {
-            if (confirm('End this rotation early?')) {
-                try {
-                    const { error } = await supabaseClient
-                        .from('resident_rotations')
-                        .update({ 
-                            rotation_end_date: new Date().toISOString().split('T')[0],
-                            rotation_status: 'terminated_early',
-                            clinical_notes: (rotation.clinical_notes || '') + ' (Ended early)'
-                        })
-                        .eq('id', rotation.id);
-                    
-                    if (error) throw error;
-                    
-                    rotation.rotation_status = 'terminated_early';
-                    showToast('Rotation ended successfully', 'success');
-                    await loadResidentRotations();
-                    
-                } catch (error) {
-                    console.error('Error ending rotation:', error);
-                    showToast('Error ending rotation', 'error');
-                }
-            }
-        };
-        
-        // Daily Assignments API
-        const loadDailyAssignments = async () => {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('daily_assignments')
-                    .select('*')
-                    .order('assignment_date', { ascending: true });
-                
-                if (error) throw error;
-                dailyAssignments.value = data;
-            } catch (error) {
-                console.error('Error loading daily assignments:', error);
-                throw error;
-            }
-        };
-        
-        const saveAssignment = async () => {
-            saving.value = true;
-            
-            try {
-                const newAssignment = {
-                    ...assignmentForm.value,
-                    assignment_id: generateSystemId('ASSIGN'),
-                    created_by: currentUser.value.id
-                };
-                
-                const { data, error } = await supabaseClient
-                    .from('daily_assignments')
-                    .insert([newAssignment])
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                
-                dailyAssignments.value.push(data);
-                showToast('Assignment created successfully', 'success');
-                closeAssignmentModal();
-                
-            } catch (error) {
-                console.error('Error creating assignment:', error);
-                showToast('Error creating assignment: ' + error.message, 'error');
-            } finally {
-                saving.value = false;
-            }
-        };
-        
-        const updateAssignmentSupervisor = () => {
-            if (isResidentSelected.value && assignmentForm.value.staff_member_id) {
-                const resident = medicalStaff.value.find(s => s.id === assignmentForm.value.staff_member_id);
-                if (resident) {
-                    const activeRotation = residentRotations.value.find(r => 
-                        r.resident_id === resident.id && 
-                        (r.rotation_status === 'active' || r.rotation_status === 'scheduled')
-                    );
-                    if (activeRotation) {
-                        assignmentForm.value.supervising_attending_id = activeRotation.supervising_attending_id;
-                    }
-                }
-            }
-        };
-        
-        // Leave Requests API
-        const loadLeaveRequests = async () => {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('leave_requests')
-                    .select('*')
-                    .order('leave_start_date', { ascending: false });
-                
-                if (error) throw error;
-                leaveRequests.value = data;
-            } catch (error) {
-                console.error('Error loading leave requests:', error);
-                throw error;
-            }
-        };
-        
-        const saveLeaveRequest = async () => {
-            saving.value = true;
-            
-            try {
-                const newLeaveRequest = {
-                    ...leaveRequestForm.value,
-                    request_id: generateSystemId('LEAVE'),
-                    total_days: Math.ceil(
-                        (new Date(leaveRequestForm.value.leave_end_date) - 
-                         new Date(leaveRequestForm.value.leave_start_date)) / 
-                        (1000 * 60 * 60 * 24)
-                    ) + 1,
-                    approval_status: 'pending_review',
-                    coverage_assigned: !leaveRequestForm.value.coverage_required
-                };
-                
-                const { data, error } = await supabaseClient
-                    .from('leave_requests')
-                    .insert([newLeaveRequest])
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                
-                leaveRequests.value.unshift(data);
-                showToast('Leave request submitted successfully', 'success');
-                closeLeaveModal();
-                
-            } catch (error) {
-                console.error('Error submitting leave request:', error);
-                showToast('Error submitting leave request: ' + error.message, 'error');
-            } finally {
-                saving.value = false;
-            }
-        };
-        
-        const approveLeaveRequest = async (request) => {
-            try {
-                const { error } = await supabaseClient
-                    .from('leave_requests')
-                    .update({ 
-                        approval_status: 'approved',
-                        reviewed_by: currentUser.value.id,
-                        reviewed_at: new Date().toISOString()
-                    })
-                    .eq('id', request.id);
-                
-                if (error) throw error;
-                
-                request.approval_status = 'approved';
-                showToast('Leave request approved', 'success');
-                
-            } catch (error) {
-                console.error('Error approving leave request:', error);
-                showToast('Error approving leave request', 'error');
-            }
-        };
-        
-        const rejectLeaveRequest = async (request) => {
-            try {
-                const { error } = await supabaseClient
-                    .from('leave_requests')
-                    .update({ 
-                        approval_status: 'rejected',
-                        reviewed_by: currentUser.value.id,
-                        reviewed_at: new Date().toISOString()
-                    })
-                    .eq('id', request.id);
-                
-                if (error) throw error;
-                
-                request.approval_status = 'rejected';
-                showToast('Leave request rejected', 'success');
-                
-            } catch (error) {
-                console.error('Error rejecting leave request:', error);
-                showToast('Error rejecting leave request', 'error');
-            }
-        };
-        
-        // On-call Schedule API
-        const loadOnCallSchedule = async () => {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('oncall_schedule')
-                    .select('*')
-                    .order('duty_date', { ascending: true });
-                
-                if (error) throw error;
-                onCallSchedule.value = data;
-            } catch (error) {
-                console.error('Error loading on-call schedule:', error);
-                throw error;
-            }
-        };
-        
-        const saveOnCallAssignment = async () => {
-            saving.value = true;
-            
-            try {
-                const newOnCall = {
-                    ...onCallForm.value,
-                    schedule_id: generateSystemId('ONCALL'),
-                    created_by: currentUser.value.id
-                };
-                
-                const { data, error } = await supabaseClient
-                    .from('oncall_schedule')
-                    .insert([newOnCall])
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                
-                onCallSchedule.value.push(data);
-                showToast('On-call assignment created successfully', 'success');
-                closeOnCallModal();
-                
-            } catch (error) {
-                console.error('Error creating on-call assignment:', error);
-                showToast('Error creating on-call assignment: ' + error.message, 'error');
-            } finally {
-                saving.value = false;
-            }
-        };
-        
-        // Announcements API
-        const loadAnnouncements = async () => {
-            try {
-                const today = new Date().toISOString().split('T')[0];
-                const { data, error } = await supabaseClient
-                    .from('department_announcements')
-                    .select('*')
-                    .lte('publish_start_date', today)
-                    .or(`publish_end_date.is.null,publish_end_date.gte.${today}`)
-                    .order('priority_level', { ascending: false })
-                    .order('created_at', { ascending: false });
-                
-                if (error) throw error;
-                announcements.value = data;
-            } catch (error) {
-                console.error('Error loading announcements:', error);
-                throw error;
-            }
-        };
-        
-        const saveAnnouncement = async () => {
-            saving.value = true;
-            
-            try {
-                const announcementData = {
-                    ...announcementForm.value,
-                    announcement_id: generateSystemId('ANN'),
-                    created_by: currentUser.value.id,
-                    visible_to_roles: JSON.stringify(announcementForm.value.visible_to_roles)
-                };
-                
-                if (editingAnnouncement.value) {
-                    const { error } = await supabaseClient
-                        .from('department_announcements')
-                        .update(announcementData)
-                        .eq('id', editingAnnouncement.value);
-                    
-                    if (error) throw error;
-                    showToast('Announcement updated successfully', 'success');
-                } else {
-                    const { data, error } = await supabaseClient
-                        .from('department_announcements')
-                        .insert([announcementData])
-                        .select()
-                        .single();
-                    
-                    if (error) throw error;
-                    announcements.value.unshift(data);
-                    showToast('Announcement published successfully', 'success');
-                }
-                
-                closeAnnouncementModal();
-                
-            } catch (error) {
-                console.error('Error saving announcement:', error);
-                showToast('Error saving announcement: ' + error.message, 'error');
-            } finally {
-                saving.value = false;
-            }
-        };
-        
-        const archiveAnnouncement = async (announcement) => {
-            try {
-                const { error } = await supabaseClient
-                    .from('department_announcements')
-                    .update({ publish_end_date: new Date().toISOString().split('T')[0] })
-                    .eq('id', announcement.id);
-                
-                if (error) throw error;
-                
-                announcement.publish_end_date = new Date().toISOString().split('T')[0];
-                showToast('Announcement archived', 'success');
-                
-            } catch (error) {
-                console.error('Error archiving announcement:', error);
-                showToast('Error archiving announcement', 'error');
-            }
-        };
-        
-        // ============ UI FUNCTIONS ============
-        
-        // Medical Staff Management
-        const showAddMedicalStaffModal = () => {
-            editingMedicalStaff.value = null;
-            medicalStaffForm.value = {
-                full_name: '',
-                professional_email: '',
-                staff_type: 'medical_resident',
-                resident_category: 'department_internal',
-                training_year: '1',
-                primary_clinic: '',
-                work_phone: '',
-                medical_license: '',
-                can_supervise_residents: false,
-                employment_status: 'active',
-                special_notes: ''
-            };
-            showMedicalStaffModal.value = true;
-        };
-        
-        // Training Unit Management
-        const showAddTrainingUnitModal = () => {
-            editingTrainingUnit.value = null;
-            trainingUnitForm.value = {
-                unit_code: '',
-                unit_name: '',
-                department_name: 'Pulmonology',
-                maximum_residents: 4,
-                default_supervisor_id: '',
-                unit_description: '',
-                unit_status: 'active'
-            };
-            showTrainingUnitModal.value = true;
-        };
-        
-        // Rotation/Placement Management
         const showNewRotationModal = () => {
             editingPlacement.value = null;
             const today = new Date();
@@ -4358,7 +4056,110 @@ createApp({
             }
         };
         
-        // Daily Assignments
+        const extendRotation = async (rotation) => {
+            const newEndDate = prompt('Enter new end date (YYYY-MM-DD):', rotation.rotation_end_date);
+            if (newEndDate) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('resident_rotations')
+                        .update({ 
+                            rotation_end_date: newEndDate,
+                            rotation_status: 'extended'
+                        })
+                        .eq('id', rotation.id);
+                    
+                    if (error) throw error;
+                    
+                    rotation.rotation_end_date = newEndDate;
+                    rotation.rotation_status = 'extended';
+                    showToast('Rotation extended successfully', 'success');
+                    
+                } catch (error) {
+                    console.error('Error extending rotation:', error);
+                    showToast('Error extending rotation', 'error');
+                }
+            }
+        };
+        
+        const endRotation = async (rotation) => {
+            if (confirm('End this rotation early?')) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('resident_rotations')
+                        .update({ 
+                            rotation_end_date: new Date().toISOString().split('T')[0],
+                            rotation_status: 'terminated_early',
+                            clinical_notes: (rotation.clinical_notes || '') + ' (Ended early)'
+                        })
+                        .eq('id', rotation.id);
+                    
+                    if (error) throw error;
+                    
+                    rotation.rotation_status = 'terminated_early';
+                    showToast('Rotation ended successfully', 'success');
+                    await loadResidentRotations();
+                    
+                } catch (error) {
+                    console.error('Error ending rotation:', error);
+                    showToast('Error ending rotation', 'error');
+                }
+            }
+        };
+        
+        const extendPlacement = (placement) => {
+            extendRotation(placement);
+        };
+        
+        const endPlacement = (placement) => {
+            endRotation(placement);
+        };
+        
+        // Daily Assignments API
+        const loadDailyAssignments = async () => {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('daily_assignments')
+                    .select('*')
+                    .order('assignment_date', { ascending: true });
+                
+                if (error) throw error;
+                dailyAssignments.value = data || [];
+            } catch (error) {
+                console.error('Error loading daily assignments:', error);
+                throw error;
+            }
+        };
+        
+        const saveAssignment = async () => {
+            saving.value = true;
+            
+            try {
+                const newAssignment = {
+                    ...assignmentForm.value,
+                    assignment_id: generateSystemId('ASSIGN'),
+                    created_by: currentUser.value?.id || null
+                };
+                
+                const { data, error } = await supabaseClient
+                    .from('daily_assignments')
+                    .insert([newAssignment])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                dailyAssignments.value.push(data);
+                showToast('Assignment created successfully', 'success');
+                closeAssignmentModal();
+                
+            } catch (error) {
+                console.error('Error creating assignment:', error);
+                showToast('Error creating assignment: ' + error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+        
         const showNewAssignmentModal = () => {
             const today = new Date();
             assignmentForm.value = {
@@ -4378,7 +4179,73 @@ createApp({
             showAssignmentModal.value = false;
         };
         
-        // Leave Requests
+        const updateAssignmentSupervisor = () => {
+            if (isResidentSelected.value && assignmentForm.value.staff_member_id) {
+                const resident = medicalStaff.value.find(s => s.id === assignmentForm.value.staff_member_id);
+                if (resident) {
+                    const activeRotation = residentRotations.value.find(r => 
+                        r.resident_id === resident.id && 
+                        (r.rotation_status === 'active' || r.rotation_status === 'scheduled')
+                    );
+                    if (activeRotation) {
+                        assignmentForm.value.supervising_attending_id = activeRotation.supervising_attending_id;
+                    }
+                }
+            }
+        };
+        
+        // Leave Requests API
+        const loadLeaveRequests = async () => {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('leave_requests')
+                    .select('*')
+                    .order('leave_start_date', { ascending: false });
+                
+                if (error) throw error;
+                leaveRequests.value = data || [];
+            } catch (error) {
+                console.error('Error loading leave requests:', error);
+                throw error;
+            }
+        };
+        
+        const saveLeaveRequest = async () => {
+            saving.value = true;
+            
+            try {
+                const newLeaveRequest = {
+                    ...leaveRequestForm.value,
+                    request_id: generateSystemId('LEAVE'),
+                    total_days: Math.ceil(
+                        (new Date(leaveRequestForm.value.leave_end_date) - 
+                         new Date(leaveRequestForm.value.leave_start_date)) / 
+                        (1000 * 60 * 60 * 24)
+                    ) + 1,
+                    approval_status: 'pending_review',
+                    coverage_assigned: !leaveRequestForm.value.coverage_required
+                };
+                
+                const { data, error } = await supabaseClient
+                    .from('leave_requests')
+                    .insert([newLeaveRequest])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                leaveRequests.value.unshift(data);
+                showToast('Leave request submitted successfully', 'success');
+                closeLeaveModal();
+                
+            } catch (error) {
+                console.error('Error submitting leave request:', error);
+                showToast('Error submitting leave request: ' + error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+        
         const showNewLeaveModal = () => {
             const today = new Date();
             leaveRequestForm.value = {
@@ -4397,7 +4264,108 @@ createApp({
             showLeaveModal.value = false;
         };
         
-        // On-call Schedule
+        const approveLeaveRequest = async (request) => {
+            try {
+                const { error } = await supabaseClient
+                    .from('leave_requests')
+                    .update({ 
+                        approval_status: 'approved',
+                        reviewed_by: currentUser.value.id,
+                        reviewed_at: new Date().toISOString()
+                    })
+                    .eq('id', request.id);
+                
+                if (error) throw error;
+                
+                request.approval_status = 'approved';
+                showToast('Leave request approved', 'success');
+                
+            } catch (error) {
+                console.error('Error approving leave request:', error);
+                showToast('Error approving leave request', 'error');
+            }
+        };
+        
+        const rejectLeaveRequest = async (request) => {
+            try {
+                const { error } = await supabaseClient
+                    .from('leave_requests')
+                    .update({ 
+                        approval_status: 'rejected',
+                        reviewed_by: currentUser.value.id,
+                        reviewed_at: new Date().toISOString()
+                    })
+                    .eq('id', request.id);
+                
+                if (error) throw error;
+                
+                request.approval_status = 'rejected';
+                showToast('Leave request rejected', 'success');
+                
+            } catch (error) {
+                console.error('Error rejecting leave request:', error);
+                showToast('Error rejecting leave request', 'error');
+            }
+        };
+        
+        const assignCoverage = (request) => {
+            showToast(`Coverage assignment for ${request.staff_name}`, 'info');
+        };
+        
+        const viewCoverageOptions = (request) => {
+            showToast(`Coverage options for ${request.staff_name}`, 'info');
+        };
+        
+        const editLeaveRequest = (request) => {
+            showToast(`Editing leave request for ${request.staff_name}`, 'info');
+        };
+        
+        // On-call Schedule API
+        const loadOnCallSchedule = async () => {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('oncall_schedule')
+                    .select('*')
+                    .order('duty_date', { ascending: true });
+                
+                if (error) throw error;
+                onCallSchedule.value = data || [];
+            } catch (error) {
+                console.error('Error loading on-call schedule:', error);
+                throw error;
+            }
+        };
+        
+        const saveOnCallAssignment = async () => {
+            saving.value = true;
+            
+            try {
+                const newOnCall = {
+                    ...onCallForm.value,
+                    schedule_id: generateSystemId('ONCALL'),
+                    created_by: currentUser.value?.id || null
+                };
+                
+                const { data, error } = await supabaseClient
+                    .from('oncall_schedule')
+                    .insert([newOnCall])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                onCallSchedule.value.push(data);
+                showToast('On-call assignment created successfully', 'success');
+                closeOnCallModal();
+                
+            } catch (error) {
+                console.error('Error creating on-call assignment:', error);
+                showToast('Error creating on-call assignment: ' + error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+        
         const showNewOnCallModal = () => {
             const today = new Date();
             onCallForm.value = {
@@ -4416,7 +4384,67 @@ createApp({
             showOnCallModal.value = false;
         };
         
-        // Announcements
+        // Announcements API
+        const loadAnnouncements = async () => {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const { data, error } = await supabaseClient
+                    .from('department_announcements')
+                    .select('*')
+                    .lte('publish_start_date', today)
+                    .or(`publish_end_date.is.null,publish_end_date.gte.${today}`)
+                    .order('priority_level', { ascending: false })
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                announcements.value = data || [];
+            } catch (error) {
+                console.error('Error loading announcements:', error);
+                throw error;
+            }
+        };
+        
+        const saveAnnouncement = async () => {
+            saving.value = true;
+            
+            try {
+                const announcementData = {
+                    ...announcementForm.value,
+                    announcement_id: generateSystemId('ANN'),
+                    created_by: currentUser.value?.id || null,
+                    visible_to_roles: JSON.stringify(announcementForm.value.visible_to_roles)
+                };
+                
+                if (editingAnnouncement.value) {
+                    const { error } = await supabaseClient
+                        .from('department_announcements')
+                        .update(announcementData)
+                        .eq('id', editingAnnouncement.value);
+                    
+                    if (error) throw error;
+                    showToast('Announcement updated successfully', 'success');
+                } else {
+                    const { data, error } = await supabaseClient
+                        .from('department_announcements')
+                        .insert([announcementData])
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    announcements.value.unshift(data);
+                    showToast('Announcement published successfully', 'success');
+                }
+                
+                closeAnnouncementModal();
+                
+            } catch (error) {
+                console.error('Error saving announcement:', error);
+                showToast('Error saving announcement: ' + error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+        
         const showNewAnnouncementModal = () => {
             editingAnnouncement.value = null;
             const today = new Date();
@@ -4453,6 +4481,24 @@ createApp({
                 publish_end_date: '',
                 visible_to_roles: []
             };
+        };
+        
+        const archiveAnnouncement = async (announcement) => {
+            try {
+                const { error } = await supabaseClient
+                    .from('department_announcements')
+                    .update({ publish_end_date: new Date().toISOString().split('T')[0] })
+                    .eq('id', announcement.id);
+                
+                if (error) throw error;
+                
+                announcement.publish_end_date = new Date().toISOString().split('T')[0];
+                showToast('Announcement archived', 'success');
+                
+            } catch (error) {
+                console.error('Error archiving announcement:', error);
+                showToast('Error archiving announcement', 'error');
+            }
         };
         
         // Schedule Navigation
@@ -4531,32 +4577,6 @@ createApp({
         };
         
         // Other UI Functions
-        const viewStaffSchedule = (staff) => {
-            showToast(`Schedule for ${staff.full_name}`, 'info');
-        };
-        
-        const assignCoverage = (request) => {
-            showToast(`Coverage assignment for ${request.staff_name}`, 'info');
-        };
-        
-        const viewCoverageOptions = (request) => {
-            showToast(`Coverage options for ${request.staff_name}`, 'info');
-        };
-        
-        const editLeaveRequest = (request) => {
-            showToast(`Editing leave request for ${request.staff_name}`, 'info');
-        };
-        
-        const extendPlacement = (placement) => {
-            showToast(`Extend placement for ${placement.resident_name}`, 'info');
-        };
-        
-        const endPlacement = (placement) => {
-            if (confirm(`End placement for ${placement.resident_name}?`)) {
-                showToast('Placement ended', 'success');
-            }
-        };
-        
         const exportDepartmentReport = () => {
             showToast('Department report exported', 'success');
         };
@@ -4587,8 +4607,30 @@ createApp({
                     
                     // Load application data
                     loadInitialData().then(() => {
-                        currentView.value = 'medical_staff';
+                        if (currentUser.value.user_role === 'resident_manager') {
+                            currentView.value = 'medical_staff';
+                        } else if (currentUser.value.user_role === 'department_head') {
+                            currentView.value = 'department_overview';
+                        } else {
+                            currentView.value = 'medical_staff';
+                        }
                     });
+                }
+            });
+            
+            // Set up auth state listener
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                console.log('Auth state changed:', event);
+                if (event === 'SIGNED_OUT') {
+                    currentUser.value = null;
+                    currentView.value = 'login';
+                } else if (event === 'SIGNED_IN' && session) {
+                    currentUser.value = {
+                        id: session.user.id,
+                        email: session.user.email,
+                        full_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
+                        user_role: session.user.user_metadata?.user_role || 'resident_manager'
+                    };
                 }
             });
         });
@@ -4693,6 +4735,7 @@ createApp({
             closeMobileMenu,
             toggleUserMenu,
             handleSearch,
+            handleStaffSearch,
             
             // Authentication
             handleLogin,
@@ -4716,6 +4759,15 @@ createApp({
             getStaffTypeClass,
             getPriorityClass,
             getRotationStatusClass,
+            getStaffName,
+            getResidentName,
+            getUnitName,
+            getSupervisorName,
+            getUnitResidents,
+            getSupervisorResidentsCount,
+            getAssignmentsForDay,
+            getDaysRemaining,
+            getDaysRemainingClass,
             
             // Medical Staff Management
             showAddMedicalStaffModal,
@@ -4731,8 +4783,6 @@ createApp({
             closeTrainingUnitModal,
             saveTrainingUnit,
             toggleUnitStatus,
-            getUnitResidents,
-            getUnitName,
             
             // Rotation/Placement Management
             showNewRotationModal,
@@ -4745,18 +4795,12 @@ createApp({
             endRotation,
             extendPlacement,
             endPlacement,
-            getResidentName,
-            getSupervisorName,
-            getSupervisorResidentsCount,
-            getDaysRemaining,
-            getDaysRemainingClass,
             
             // Daily Assignments
             showNewAssignmentModal,
             closeAssignmentModal,
             updateAssignmentSupervisor,
             saveAssignment,
-            getAssignmentsForDay,
             
             // Leave Management
             showNewLeaveModal,
