@@ -1,0 +1,2792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PneumoCare Pro | Academic Pulmonary Management</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* [Keep all your existing CSS styles - they're excellent] */
+        /* ... Your existing CSS ... */
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div v-if="!currentUser" class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <div class="login-logo">
+                        <i class="fas fa-lungs"></i>
+                    </div>
+                    <h1 class="login-title">PneumoCare Pro</h1>
+                    <div class="login-subtitle">Academic Pulmonary Management System</div>
+                </div>
+                
+                <div class="role-selector">
+                    <div class="role-btn" :class="{ active: loginForm.role === 'resident_manager' }" 
+                         @click="loginForm.role = 'resident_manager'">
+                        <div class="role-icon">
+                            <i class="fas fa-user-md"></i>
+                        </div>
+                        <div class="role-name">Resident Manager</div>
+                        <div class="role-desc">Manage residents, units, rotations</div>
+                    </div>
+                    
+                    <div class="role-btn" :class="{ active: loginForm.role === 'hod' }" 
+                         @click="loginForm.role = 'hod'">
+                        <div class="role-icon">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <div class="role-name">Head of Department</div>
+                        <div class="role-desc">Oversee department operations</div>
+                    </div>
+                </div>
+                
+                <form @submit.prevent="handleLogin">
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" v-model="loginForm.email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-input" v-model="loginForm.password" required>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn" style="width: 100%;" :disabled="loading">
+                            <span v-if="loading" class="loading-spinner"></span>
+                            <span v-else>
+                                <i class="fas fa-sign-in-alt"></i> Sign In as {{ loginForm.role === 'resident_manager' ? 'Resident Manager' : 'Head of Department' }}
+                            </span>
+                        </button>
+                    </div>
+                </form>
+                
+                <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light);">
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); text-align: center;">
+                        <i class="fas fa-shield-alt"></i> HIPAA Compliant • System ID: PC-2024-001
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Application -->
+        <div v-else>
+            <!-- Mobile Menu Toggle -->
+            <button class="mobile-menu-toggle" @click="toggleMobileMenu">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <div class="app-container">
+                <!-- Sidebar -->
+                <div class="sidebar" :class="{ 
+                    collapsed: sidebarCollapsed,
+                    'mobile-open': mobileMenuOpen 
+                }">
+                    <div class="sidebar-header">
+                        <div class="brand">
+                            <div class="brand-logo">
+                                <i class="fas fa-lungs"></i>
+                            </div>
+                            <div class="brand-text">
+                                <h1>PneumoCare Pro</h1>
+                                <div class="subtitle">ACADEMIC PULMONARY v4.0</div>
+                            </div>
+                        </div>
+                        <button class="collapse-toggle" @click="sidebarCollapsed = !sidebarCollapsed">
+                            <i class="fas" :class="sidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'"></i>
+                        </button>
+                    </div>
+                    
+                    <nav class="sidebar-nav">
+                        <!-- Resident Manager Features -->
+                        <div v-if="currentUser.user_role === 'resident_manager'">
+                            <button class="nav-item" :class="{ active: currentView === 'residents' }" 
+                                    @click="switchView('residents'); closeMobileMenu()">
+                                <i class="fas fa-user-graduate"></i>
+                                <span>Residents</span>
+                            </button>
+                            
+                            <button class="nav-item" :class="{ active: currentView === 'clinical_units' }" 
+                                    @click="switchView('clinical_units'); closeMobileMenu()">
+                                <i class="fas fa-hospital-alt"></i>
+                                <span>Clinical Units</span>
+                            </button>
+                            
+                            <button class="nav-item" :class="{ active: currentView === 'rotations' }" 
+                                    @click="switchView('rotations'); closeMobileMenu()">
+                                <i class="fas fa-calendar-alt"></i>
+                                <span>Rotations</span>
+                            </button>
+                            
+                            <button class="nav-item" :class="{ active: currentView === 'placements' }" 
+                                    @click="switchView('placements'); closeMobileMenu()">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span>Placements</span>
+                            </button>
+                        </div>
+                        
+                        <!-- HOD Features -->
+                        <div v-if="currentUser.user_role === 'department_head'">
+                            <button class="nav-item" :class="{ active: currentView === 'department_overview' }" 
+                                    @click="switchView('department_overview'); closeMobileMenu()">
+                                <i class="fas fa-chart-line"></i>
+                                <span>Department Overview</span>
+                            </button>
+                            
+                            <button class="nav-item" :class="{ active: currentView === 'staff_management' }" 
+                                    @click="switchView('staff_management'); closeMobileMenu()">
+                                <i class="fas fa-users"></i>
+                                <span>Staff Management</span>
+                            </button>
+                            
+                            <button class="nav-item" :class="{ active: currentView === 'schedule_approval' }" 
+                                    @click="switchView('schedule_approval'); closeMobileMenu()">
+                                <i class="fas fa-calendar-check"></i>
+                                <span>Schedule Approval</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Shared Features -->
+                        <button class="nav-item" :class="{ active: currentView === 'schedule' }" 
+                                @click="switchView('schedule'); closeMobileMenu()">
+                            <i class="fas fa-calendar-day"></i>
+                            <span>Schedule</span>
+                        </button>
+                        
+                        <button class="nav-item" :class="{ active: currentView === 'oncall' }" 
+                                @click="switchView('oncall'); closeMobileMenu()">
+                            <i class="fas fa-phone-alt"></i>
+                            <span>On-call</span>
+                        </button>
+                        
+                        <button class="nav-item" :class="{ active: currentView === 'leave' }" 
+                                @click="switchView('leave'); closeMobileMenu()">
+                            <i class="fas fa-calendar-times"></i>
+                            <span>Leave & Coverage</span>
+                        </button>
+                        
+                        <button class="nav-item" :class="{ active: currentView === 'reports' }" 
+                                @click="switchView('reports'); closeMobileMenu()">
+                            <i class="fas fa-chart-bar"></i>
+                            <span>Reports</span>
+                        </button>
+                    </nav>
+                    
+                    <div style="padding: 1.75rem; margin-top: auto; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6); text-align: center; font-weight: 500;">
+                            <div>Logged in as: <strong>{{ getUserRoleName(currentUser.user_role) }}</strong></div>
+                            <small>ID: {{ currentUser.user_id }}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <div class="main-content" :class="{ expanded: sidebarCollapsed }">
+                    <header class="content-header">
+                        <div class="header-title">
+                            <h1>{{ getCurrentTitle() }}</h1>
+                            <div class="subtitle">{{ getCurrentSubtitle() }}</div>
+                        </div>
+                        <div class="header-actions">
+                            <div class="search-box">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" 
+                                       v-model="searchQuery" 
+                                       :placeholder="getSearchPlaceholder()"
+                                       @input="handleSearch">
+                            </div>
+                            <div class="user-profile" @click="toggleUserMenu">
+                                <div class="user-info">
+                                    <div class="user-name">{{ currentUser.full_name }}</div>
+                                    <div class="user-role">{{ getUserRoleName(currentUser.user_role) }}</div>
+                                </div>
+                                <div class="user-avatar">{{ getInitials(currentUser.full_name) }}</div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div class="content-area">
+                        <!-- Loading State -->
+                        <div v-if="loading" class="loading-state">
+                            <div class="loading-spinner"></div>
+                            <p style="margin-top: 1rem;">Loading system data...</p>
+                        </div>
+
+                        <!-- Resident Manager Views -->
+                        <div v-else-if="currentUser.user_role === 'resident_manager'">
+                            <!-- Residents Management -->
+                            <div v-if="currentView === 'residents'">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-user-graduate"></i>
+                                            Resident Management
+                                        </div>
+                                        <button class="btn btn-resident" @click="showAddResidentModal">
+                                            <i class="fas fa-user-plus"></i> Add Resident
+                                        </button>
+                                    </div>
+                                    <div class="card-content">
+                                        <div class="metrics-grid">
+                                            <div class="metric-card">
+                                                <div class="metric-value">{{ stats.totalResidents }}</div>
+                                                <div class="metric-label">Total Residents</div>
+                                                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                                    {{ stats.internalResidents }} Internal • {{ stats.rotatingResidents }} Rotating • {{ stats.externalResidents }} External
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="metric-card">
+                                                <div class="metric-value">{{ stats.assignedResidents }}/{{ stats.totalResidents }}</div>
+                                                <div class="metric-label">Currently Placed</div>
+                                                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                                    {{ stats.unassignedResidents }} awaiting placement
+                                                </div>
+                                            </div>
+
+                                            <div class="metric-card">
+                                                <div class="metric-value">{{ stats.endingSoon }}</div>
+                                                <div class="metric-label">Rotations Ending Soon</div>
+                                                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                                    Within next 14 days
+                                                </div>
+                                            </div>
+
+                                            <div class="metric-card">
+                                                <div class="metric-value">{{ stats.dutyHoursWarning }}</div>
+                                                <div class="metric-label">Duty Hour Alerts</div>
+                                                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                                    >70 hours this week
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Residents List -->
+                                        <div style="margin-top: 2rem;">
+                                            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                                                <select class="form-select" style="width: 180px;" v-model="residentFilter.type" @change="filterResidents">
+                                                    <option value="">All Types</option>
+                                                    <option value="department_internal">Internal</option>
+                                                    <option value="rotating_external">Rotating</option>
+                                                    <option value="international">External</option>
+                                                </select>
+                                                <select class="form-select" style="width: 180px;" v-model="residentFilter.status" @change="filterResidents">
+                                                    <option value="">All Status</option>
+                                                    <option value="placed">Placed</option>
+                                                    <option value="unplaced">Unplaced</option>
+                                                    <option value="ending">Rotation Ending</option>
+                                                </select>
+                                                <input type="text" class="form-input" style="width: 200px;" 
+                                                       v-model="residentSearch" placeholder="Search residents...">
+                                            </div>
+
+                                            <div v-if="filteredResidents.length > 0" style="display: grid; gap: 1rem;">
+                                                <div v-for="resident in filteredResidents" :key="resident.id" class="person-card">
+                                                    <div class="person-avatar resident">
+                                                        {{ getInitials(resident.full_name) }}
+                                                    </div>
+                                                    <div class="person-info">
+                                                        <div class="person-name">
+                                                            {{ resident.full_name }}
+                                                            <span class="resident-badge">
+                                                                <i class="fas fa-graduation-cap"></i>
+                                                                {{ formatResidentCategory(resident.resident_category) }}
+                                                            </span>
+                                                        </div>
+                                                        <div class="person-clinic">
+                                                            <span class="role-badge badge-resident">Resident</span>
+                                                            ID: {{ resident.staff_id }}
+                                                        </div>
+                                                        <div class="person-meta">
+                                                            <div v-if="resident.current_rotation">
+                                                                <strong>Current Placement:</strong> {{ resident.current_rotation.unit_name }}
+                                                                <br>
+                                                                <strong>Supervisor:</strong> {{ resident.current_rotation.supervisor_name }}
+                                                                <br>
+                                                                <strong>Rotation:</strong> {{ formatDate(resident.current_rotation.rotation_start_date) }} to {{ formatDate(resident.current_rotation.rotation_end_date) }}
+                                                            </div>
+                                                            <div v-else style="color: var(--medical-amber);">
+                                                                <i class="fas fa-exclamation-circle"></i> Awaiting placement
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div style="display: flex; gap: 0.5rem;">
+                                                        <button class="btn-outline btn-sm" @click="editResident(resident)">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </button>
+                                                        <button class="btn btn-sm" @click="viewResidentSchedule(resident)">
+                                                            <i class="fas fa-calendar"></i> Schedule
+                                                        </button>
+                                                        <button v-if="!resident.current_rotation" class="btn btn-sm btn-resident" @click="placeResident(resident)">
+                                                            <i class="fas fa-map-marker-alt"></i> Place
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-else class="empty-state">
+                                                <i class="fas fa-user-graduate empty-state-icon"></i>
+                                                <h3>No residents found</h3>
+                                                <p>Add residents to get started</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Clinical Units Management -->
+                            <div v-else-if="currentView === 'clinical_units'">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-hospital-alt"></i>
+                                            Clinical Units Management
+                                        </div>
+                                        <button class="btn" @click="showAddUnitModal">
+                                            <i class="fas fa-plus"></i> Add Clinical Unit
+                                        </button>
+                                    </div>
+                                    <div class="card-content">
+                                        <div class="units-grid">
+                                            <div v-for="unit in clinicalUnits" :key="unit.id" class="unit-card">
+                                                <div class="unit-header">
+                                                    <div class="unit-name">{{ unit.unit_name }}</div>
+                                                    <div class="unit-capacity">
+                                                        {{ unit.current_occupancy }}/{{ unit.maximum_residents }} residents
+                                                    </div>
+                                                </div>
+                                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                                                    {{ unit.department_name }}
+                                                    <span v-if="unit.default_supervisor_name" style="display: block; margin-top: 0.25rem;">
+                                                        Default Supervisor: {{ unit.default_supervisor_name }}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div v-if="unit.unit_description" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                                                    {{ unit.unit_description }}
+                                                </div>
+                                                
+                                                <div class="unit-residents" v-if="unit.current_residents && unit.current_residents.length > 0">
+                                                    <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                                                        Current Residents:
+                                                    </div>
+                                                    <div v-for="resident in unit.current_residents" :key="resident.id" class="unit-resident">
+                                                        <div style="width: 24px; height: 24px; background: var(--medical-purple); 
+                                                                  border-radius: 50%; display: flex; align-items: center; 
+                                                                  justify-content: center; color: white; font-size: 0.7rem; font-weight: 700;">
+                                                            {{ getInitials(resident.full_name).charAt(0) }}
+                                                        </div>
+                                                        <div style="flex: 1;">
+                                                            <div style="font-weight: 500; font-size: 0.85rem;">{{ resident.full_name }}</div>
+                                                            <div style="font-size: 0.7rem; color: var(--text-secondary);">
+                                                                Supervisor: {{ resident.supervisor_name }}
+                                                            </div>
+                                                        </div>
+                                                        <div style="font-size: 0.7rem; color: var(--text-secondary);">
+                                                            Ends: {{ formatDateShort(resident.rotation_end_date) }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div v-else style="color: var(--text-secondary); font-size: 0.85rem; text-align: center; padding: 1rem 0;">
+                                                    No residents currently assigned
+                                                </div>
+                                                
+                                                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                                    <button class="btn-outline btn-sm" @click="editUnit(unit)">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </button>
+                                                    <button class="btn btn-sm" :class="{'btn-danger': unit.unit_status === 'active', 'btn-success': unit.unit_status !== 'active'}" 
+                                                            @click="toggleUnitStatus(unit)">
+                                                        <i class="fas" :class="unit.unit_status === 'active' ? 'fa-times' : 'fa-check'"></i>
+                                                        {{ unit.unit_status === 'active' ? 'Deactivate' : 'Activate' }}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Rotations View -->
+                            <div v-else-if="currentView === 'rotations'">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-calendar-alt"></i>
+                                            Rotation Calendar
+                                        </div>
+                                        <div style="display: flex; gap: 1rem; align-items: center;">
+                                            <button class="btn-outline btn-sm" @click="prevMonth">
+                                                <i class="fas fa-chevron-left"></i>
+                                            </button>
+                                            <div style="font-weight: 600; min-width: 200px; text-align: center;">
+                                                {{ currentMonthName }} {{ currentYear }}
+                                            </div>
+                                            <button class="btn-outline btn-sm" @click="nextMonth">
+                                                <i class="fas fa-chevron-right"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-content">
+                                        <!-- Calendar View -->
+                                        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border-light);">
+                                            <div v-for="day in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']" 
+                                                 :key="day"
+                                                 style="background: var(--gray-50); padding: 1rem; text-align: center; font-weight: 600;">
+                                                {{ day }}
+                                            </div>
+                                            <div v-for="day in calendarDays" :key="day.date"
+                                                 style="background: white; padding: 1rem; min-height: 120px; position: relative;">
+                                                <div style="font-weight: 600; margin-bottom: 0.5rem;">
+                                                    {{ day.day }}
+                                                    <span v-if="day.isToday" style="color: var(--medical-green); margin-left: 0.25rem;">•</span>
+                                                </div>
+                                                <div v-for="rotation in getRotationsForDate(day.date)" :key="rotation.id"
+                                                     style="font-size: 0.75rem; padding: 0.25rem 0.5rem; background: rgba(139, 92, 246, 0.1); 
+                                                            border-radius: 4px; margin-bottom: 0.25rem; border-left: 3px solid var(--medical-purple);">
+                                                    {{ rotation.resident_name }}
+                                                    <div style="font-size: 0.65rem; color: var(--text-secondary);">
+                                                        {{ rotation.unit_name }}
+                                                    </div>
+                                                </div>
+                                                <div v-for="event in getRotationEventsForDate(day.date)" :key="event.id"
+                                                     style="position: absolute; bottom: 0.5rem; left: 0.5rem; right: 0.5rem;">
+                                                    <div v-if="event.type === 'starts'" 
+                                                         style="font-size: 0.7rem; color: var(--medical-green); background: rgba(16, 185, 129, 0.1); 
+                                                                padding: 0.25rem; border-radius: 4px; text-align: center;">
+                                                        <i class="fas fa-play"></i> {{ event.count }} start{{ event.count > 1 ? 's' : '' }}
+                                                    </div>
+                                                    <div v-if="event.type === 'ends'" 
+                                                         style="font-size: 0.7rem; color: var(--medical-red); background: rgba(239, 68, 68, 0.1); 
+                                                                padding: 0.25rem; border-radius: 4px; text-align: center; margin-top: 0.25rem;">
+                                                        <i class="fas fa-stop"></i> {{ event.count }} end{{ event.count > 1 ? 's' : '' }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Placements View -->
+                            <div v-else-if="currentView === 'placements'">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                            Resident Placements
+                                        </div>
+                                        <button class="btn" @click="showNewPlacementModal">
+                                            <i class="fas fa-plus"></i> New Placement
+                                        </button>
+                                    </div>
+                                    <div class="card-content">
+                                        <!-- Placement Actions -->
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                                            <div>
+                                                <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Available Residents</h3>
+                                                <div v-if="unplacedResidents.length > 0" style="display: grid; gap: 0.75rem;">
+                                                    <div v-for="resident in unplacedResidents" :key="resident.id" 
+                                                         class="person-card" draggable="true"
+                                                         @dragstart="dragResident(resident)">
+                                                        <div class="person-avatar resident">
+                                                            {{ getInitials(resident.full_name).charAt(0) }}
+                                                        </div>
+                                                        <div>
+                                                            <div style="font-weight: 600;">{{ resident.full_name }}</div>
+                                                            <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                                                                {{ formatResidentCategory(resident.resident_category) }}
+                                                            </div>
+                                                        </div>
+                                                        <button class="btn btn-sm btn-resident" @click="quickPlaceResident(resident)">
+                                                            <i class="fas fa-map-marker-alt"></i> Place
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div v-else style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+                                                    <i class="fas fa-check-circle" style="font-size: 2rem; margin-bottom: 1rem; color: var(--medical-green);"></i>
+                                                    <div>All residents are placed</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Available Units</h3>
+                                                <div style="display: grid; gap: 0.75rem;">
+                                                    <div v-for="unit in availableUnits" :key="unit.id"
+                                                         class="unit-card" @dragover.prevent="dragOverUnit($event, unit)"
+                                                         @drop="dropResidentOnUnit($event, unit)">
+                                                        <div class="unit-header">
+                                                            <div class="unit-name">{{ unit.unit_name }}</div>
+                                                            <div class="unit-capacity">
+                                                                {{ unit.current_occupancy }}/{{ unit.maximum_residents }}
+                                                            </div>
+                                                        </div>
+                                                        <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                                                            {{ unit.department_name }}
+                                                        </div>
+                                                        <div style="margin-top: 1rem; padding: 1rem; background: var(--gray-50); 
+                                                                 border-radius: var(--border-radius-md); text-align: center; 
+                                                                 border: 2px dashed var(--border-light);">
+                                                            <i class="fas fa-arrow-down" style="margin-bottom: 0.5rem; color: var(--medical-blue);"></i>
+                                                            <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                                                                Drop resident here to place
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Active Placements -->
+                                        <div>
+                                            <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Active Placements</h3>
+                                            <div v-if="activePlacements.length > 0" style="display: grid; gap: 1rem;">
+                                                <div v-for="placement in activePlacements" :key="placement.id" class="person-card">
+                                                    <div class="person-avatar resident">
+                                                        {{ getInitials(placement.resident_name).charAt(0) }}
+                                                    </div>
+                                                    <div class="person-info">
+                                                        <div class="person-name">{{ placement.resident_name }}</div>
+                                                        <div class="person-clinic">{{ placement.unit_name }}</div>
+                                                        <div class="person-meta">
+                                                            <strong>Supervisor:</strong> {{ placement.supervisor_name }}
+                                                            <br>
+                                                            <strong>Rotation:</strong> {{ formatDate(placement.rotation_start_date) }} to {{ formatDate(placement.rotation_end_date) }}
+                                                            <br>
+                                                            <span :class="getDaysRemainingClass(placement.rotation_end_date)" style="margin-top: 0.5rem; display: inline-block;">
+                                                                {{ getDaysRemaining(placement.rotation_end_date) }} days remaining
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div style="display: flex; gap: 0.5rem;">
+                                                        <button class="btn-outline btn-sm" @click="editPlacement(placement)">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </button>
+                                                        <button class="btn btn-sm btn-warning" @click="extendPlacement(placement)">
+                                                            <i class="fas fa-calendar-plus"></i> Extend
+                                                        </button>
+                                                        <button class="btn btn-sm btn-danger" @click="endPlacement(placement)">
+                                                            <i class="fas fa-stop"></i> End
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-else class="empty-state">
+                                                <i class="fas fa-map-marker-alt empty-state-icon"></i>
+                                                <h3>No active placements</h3>
+                                                <p>Place residents to start tracking rotations</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- HOD Views -->
+                        <div v-else-if="currentUser.user_role === 'department_head'">
+                            <!-- Department Overview -->
+                            <div v-if="currentView === 'department_overview'">
+                                <div class="metrics-grid">
+                                    <div class="metric-card">
+                                        <div class="metric-value">{{ hodStats.totalStaff }}</div>
+                                        <div class="metric-label">Total Staff</div>
+                                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                            {{ hodStats.attendings }} Attendings • {{ hodStats.residents }} Residents
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="metric-card">
+                                        <div class="metric-value">{{ hodStats.occupancyRate }}%</div>
+                                        <div class="metric-label">Unit Occupancy</div>
+                                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                            {{ hodStats.occupiedUnits }}/{{ hodStats.totalUnits }} units at capacity
+                                        </div>
+                                    </div>
+
+                                    <div class="metric-card">
+                                        <div class="metric-value">{{ hodStats.coverageToday }}%</div>
+                                        <div class="metric-label">Coverage Today</div>
+                                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                            {{ hodStats.onLeave }} staff on leave
+                                        </div>
+                                    </div>
+
+                                    <div class="metric-card">
+                                        <div class="metric-value">{{ hodStats.compliance }}%</div>
+                                        <div class="metric-label">Duty Hour Compliance</div>
+                                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                            {{ hodStats.dutyHourAlerts }} alerts
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-chart-line"></i>
+                                            Department Summary
+                                        </div>
+                                        <button class="btn" @click="exportDepartmentReport">
+                                            <i class="fas fa-download"></i> Export Report
+                                        </button>
+                                    </div>
+                                    <div class="card-content">
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                                            <div>
+                                                <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Unit Status</h3>
+                                                <div v-for="unit in clinicalUnits" :key="unit.id" style="margin-bottom: 1rem;">
+                                                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                                                        <span>{{ unit.unit_name }}</span>
+                                                        <span style="font-weight: 600;">
+                                                            {{ unit.current_occupancy }}/{{ unit.maximum_residents }}
+                                                        </span>
+                                                    </div>
+                                                    <div style="height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden;">
+                                                        <div :style="{ 
+                                                            width: `${(unit.current_occupancy / unit.maximum_residents) * 100}%`,
+                                                            background: unit.current_occupancy >= unit.maximum_residents ? 'var(--medical-red)' : 'var(--medical-green)',
+                                                            height: '100%'
+                                                        }"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Supervisor Load</h3>
+                                                <div v-for="supervisor in supervisors" :key="supervisor.id" style="margin-bottom: 1rem;">
+                                                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                                                        <span>{{ supervisor.full_name }}</span>
+                                                        <span style="font-weight: 600;">
+                                                            {{ supervisor.resident_count }} residents
+                                                        </span>
+                                                    </div>
+                                                    <div style="height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden;">
+                                                        <div :style="{ 
+                                                            width: `${Math.min(supervisor.resident_count / 6 * 100, 100)}%`,
+                                                            background: supervisor.resident_count > 4 ? 'var(--medical-amber)' : 'var(--medical-green)',
+                                                            height: '100%'
+                                                        }"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Staff Management -->
+                            <div v-else-if="currentView === 'staff_management'">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-users"></i>
+                                            Department Staff
+                                        </div>
+                                        <button class="btn" @click="showAddStaffModal">
+                                            <i class="fas fa-user-plus"></i> Add Staff
+                                        </button>
+                                    </div>
+                                    <div class="card-content">
+                                        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                                            <select class="form-select" style="width: 160px;" v-model="staffFilter.staff_type">
+                                                <option value="">All Roles</option>
+                                                <option value="attending_physician">Attending</option>
+                                                <option value="medical_resident">Resident</option>
+                                                <option value="nurse_practitioner">Nurse</option>
+                                                <option value="administrative">Administrator</option>
+                                            </select>
+                                            <select class="form-select" style="width: 160px;" v-model="staffFilter.employment_status">
+                                                <option value="">All Status</option>
+                                                <option value="active">Active</option>
+                                                <option value="on_leave">On Leave</option>
+                                                <option value="inactive">Inactive</option>
+                                            </select>
+                                            <input type="text" class="form-input" style="width: 200px;" 
+                                                   v-model="staffSearch" placeholder="Search staff...">
+                                        </div>
+
+                                        <div v-if="filteredStaff.length > 0" style="display: grid; gap: 1rem;">
+                                            <div v-for="staff in filteredStaff" :key="staff.id" class="person-card">
+                                                <div class="person-avatar" :class="{ resident: staff.staff_type === 'medical_resident' }">
+                                                    {{ getInitials(staff.full_name) }}
+                                                </div>
+                                                <div class="person-info">
+                                                    <div class="person-name">
+                                                        {{ staff.full_name }}
+                                                        <span class="role-badge" :class="{
+                                                            'badge-attending': staff.staff_type === 'attending_physician',
+                                                            'badge-resident': staff.staff_type === 'medical_resident',
+                                                            'badge-admin': staff.staff_type === 'administrative'
+                                                        }">
+                                                            {{ formatStaffType(staff.staff_type) }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="person-clinic">
+                                                        ID: {{ staff.staff_id }}
+                                                        <span v-if="staff.primary_clinic" style="margin-left: 1rem;">
+                                                            • {{ staff.primary_clinic }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="person-meta">
+                                                        <div v-if="staff.staff_type === 'medical_resident' && staff.current_rotation">
+                                                            <strong>Current Placement:</strong> {{ staff.current_rotation.unit_name }}
+                                                            <br>
+                                                            <strong>Supervisor:</strong> {{ staff.current_rotation.supervisor_name }}
+                                                        </div>
+                                                        <div v-if="staff.staff_type === 'attending_physician'">
+                                                            <strong>Supervising:</strong> {{ staff.resident_count || 0 }} residents
+                                                        </div>
+                                                        <div class="duty-hours" :class="{
+                                                            'warning': staff.duty_hours > 60,
+                                                            'critical': staff.duty_hours > 70
+                                                        }">
+                                                            <i class="fas fa-clock"></i> {{ staff.duty_hours || 0 }}/80 hours this week
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div style="display: flex; gap: 0.5rem;">
+                                                    <button class="btn-outline btn-sm" @click="editStaff(staff)">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </button>
+                                                    <button class="btn-outline btn-sm" @click="viewStaffSchedule(staff)">
+                                                        <i class="fas fa-calendar"></i> Schedule
+                                                    </button>
+                                                    <button v-if="staff.employment_status !== 'inactive'" class="btn btn-sm btn-warning" @click="toggleStaffStatus(staff)">
+                                                        <i class="fas fa-user-slash"></i> Deactivate
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div v-else class="empty-state">
+                                            <i class="fas fa-users empty-state-icon"></i>
+                                            <h3>No staff found</h3>
+                                            <p>Add department staff to get started</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Schedule Approval -->
+                            <div v-else-if="currentView === 'schedule_approval'">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-calendar-check"></i>
+                                            Schedule Approval
+                                        </div>
+                                        <div style="display: flex; gap: 1rem;">
+                                            <button class="btn-outline" @click="loadPendingSchedules">
+                                                <i class="fas fa-sync"></i> Refresh
+                                            </button>
+                                            <button class="btn" @click="approveAllSchedules">
+                                                <i class="fas fa-check-double"></i> Approve All
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-content">
+                                        <div v-if="pendingSchedules.length > 0" style="display: grid; gap: 1.5rem;">
+                                            <div v-for="schedule in pendingSchedules" :key="schedule.id" class="person-card">
+                                                <div class="person-avatar">
+                                                    {{ getInitials(schedule.submitted_by_name) }}
+                                                </div>
+                                                <div class="person-info">
+                                                    <div class="person-name">{{ schedule.period_name }}</div>
+                                                    <div class="person-clinic">Submitted by: {{ schedule.submitted_by_name }}</div>
+                                                    <div class="person-meta">
+                                                        <strong>Period:</strong> {{ formatDate(schedule.start_date) }} to {{ formatDate(schedule.end_date) }}
+                                                        <br>
+                                                        <strong>Submitted:</strong> {{ formatDateTime(schedule.submitted_at) }}
+                                                        <br>
+                                                        <strong>Coverage:</strong> {{ schedule.coverage_rate }}% • <strong>Duty Hours:</strong> {{ schedule.compliance_rate }}% compliant
+                                                    </div>
+                                                </div>
+                                                <div style="display: flex; gap: 0.5rem;">
+                                                    <button class="btn btn-sm btn-success" @click="viewScheduleDetails(schedule)">
+                                                        <i class="fas fa-eye"></i> Review
+                                                    </button>
+                                                    <button class="btn btn-sm btn-success" @click="approveSchedule(schedule)">
+                                                        <i class="fas fa-check"></i> Approve
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger" @click="rejectSchedule(schedule)">
+                                                        <i class="fas fa-times"></i> Reject
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div v-else class="empty-state">
+                                            <i class="fas fa-check-circle empty-state-icon"></i>
+                                            <h3>No schedules pending approval</h3>
+                                            <p>All schedules are approved</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Shared Views -->
+                        <div v-else>
+                            <!-- Schedule View -->
+                            <div v-if="currentView === 'schedule'">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-calendar-day"></i>
+                                            Department Schedule
+                                        </div>
+                                        <div style="display: flex; gap: 1rem; align-items: center;">
+                                            <button class="btn-outline btn-sm" @click="prevWeek">
+                                                <i class="fas fa-chevron-left"></i>
+                                            </button>
+                                            <div style="font-weight: 600; min-width: 200px; text-align: center;">
+                                                {{ formatDateRange(currentWeekStart, currentWeekEnd) }}
+                                            </div>
+                                            <button class="btn-outline btn-sm" @click="nextWeek">
+                                                <i class="fas fa-chevron-right"></i>
+                                            </button>
+                                            <button class="btn" @click="showNewAssignmentModal">
+                                                <i class="fas fa-plus"></i> New Assignment
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-content">
+                                        <div class="timeline">
+                                            <div v-for="day in weekDays" :key="day.date" class="timeline-day">
+                                                <div class="timeline-header">
+                                                    {{ formatDayHeader(day.date) }}
+                                                    <span v-if="isToday(day.date)" style="color: var(--medical-green); margin-left: 0.5rem;">
+                                                        • TODAY
+                                                    </span>
+                                                </div>
+                                                <div class="timeline-slots">
+                                                    <div v-for="assignment in getAssignmentsForDay(day.date)" 
+                                                         :key="assignment.id"
+                                                         class="time-slot" 
+                                                         :class="{ 
+                                                             'assigned': assignment.staff_type !== 'medical_resident',
+                                                             'resident': assignment.staff_type === 'medical_resident'
+                                                         }">
+                                                        <div style="font-weight: 600; margin-bottom: 0.25rem;">
+                                                            {{ assignment.staff_name }}
+                                                            <span v-if="assignment.staff_type === 'medical_resident'" class="resident-badge">
+                                                                <i class="fas fa-graduation-cap"></i> RES
+                                                            </span>
+                                                        </div>
+                                                        <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                                                            {{ assignment.assignment_type }} • {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
+                                                        </div>
+                                                        <div style="font-size: 0.75rem; color: var(--medical-blue); margin-top: 0.25rem;">
+                                                            {{ assignment.location_name }}
+                                                            <span v-if="assignment.supervisor_name" style="color: var(--medical-purple); margin-left: 0.5rem;">
+                                                                • Supervisor: {{ assignment.supervisor_name }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div v-if="getAssignmentsForDay(day.date).length === 0" 
+                                                         class="time-slot"
+                                                         style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                                                        <i class="fas fa-calendar-plus" style="font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
+                                                        <div>No assignments scheduled</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- On-call View -->
+                            <div v-else-if="currentView === 'oncall'">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-phone-alt"></i>
+                                            On-call Schedule
+                                        </div>
+                                        <button class="btn" @click="showNewOnCallModal">
+                                            <i class="fas fa-plus"></i> Assign On-call
+                                        </button>
+                                    </div>
+                                    <div class="card-content">
+                                        <div class="call-schedule">
+                                            <div v-for="day in onCallDays" :key="day.date" class="call-day">
+                                                <div class="call-date">
+                                                    {{ formatDayHeader(day.date) }}
+                                                    <span v-if="isToday(day.date)" style="color: var(--medical-green); font-size: 0.8rem;">
+                                                        • TODAY
+                                                    </span>
+                                                </div>
+                                                <div v-if="day.oncall" style="margin-bottom: 1rem;">
+                                                    <div style="font-weight: 600; color: var(--medical-blue); margin-bottom: 0.5rem;">
+                                                        Primary: {{ day.oncall.primary_physician_name }}
+                                                    </div>
+                                                    <div v-if="day.oncall.backup_physician_name" style="font-size: 0.9rem; color: var(--text-secondary);">
+                                                        Backup: {{ day.oncall.backup_physician_name }}
+                                                    </div>
+                                                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                                        <i class="fas fa-clock"></i> {{ day.oncall.start_time }} - {{ day.oncall.end_time }}
+                                                    </div>
+                                                </div>
+                                                <div v-else style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; padding: 1rem 0;">
+                                                    No on-call assigned
+                                                </div>
+                                                <div v-if="day.coverage_gap" style="margin-top: 1rem; padding: 0.75rem; background: rgba(245, 158, 11, 0.1); 
+                                                      border-radius: var(--border-radius-md); border-left: 3px solid var(--medical-amber);">
+                                                    <div style="font-size: 0.8rem; color: var(--medical-amber); font-weight: 600;">
+                                                        <i class="fas fa-exclamation-triangle"></i> Coverage Gap
+                                                    </div>
+                                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                                                        {{ day.coverage_gap }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Leave & Coverage -->
+                            <div v-else-if="currentView === 'leave'">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-calendar-times"></i>
+                                            Leave & Coverage Management
+                                        </div>
+                                        <button class="btn" @click="showNewLeaveModal">
+                                            <i class="fas fa-plus"></i> Request Leave
+                                        </button>
+                                    </div>
+                                    <div class="card-content">
+                                        <div class="metrics-grid">
+                                            <div class="metric-card">
+                                                <div class="metric-value">{{ leaveStats.pending }}</div>
+                                                <div class="metric-label">Pending Requests</div>
+                                            </div>
+                                            
+                                            <div class="metric-card">
+                                                <div class="metric-value">{{ leaveStats.active }}</div>
+                                                <div class="metric-label">Active Leave</div>
+                                            </div>
+
+                                            <div class="metric-card">
+                                                <div class="metric-value">{{ leaveStats.coverageAssigned }}/{{ leaveStats.needsCoverage }}</div>
+                                                <div class="metric-label">Coverage Status</div>
+                                            </div>
+
+                                            <div class="metric-card">
+                                                <div class="metric-value">{{ leaveStats.upcoming }}</div>
+                                                <div class="metric-label">Upcoming Leave</div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Pending Approvals -->
+                                        <div v-if="pendingLeaveRequests.length > 0" style="margin-top: 2rem;">
+                                            <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Pending Approval</h3>
+                                            <div style="display: grid; gap: 1rem;">
+                                                <div v-for="request in pendingLeaveRequests" :key="request.id" class="person-card">
+                                                    <div class="person-avatar">
+                                                        {{ getInitials(request.staff_name) }}
+                                                    </div>
+                                                    <div class="person-info">
+                                                        <div class="person-name">{{ request.staff_name }}</div>
+                                                        <div class="person-clinic">{{ request.leave_category }}</div>
+                                                        <div class="person-meta">
+                                                            {{ formatDate(request.leave_start_date) }} to {{ formatDate(request.leave_end_date) }}
+                                                            • {{ request.total_days }} days
+                                                            <br>
+                                                            <strong>Reason:</strong> {{ request.leave_reason }}
+                                                            <br>
+                                                            <span v-if="request.staff_type === 'medical_resident'" style="color: var(--medical-purple); font-size: 0.8rem; margin-top: 0.25rem; display: inline-block;">
+                                                                <i class="fas fa-user-md"></i> Resident • Supervisor: {{ request.supervisor_name }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div style="display: flex; gap: 0.5rem;">
+                                                        <button class="btn btn-sm btn-success" @click="approveLeaveRequest(request)">
+                                                            <i class="fas fa-check"></i> Approve
+                                                        </button>
+                                                        <button class="btn btn-sm btn-danger" @click="rejectLeaveRequest(request)">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                        <button class="btn-outline btn-sm" @click="viewCoverageOptions(request)">
+                                                            <i class="fas fa-user-plus"></i> Coverage
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Active Leave -->
+                                        <div v-if="activeLeave.length > 0" style="margin-top: 2rem;">
+                                            <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Active Leave</h3>
+                                            <div style="display: grid; gap: 1rem;">
+                                                <div v-for="request in activeLeave" :key="request.id" class="person-card">
+                                                    <div class="person-avatar">
+                                                        {{ getInitials(request.staff_name) }}
+                                                    </div>
+                                                    <div class="person-info">
+                                                        <div class="person-name">{{ request.staff_name }}</div>
+                                                        <div class="person-clinic">{{ request.leave_category }}</div>
+                                                        <div class="person-meta">
+                                                            {{ formatDate(request.leave_start_date) }} to {{ formatDate(request.leave_end_date) }}
+                                                            <br>
+                                                            <span :class="request.coverage_assigned ? 'status-approved' : 'status-reported'" 
+                                                                  class="status-pill" style="margin-top: 0.5rem;">
+                                                                {{ request.coverage_assigned ? 'Coverage Assigned' : 'Needs Coverage' }}
+                                                            </span>
+                                                            <span v-if="request.coverage_notes" style="display: block; margin-top: 0.5rem; font-size: 0.8rem;">
+                                                                <strong>Coverage Notes:</strong> {{ request.coverage_notes }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div style="display: flex; gap: 0.5rem;">
+                                                        <button v-if="!request.coverage_assigned" class="btn btn-sm" @click="assignCoverage(request)">
+                                                            <i class="fas fa-user-plus"></i> Assign Coverage
+                                                        </button>
+                                                        <button class="btn-outline btn-sm" @click="editLeaveRequest(request)">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div v-if="pendingLeaveRequests.length === 0 && activeLeave.length === 0" 
+                                             class="empty-state" style="margin-top: 2rem;">
+                                            <i class="fas fa-calendar-check empty-state-icon"></i>
+                                            <h3>No leave requests</h3>
+                                            <p>All staff are currently available</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Reports -->
+                            <div v-else-if="currentView === 'reports'">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-chart-bar"></i>
+                                            Department Reports
+                                        </div>
+                                        <button class="btn" @click="generateMonthlyReport">
+                                            <i class="fas fa-file-export"></i> Generate Monthly Report
+                                        </button>
+                                    </div>
+                                    <div class="card-content">
+                                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                                            <div class="metric-card" style="cursor: pointer;" @click="showResidentReport">
+                                                <div class="metric-value">{{ reportStats.residentCount }}</div>
+                                                <div class="metric-label">Resident Report</div>
+                                                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                                    View placements, supervisors, rotations
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="metric-card" style="cursor: pointer;" @click="showUnitReport">
+                                                <div class="metric-value">{{ reportStats.unitCount }}</div>
+                                                <div class="metric-label">Unit Utilization</div>
+                                                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                                    Capacity, occupancy, trends
+                                                </div>
+                                            </div>
+
+                                            <div class="metric-card" style="cursor: pointer;" @click="showDutyHourReport">
+                                                <div class="metric-value">{{ reportStats.dutyHourAlerts }}</div>
+                                                <div class="metric-label">Duty Hour Compliance</div>
+                                                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                                    Weekly hours, alerts, compliance
+                                                </div>
+                                            </div>
+
+                                            <div class="metric-card" style="cursor: pointer;" @click="showCoverageReport">
+                                                <div class="metric-value">{{ reportStats.coverageRate }}%</div>
+                                                <div class="metric-label">Coverage Analysis</div>
+                                                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                                    Leave, coverage gaps, trends
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Recent Reports -->
+                                        <div style="margin-top: 2rem;">
+                                            <h3 style="margin-bottom: 1rem; color: var(--text-primary);">Recent Reports</h3>
+                                            <div v-if="recentReports.length > 0" style="display: grid; gap: 1rem;">
+                                                <div v-for="report in recentReports" :key="report.id" class="person-card">
+                                                    <div class="person-avatar" style="background: var(--medical-teal);">
+                                                        <i class="fas" :class="report.icon"></i>
+                                                    </div>
+                                                    <div class="person-info">
+                                                        <div class="person-name">{{ report.name }}</div>
+                                                        <div class="person-clinic">Generated: {{ formatDateTime(report.generated_at) }}</div>
+                                                        <div class="person-meta">
+                                                            Type: {{ report.type }} • Period: {{ report.period }}
+                                                        </div>
+                                                    </div>
+                                                    <div style="display: flex; gap: 0.5rem;">
+                                                        <button class="btn-outline btn-sm" @click="viewReport(report)">
+                                                            <i class="fas fa-eye"></i> View
+                                                        </button>
+                                                        <button class="btn btn-sm" @click="downloadReport(report)">
+                                                            <i class="fas fa-download"></i> Download
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-else class="empty-state" style="margin-top: 1rem;">
+                                                <i class="fas fa-file-alt empty-state-icon"></i>
+                                                <h3>No reports generated yet</h3>
+                                                <p>Generate reports to view department analytics</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- [Keep all your existing modal HTML - they're good] -->
+        <!-- Add Resident Modal -->
+        <div v-if="showResidentModal" class="modal-overlay" @click.self="closeResidentModal">
+            <!-- ... existing modal content ... -->
+        </div>
+        
+        <!-- Add Clinical Unit Modal -->
+        <div v-if="showUnitModal" class="modal-overlay" @click.self="closeUnitModal">
+            <!-- ... existing modal content ... -->
+        </div>
+        
+        <!-- New Placement Modal -->
+        <div v-if="showPlacementModal" class="modal-overlay" @click.self="closePlacementModal">
+            <!-- ... existing modal content ... -->
+        </div>
+        
+        <!-- Add Staff Modal -->
+        <div v-if="showStaffModal" class="modal-overlay" @click.self="closeStaffModal">
+            <!-- ... existing modal content ... -->
+        </div>
+        
+        <!-- New Assignment Modal -->
+        <div v-if="showAssignmentModal" class="modal-overlay" @click.self="closeAssignmentModal">
+            <!-- ... existing modal content ... -->
+        </div>
+        
+        <!-- New Leave Request Modal -->
+        <div v-if="showLeaveModal" class="modal-overlay" @click.self="closeLeaveModal">
+            <!-- ... existing modal content ... -->
+        </div>
+        
+        <!-- New On-call Assignment Modal -->
+        <div v-if="showOnCallModal" class="modal-overlay" @click.self="closeOnCallModal">
+            <!-- ... existing modal content ... -->
+        </div>
+
+        <!-- Toast Notification -->
+        <div v-if="toast.show" class="toast" :class="toast.type" @click="toast.show = false">
+            <i :class="toast.icon"></i> {{ toast.message }}
+        </div>
+    </div>
+
+    <script>
+    const { createApp, ref, computed, onMounted } = Vue;
+    
+    // Supabase Configuration
+    const SUPABASE_URL = 'https://vssmguzuvekkecbmwcjw.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_QDZP5eQTlHHn0SZibWFvCQ_6RqH2f01';
+    
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    createApp({
+        setup() {
+            // ============ STATE MANAGEMENT ============
+            // Authentication
+            const currentUser = ref(null);
+            const loginForm = ref({
+                email: '',
+                password: '',
+                role: 'resident_manager' // Default role for login
+            });
+            const loading = ref(false);
+            const saving = ref(false);
+            
+            // Navigation
+            const currentView = ref('residents');
+            const sidebarCollapsed = ref(false);
+            const mobileMenuOpen = ref(false);
+            const searchQuery = ref('');
+            
+            // Data Stores - These will be populated from Supabase
+            const medicalStaff = ref([]);
+            const trainingUnits = ref([]);
+            const residentRotations = ref([]);
+            const dailyAssignments = ref([]);
+            const oncallSchedule = ref([]);
+            const leaveRequests = ref([]);
+            const departmentAnnouncements = ref([]);
+            
+            // Modals
+            const showResidentModal = ref(false);
+            const showUnitModal = ref(false);
+            const showPlacementModal = ref(false);
+            const showStaffModal = ref(false);
+            const showAssignmentModal = ref(false);
+            const showLeaveModal = ref(false);
+            const showOnCallModal = ref(false);
+            
+            // Forms - Updated to match your API schema
+            const residentForm = ref({
+                staff_id: '',
+                full_name: '',
+                professional_email: '',
+                staff_type: 'medical_resident',
+                resident_category: 'department_internal',
+                training_year: 1,
+                work_phone: '',
+                primary_clinic: '',
+                can_supervise_residents: false,
+                employment_status: 'active',
+                special_notes: ''
+            });
+            
+            const unitForm = ref({
+                unit_code: '',
+                unit_name: '',
+                department_name: 'Pulmonology',
+                maximum_residents: 4,
+                default_supervisor_id: '',
+                unit_description: '',
+                unit_status: 'active'
+            });
+            
+            const placementForm = ref({
+                rotation_id: '',
+                resident_id: '',
+                training_unit_id: '',
+                supervising_attending_id: '',
+                rotation_start_date: '',
+                rotation_end_date: '',
+                rotation_category: 'clinical_rotation',
+                rotation_status: 'scheduled',
+                clinical_notes: ''
+            });
+            
+            const staffForm = ref({
+                staff_id: '',
+                full_name: '',
+                professional_email: '',
+                staff_type: 'attending_physician',
+                resident_category: null,
+                training_year: null,
+                work_phone: '',
+                primary_clinic: '',
+                can_supervise_residents: true,
+                employment_status: 'active',
+                special_notes: ''
+            });
+            
+            const assignmentForm = ref({
+                assignment_id: '',
+                staff_member_id: '',
+                assignment_date: '',
+                assignment_type: 'outpatient_clinic',
+                start_time: '08:00',
+                end_time: '17:00',
+                location_name: '',
+                supervising_attending_id: null,
+                assignment_notes: ''
+            });
+            
+            const leaveRequestForm = ref({
+                request_id: '',
+                staff_member_id: '',
+                leave_category: 'vacation_leave',
+                leave_start_date: '',
+                leave_end_date: '',
+                total_days: 1,
+                leave_reason: '',
+                coverage_required: true,
+                coverage_assigned: false,
+                coverage_notes: '',
+                approval_status: 'pending_review'
+            });
+            
+            const onCallForm = ref({
+                schedule_id: '',
+                duty_date: '',
+                shift_type: 'primary_call',
+                primary_physician_id: '',
+                backup_physician_id: null,
+                start_time: '17:00',
+                end_time: '08:00',
+                coverage_notes: ''
+            });
+            
+            // Editing State
+            const editingResident = ref(null);
+            const editingUnit = ref(null);
+            const editingPlacement = ref(null);
+            const editingStaff = ref(null);
+            
+            // Filters
+            const residentFilter = ref({
+                resident_category: '',
+                status: ''
+            });
+            const residentSearch = ref('');
+            
+            const staffFilter = ref({
+                staff_type: '',
+                employment_status: ''
+            });
+            const staffSearch = ref('');
+            
+            // Schedule
+            const currentWeekStart = ref(new Date());
+            const currentWeekEnd = ref(new Date());
+            
+            // Calendar
+            const currentMonth = ref(new Date().getMonth());
+            const currentYear = ref(new Date().getFullYear());
+            
+            // Toast
+            const toast = ref({
+                show: false,
+                message: '',
+                icon: 'fas fa-info-circle',
+                type: 'info'
+            });
+            
+            // ============ UTILITY FUNCTIONS ============
+            const showToast = (message, type = 'info') => {
+                const icons = {
+                    info: 'fas fa-info-circle',
+                    success: 'fas fa-check-circle',
+                    error: 'fas fa-exclamation-circle',
+                    warning: 'fas fa-exclamation-triangle'
+                };
+                
+                toast.value = {
+                    show: true,
+                    message,
+                    icon: icons[type] || icons.info,
+                    type: type
+                };
+                
+                setTimeout(() => {
+                    toast.value.show = false;
+                }, 4000);
+            };
+            
+            const getInitials = (name) => {
+                if (!name) return '??';
+                return name
+                    .split(' ')
+                    .map(n => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .substring(0, 2);
+            };
+            
+            const formatDate = (dateString) => {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            };
+            
+            const formatDateShort = (dateString) => {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                });
+            };
+            
+            const formatDateTime = (dateTimeString) => {
+                if (!dateTimeString) return '';
+                const date = new Date(dateTimeString);
+                return date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            };
+            
+            const formatTime = (timeString) => {
+                if (!timeString) return '';
+                const [hours, minutes] = timeString.split(':');
+                const hour = parseInt(hours);
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const formattedHour = hour % 12 || 12;
+                return `${formattedHour}:${minutes} ${ampm}`;
+            };
+            
+            const formatTimeRange = (start, end) => {
+                return `${formatTime(start)} - ${formatTime(end)}`;
+            };
+            
+            const formatDateRange = (start, end) => {
+                return `${formatDate(start)} - ${formatDate(end)}`;
+            };
+            
+            const formatDayHeader = (dateString) => {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            };
+            
+            const isToday = (dateString) => {
+                const today = new Date().toISOString().split('T')[0];
+                return dateString === today;
+            };
+            
+            const generateSystemId = (prefix) => {
+                const timestamp = Date.now().toString().slice(-6);
+                const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+                return `${prefix}-${timestamp}-${random}`;
+            };
+            
+            const getUserRoleName = (role) => {
+                const roleNames = {
+                    'resident_manager': 'Resident Manager',
+                    'department_head': 'Head of Department',
+                    'system_admin': 'System Administrator',
+                    'viewing_doctor': 'Viewing Doctor'
+                };
+                return roleNames[role] || role;
+            };
+            
+            const formatResidentCategory = (category) => {
+                const categories = {
+                    'department_internal': 'Internal',
+                    'rotating_external': 'Rotating',
+                    'international': 'International'
+                };
+                return categories[category] || category;
+            };
+            
+            const formatStaffType = (type) => {
+                const types = {
+                    'attending_physician': 'Attending',
+                    'medical_resident': 'Resident',
+                    'nurse_practitioner': 'Nurse',
+                    'administrative': 'Admin'
+                };
+                return types[type] || type;
+            };
+            
+            // ============ SUPABASE API FUNCTIONS ============
+            
+            // Authentication
+            const handleLogin = async () => {
+                loading.value = true;
+                
+                try {
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email: loginForm.value.email,
+                        password: loginForm.value.password
+                    });
+                    
+                    if (error) throw error;
+                    
+                    // Get user profile from app_users table
+                    const { data: userProfile, error: profileError } = await supabase
+                        .from('app_users')
+                        .select('*')
+                        .eq('user_id', data.user.id)
+                        .single();
+                    
+                    if (profileError) throw profileError;
+                    
+                    currentUser.value = {
+                        ...userProfile,
+                        session: data.session
+                    };
+                    
+                    // Load initial data based on user role
+                    await loadInitialData();
+                    
+                    // Set default view based on role
+                    if (currentUser.value.user_role === 'resident_manager') {
+                        currentView.value = 'residents';
+                    } else if (currentUser.value.user_role === 'department_head') {
+                        currentView.value = 'department_overview';
+                    }
+                    
+                    showToast(`Welcome, ${currentUser.value.full_name}!`, 'success');
+                    
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showToast('Login failed. Please check your credentials.', 'error');
+                } finally {
+                    loading.value = false;
+                }
+            };
+            
+            // Load Initial Data
+            const loadInitialData = async () => {
+                loading.value = true;
+                
+                try {
+                    // Load medical staff (includes residents)
+                    const { data: staffData, error: staffError } = await supabase
+                        .from('medical_staff')
+                        .select('*')
+                        .order('full_name');
+                    
+                    if (staffError) throw staffError;
+                    medicalStaff.value = staffData;
+                    
+                    // Load training units
+                    const { data: unitsData, error: unitsError } = await supabase
+                        .from('training_units')
+                        .select('*')
+                        .order('unit_name');
+                    
+                    if (unitsError) throw unitsError;
+                    trainingUnits.value = unitsData;
+                    
+                    // Load active rotations
+                    const today = new Date().toISOString().split('T')[0];
+                    const { data: rotationsData, error: rotationsError } = await supabase
+                        .from('resident_rotations')
+                        .select('*')
+                        .gte('rotation_end_date', today)
+                        .order('rotation_start_date', { ascending: false });
+                    
+                    if (rotationsError) throw rotationsError;
+                    residentRotations.value = rotationsData;
+                    
+                    // Load this week's assignments
+                    const weekStart = new Date(currentWeekStart.value);
+                    const weekEnd = new Date(currentWeekEnd.value);
+                    
+                    const { data: assignmentsData, error: assignmentsError } = await supabase
+                        .from('daily_assignments')
+                        .select('*')
+                        .gte('assignment_date', weekStart.toISOString().split('T')[0])
+                        .lte('assignment_date', weekEnd.toISOString().split('T')[0])
+                        .order('assignment_date')
+                        .order('start_time');
+                    
+                    if (assignmentsError) throw assignmentsError;
+                    dailyAssignments.value = assignmentsData;
+                    
+                    // Load on-call schedule for next 7 days
+                    const nextWeek = new Date();
+                    nextWeek.setDate(nextWeek.getDate() + 7);
+                    
+                    const { data: oncallData, error: oncallError } = await supabase
+                        .from('oncall_schedule')
+                        .select('*')
+                        .gte('duty_date', today)
+                        .lte('duty_date', nextWeek.toISOString().split('T')[0])
+                        .order('duty_date');
+                    
+                    if (oncallError) throw oncallError;
+                    oncallSchedule.value = oncallData;
+                    
+                    // Load pending leave requests
+                    const { data: leaveData, error: leaveError } = await supabase
+                        .from('leave_requests')
+                        .select('*')
+                        .eq('approval_status', 'pending_review')
+                        .order('leave_start_date');
+                    
+                    if (leaveError) throw leaveError;
+                    leaveRequests.value = leaveData;
+                    
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    showToast('Error loading system data', 'error');
+                } finally {
+                    loading.value = false;
+                }
+            };
+            
+            // ============ COMPUTED PROPERTIES ============
+            // Filter residents from medical staff
+            const residents = computed(() => {
+                return medicalStaff.value.filter(staff => 
+                    staff.staff_type === 'medical_resident'
+                ).map(resident => {
+                    // Find current rotation for this resident
+                    const currentRotation = residentRotations.value.find(rotation => 
+                        rotation.resident_id === resident.id && 
+                        rotation.rotation_status === 'active'
+                    );
+                    
+                    return {
+                        ...resident,
+                        current_rotation: currentRotation ? {
+                            ...currentRotation,
+                            unit_name: getUnitName(currentRotation.training_unit_id),
+                            supervisor_name: getSupervisorName(currentRotation.supervising_attending_id)
+                        } : null
+                    };
+                });
+            });
+            
+            // Clinical units with occupancy data
+            const clinicalUnits = computed(() => {
+                return trainingUnits.value.map(unit => {
+                    // Count active rotations in this unit
+                    const activeRotations = residentRotations.value.filter(rotation => 
+                        rotation.training_unit_id === unit.id && 
+                        rotation.rotation_status === 'active'
+                    );
+                    
+                    // Get resident details for current residents
+                    const currentResidents = activeRotations.map(rotation => {
+                        const resident = medicalStaff.value.find(staff => staff.id === rotation.resident_id);
+                        return resident ? {
+                            ...resident,
+                            rotation_end_date: rotation.rotation_end_date,
+                            supervisor_name: getSupervisorName(rotation.supervising_attending_id)
+                        } : null;
+                    }).filter(r => r);
+                    
+                    return {
+                        ...unit,
+                        current_occupancy: activeRotations.length,
+                        current_residents: currentResidents,
+                        default_supervisor_name: getSupervisorName(unit.default_supervisor_id)
+                    };
+                });
+            });
+            
+            // Stats for Resident Manager
+            const stats = computed(() => {
+                const residentList = residents.value;
+                const total = residentList.length;
+                
+                const internal = residentList.filter(r => 
+                    r.resident_category === 'department_internal'
+                ).length;
+                const rotating = residentList.filter(r => 
+                    r.resident_category === 'rotating_external'
+                ).length;
+                const external = residentList.filter(r => 
+                    r.resident_category === 'international'
+                ).length;
+                
+                const placed = residentList.filter(r => r.current_rotation).length;
+                const unplaced = total - placed;
+                
+                const today = new Date();
+                const twoWeeksFromNow = new Date();
+                twoWeeksFromNow.setDate(today.getDate() + 14);
+                const endingSoon = residentRotations.value.filter(p => {
+                    const endDate = new Date(p.rotation_end_date);
+                    return endDate > today && endDate <= twoWeeksFromNow;
+                }).length;
+                
+                return {
+                    totalResidents: total,
+                    internalResidents: internal,
+                    rotatingResidents: rotating,
+                    externalResidents: external,
+                    assignedResidents: placed,
+                    unassignedResidents: unplaced,
+                    endingSoon: endingSoon,
+                    dutyHoursWarning: 0 // Would calculate from assignments
+                };
+            });
+            
+            // Supervisors (Attendings who can supervise)
+            const supervisors = computed(() => {
+                return medicalStaff.value.filter(staff => 
+                    staff.staff_type === 'attending_physician' && 
+                    staff.can_supervise_residents !== false &&
+                    staff.employment_status === 'active'
+                ).map(supervisor => {
+                    const residentCount = residentRotations.value.filter(rotation => 
+                        rotation.supervising_attending_id === supervisor.id &&
+                        rotation.rotation_status === 'active'
+                    ).length;
+                    
+                    return {
+                        ...supervisor,
+                        resident_count: residentCount
+                    };
+                });
+            });
+            
+            // Available residents for placement (unplaced)
+            const unplacedResidents = computed(() => {
+                return residents.value.filter(r => !r.current_rotation);
+            });
+            
+            // Available clinical units (active and with capacity)
+            const availableUnits = computed(() => {
+                return clinicalUnits.value.filter(u => 
+                    u.unit_status === 'active' && 
+                    u.current_occupancy < u.maximum_residents
+                );
+            });
+            
+            // Active placements
+            const activePlacements = computed(() => {
+                const today = new Date().toISOString().split('T')[0];
+                return residentRotations.value
+                    .filter(p => p.rotation_end_date >= today && p.rotation_status === 'active')
+                    .map(p => {
+                        const resident = medicalStaff.value.find(staff => staff.id === p.resident_id);
+                        const unit = trainingUnits.value.find(u => u.id === p.training_unit_id);
+                        const supervisor = medicalStaff.value.find(staff => staff.id === p.supervising_attending_id);
+                        
+                        return {
+                            ...p,
+                            resident_name: resident ? resident.full_name : 'Unknown',
+                            unit_name: unit ? unit.unit_name : 'Unknown Unit',
+                            supervisor_name: supervisor ? supervisor.full_name : 'Not Assigned'
+                        };
+                    });
+            });
+            
+            // Filtered residents
+            const filteredResidents = computed(() => {
+                let filtered = residents.value;
+                
+                // Search
+                if (residentSearch.value) {
+                    const search = residentSearch.value.toLowerCase();
+                    filtered = filtered.filter(r => 
+                        r.full_name.toLowerCase().includes(search) ||
+                        r.staff_id.toLowerCase().includes(search)
+                    );
+                }
+                
+                // Type filter
+                if (residentFilter.value.resident_category) {
+                    filtered = filtered.filter(r => r.resident_category === residentFilter.value.resident_category);
+                }
+                
+                // Status filter
+                if (residentFilter.value.status) {
+                    if (residentFilter.value.status === 'placed') {
+                        filtered = filtered.filter(r => r.current_rotation);
+                    } else if (residentFilter.value.status === 'unplaced') {
+                        filtered = filtered.filter(r => !r.current_rotation);
+                    } else if (residentFilter.value.status === 'ending') {
+                        const today = new Date();
+                        const twoWeeksFromNow = new Date();
+                        twoWeeksFromNow.setDate(today.getDate() + 14);
+                        filtered = filtered.filter(r => {
+                            if (!r.current_rotation) return false;
+                            const endDate = new Date(r.current_rotation.rotation_end_date);
+                            return endDate > today && endDate <= twoWeeksFromNow;
+                        });
+                    }
+                }
+                
+                return filtered;
+            });
+            
+            // Filtered staff
+            const filteredStaff = computed(() => {
+                let filtered = medicalStaff.value;
+                
+                // Search
+                if (staffSearch.value) {
+                    const search = staffSearch.value.toLowerCase();
+                    filtered = filtered.filter(s => 
+                        s.full_name.toLowerCase().includes(search) ||
+                        s.staff_id.toLowerCase().includes(search)
+                    );
+                }
+                
+                // Role filter
+                if (staffFilter.value.staff_type) {
+                    filtered = filtered.filter(s => s.staff_type === staffFilter.value.staff_type);
+                }
+                
+                // Status filter
+                if (staffFilter.value.employment_status) {
+                    filtered = filtered.filter(s => s.employment_status === staffFilter.value.employment_status);
+                }
+                
+                return filtered.map(staff => {
+                    let current_rotation = null;
+                    let resident_count = 0;
+                    
+                    if (staff.staff_type === 'medical_resident') {
+                        current_rotation = residentRotations.value.find(rotation => 
+                            rotation.resident_id === staff.id && 
+                            rotation.rotation_status === 'active'
+                        );
+                        
+                        if (current_rotation) {
+                            current_rotation = {
+                                ...current_rotation,
+                                unit_name: getUnitName(current_rotation.training_unit_id),
+                                supervisor_name: getSupervisorName(current_rotation.supervising_attending_id)
+                            };
+                        }
+                    } else if (staff.staff_type === 'attending_physician') {
+                        resident_count = residentRotations.value.filter(rotation => 
+                            rotation.supervising_attending_id === staff.id &&
+                            rotation.rotation_status === 'active'
+                        ).length;
+                    }
+                    
+                    return {
+                        ...staff,
+                        current_rotation,
+                        resident_count
+                    };
+                });
+            });
+            
+            // Helper functions for getting names
+            const getUnitName = (unitId) => {
+                const unit = trainingUnits.value.find(u => u.id === unitId);
+                return unit ? unit.unit_name : 'Unknown Unit';
+            };
+            
+            const getSupervisorName = (supervisorId) => {
+                const supervisor = medicalStaff.value.find(s => s.id === supervisorId);
+                return supervisor ? supervisor.full_name : 'Not Assigned';
+            };
+            
+            const getDaysRemaining = (endDate) => {
+                const today = new Date();
+                const end = new Date(endDate);
+                const diffTime = end - today;
+                return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            };
+            
+            const getDaysRemainingClass = (endDate) => {
+                const days = getDaysRemaining(endDate);
+                if (days <= 7) return 'duty-hours critical';
+                if (days <= 14) return 'duty-hours warning';
+                return '';
+            };
+            
+            // Week days for schedule view
+            const weekDays = computed(() => {
+                const days = [];
+                const start = new Date(currentWeekStart.value);
+                
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(start);
+                    date.setDate(start.getDate() + i);
+                    
+                    days.push({
+                        date: date.toISOString().split('T')[0],
+                        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+                        number: date.getDate()
+                    });
+                }
+                
+                return days;
+            });
+            
+            // On-call days
+            const onCallDays = computed(() => {
+                return weekDays.value.map(day => {
+                    const oncall = oncallSchedule.value.find(a => a.duty_date === day.date);
+                    return {
+                        ...day,
+                        oncall: oncall ? {
+                            ...oncall,
+                            primary_physician_name: getSupervisorName(oncall.primary_physician_id),
+                            backup_physician_name: oncall.backup_physician_id ? getSupervisorName(oncall.backup_physician_id) : null
+                        } : null,
+                        coverage_gap: oncall ? null : 'No on-call assigned'
+                    };
+                });
+            });
+            
+            // Calendar days for rotation view
+            const calendarDays = computed(() => {
+                const year = currentYear.value;
+                const month = currentMonth.value;
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                
+                const days = [];
+                const today = new Date().toISOString().split('T')[0];
+                
+                // Add padding for days before month start
+                const startDay = firstDay.getDay();
+                for (let i = 0; i < startDay; i++) {
+                    const date = new Date(firstDay);
+                    date.setDate(firstDay.getDate() - (startDay - i));
+                    days.push({
+                        date: date.toISOString().split('T')[0],
+                        day: date.getDate(),
+                        isToday: false,
+                        isCurrentMonth: false
+                    });
+                }
+                
+                // Add month days
+                for (let i = 1; i <= lastDay.getDate(); i++) {
+                    const date = new Date(year, month, i);
+                    days.push({
+                        date: date.toISOString().split('T')[0],
+                        day: i,
+                        isToday: date.toISOString().split('T')[0] === today,
+                        isCurrentMonth: true
+                    });
+                }
+                
+                // Add padding for days after month end
+                const endDay = lastDay.getDay();
+                for (let i = 1; i < (7 - endDay); i++) {
+                    const date = new Date(lastDay);
+                    date.setDate(lastDay.getDate() + i);
+                    days.push({
+                        date: date.toISOString().split('T')[0],
+                        day: date.getDate(),
+                        isToday: false,
+                        isCurrentMonth: false
+                    });
+                }
+                
+                return days;
+            });
+            
+            const currentMonthName = computed(() => {
+                return new Date(currentYear.value, currentMonth.value).toLocaleDateString('en-US', {
+                    month: 'long'
+                });
+            });
+            
+            // Get assignments for a specific day
+            const getAssignmentsForDay = (date) => {
+                return dailyAssignments.value
+                    .filter(a => a.assignment_date === date)
+                    .map(assignment => {
+                        const staff = medicalStaff.value.find(s => s.id === assignment.staff_member_id);
+                        const supervisor = assignment.supervising_attending_id ? 
+                            medicalStaff.value.find(s => s.id === assignment.supervising_attending_id) : null;
+                        
+                        return {
+                            ...assignment,
+                            staff_name: staff ? staff.full_name : 'Unknown',
+                            staff_type: staff ? staff.staff_type : 'unknown',
+                            supervisor_name: supervisor ? supervisor.full_name : null
+                        };
+                    });
+            };
+            
+            // Get rotations for a specific date
+            const getRotationsForDate = (date) => {
+                const targetDate = new Date(date);
+                return residentRotations.value
+                    .filter(p => {
+                        const start = new Date(p.rotation_start_date);
+                        const end = new Date(p.rotation_end_date);
+                        return targetDate >= start && targetDate <= end && p.rotation_status === 'active';
+                    })
+                    .map(p => {
+                        const resident = medicalStaff.value.find(r => r.id === p.resident_id);
+                        const unit = trainingUnits.value.find(u => u.id === p.training_unit_id);
+                        
+                        return {
+                            ...p,
+                            resident_name: resident ? resident.full_name : 'Unknown',
+                            unit_name: unit ? unit.unit_name : 'Unknown Unit'
+                        };
+                    });
+            };
+            
+            // Get rotation events for a specific date
+            const getRotationEventsForDate = (date) => {
+                const events = [];
+                const starts = residentRotations.value.filter(p => 
+                    p.rotation_start_date === date && p.rotation_status === 'active'
+                ).length;
+                const ends = residentRotations.value.filter(p => 
+                    p.rotation_end_date === date && p.rotation_status === 'active'
+                ).length;
+                
+                if (starts > 0) events.push({ type: 'starts', count: starts });
+                if (ends > 0) events.push({ type: 'ends', count: ends });
+                
+                return events;
+            };
+            
+            // Pending leave requests
+            const pendingLeaveRequests = computed(() => {
+                return leaveRequests.value
+                    .filter(l => l.approval_status === 'pending_review')
+                    .map(request => {
+                        const staff = medicalStaff.value.find(s => s.id === request.staff_member_id);
+                        return {
+                            ...request,
+                            staff_name: staff ? staff.full_name : 'Unknown',
+                            staff_type: staff ? staff.staff_type : 'unknown'
+                        };
+                    });
+            });
+            
+            const activeLeave = computed(() => {
+                const today = new Date().toISOString().split('T')[0];
+                return leaveRequests.value
+                    .filter(l => l.approval_status === 'approved' && l.leave_end_date >= today)
+                    .map(request => {
+                        const staff = medicalStaff.value.find(s => s.id === request.staff_member_id);
+                        return {
+                            ...request,
+                            staff_name: staff ? staff.full_name : 'Unknown'
+                        };
+                    });
+            });
+            
+            // ============ RESIDENT MANAGEMENT FUNCTIONS ============
+            
+            const showAddResidentModal = () => {
+                editingResident.value = null;
+                residentForm.value = {
+                    staff_id: generateSystemId('RES'),
+                    full_name: '',
+                    professional_email: '',
+                    staff_type: 'medical_resident',
+                    resident_category: 'department_internal',
+                    training_year: 1,
+                    work_phone: '',
+                    primary_clinic: '',
+                    can_supervise_residents: false,
+                    employment_status: 'active',
+                    special_notes: ''
+                };
+                showResidentModal.value = true;
+            };
+            
+            const editResident = (resident) => {
+                editingResident.value = resident.id;
+                residentForm.value = { ...resident };
+                showResidentModal.value = true;
+            };
+            
+            const closeResidentModal = () => {
+                showResidentModal.value = false;
+                editingResident.value = null;
+            };
+            
+            const saveResident = async () => {
+                saving.value = true;
+                
+                try {
+                    if (editingResident.value) {
+                        // Update existing resident
+                        const { error } = await supabase
+                            .from('medical_staff')
+                            .update(residentForm.value)
+                            .eq('id', editingResident.value);
+                        
+                        if (error) throw error;
+                        showToast('Resident updated successfully', 'success');
+                    } else {
+                        // Add new resident
+                        const { error } = await supabase
+                            .from('medical_staff')
+                            .insert([residentForm.value]);
+                        
+                        if (error) throw error;
+                        showToast('Resident added successfully', 'success');
+                    }
+                    
+                    // Refresh data
+                    await loadInitialData();
+                    closeResidentModal();
+                    
+                } catch (error) {
+                    console.error('Error saving resident:', error);
+                    showToast('Error saving resident: ' + error.message, 'error');
+                } finally {
+                    saving.value = false;
+                }
+            };
+            
+            // ============ CLINICAL UNIT MANAGEMENT FUNCTIONS ============
+            
+            const showAddUnitModal = () => {
+                editingUnit.value = null;
+                unitForm.value = {
+                    unit_code: generateSystemId('UNIT'),
+                    unit_name: '',
+                    department_name: 'Pulmonology',
+                    maximum_residents: 4,
+                    default_supervisor_id: '',
+                    unit_description: '',
+                    unit_status: 'active'
+                };
+                showUnitModal.value = true;
+            };
+            
+            const editUnit = (unit) => {
+                editingUnit.value = unit.id;
+                unitForm.value = { ...unit };
+                showUnitModal.value = true;
+            };
+            
+            const closeUnitModal = () => {
+                showUnitModal.value = false;
+                editingUnit.value = null;
+            };
+            
+            const saveClinicalUnit = async () => {
+                saving.value = true;
+                
+                try {
+                    if (editingUnit.value) {
+                        // Update existing unit
+                        const { error } = await supabase
+                            .from('training_units')
+                            .update(unitForm.value)
+                            .eq('id', editingUnit.value);
+                        
+                        if (error) throw error;
+                        showToast('Clinical unit updated successfully', 'success');
+                    } else {
+                        // Add new unit
+                        const { error } = await supabase
+                            .from('training_units')
+                            .insert([unitForm.value]);
+                        
+                        if (error) throw error;
+                        showToast('Clinical unit added successfully', 'success');
+                    }
+                    
+                    // Refresh data
+                    await loadInitialData();
+                    closeUnitModal();
+                    
+                } catch (error) {
+                    console.error('Error saving clinical unit:', error);
+                    showToast('Error saving clinical unit: ' + error.message, 'error');
+                } finally {
+                    saving.value = false;
+                }
+            };
+            
+            const toggleUnitStatus = async (unit) => {
+                const newStatus = unit.unit_status === 'active' ? 'inactive' : 'active';
+                
+                try {
+                    const { error } = await supabase
+                        .from('training_units')
+                        .update({ unit_status: newStatus })
+                        .eq('id', unit.id);
+                    
+                    if (error) throw error;
+                    
+                    showToast(`Unit ${newStatus}`, 'success');
+                    await loadInitialData();
+                    
+                } catch (error) {
+                    console.error('Error updating unit status:', error);
+                    showToast('Error updating unit status', 'error');
+                }
+            };
+            
+            // ============ PLACEMENT MANAGEMENT FUNCTIONS ============
+            
+            const showNewPlacementModal = () => {
+                editingPlacement.value = null;
+                const today = new Date();
+                const threeMonthsLater = new Date();
+                threeMonthsLater.setMonth(today.getMonth() + 3);
+                
+                placementForm.value = {
+                    rotation_id: generateSystemId('ROT'),
+                    resident_id: '',
+                    training_unit_id: '',
+                    supervising_attending_id: '',
+                    rotation_start_date: today.toISOString().split('T')[0],
+                    rotation_end_date: threeMonthsLater.toISOString().split('T')[0],
+                    rotation_category: 'clinical_rotation',
+                    rotation_status: 'scheduled',
+                    clinical_notes: ''
+                };
+                showPlacementModal.value = true;
+            };
+            
+            const quickPlaceResident = (resident) => {
+                const today = new Date();
+                const threeMonthsLater = new Date();
+                threeMonthsLater.setMonth(today.getMonth() + 3);
+                
+                placementForm.value = {
+                    rotation_id: generateSystemId('ROT'),
+                    resident_id: resident.id,
+                    training_unit_id: '',
+                    supervising_attending_id: '',
+                    rotation_start_date: today.toISOString().split('T')[0],
+                    rotation_end_date: threeMonthsLater.toISOString().split('T')[0],
+                    rotation_category: 'clinical_rotation',
+                    rotation_status: 'scheduled',
+                    clinical_notes: ''
+                };
+                showPlacementModal.value = true;
+            };
+            
+            const editPlacement = (placement) => {
+                editingPlacement.value = placement.id;
+                placementForm.value = { ...placement };
+                showPlacementModal.value = true;
+            };
+            
+            const closePlacementModal = () => {
+                showPlacementModal.value = false;
+                editingPlacement.value = null;
+            };
+            
+            const savePlacement = async () => {
+                saving.value = true;
+                
+                try {
+                    // Check unit capacity
+                    const unit = trainingUnits.value.find(u => u.id === placementForm.value.training_unit_id);
+                    const currentOccupancy = clinicalUnits.value.find(u => u.id === placementForm.value.training_unit_id)?.current_occupancy || 0;
+                    
+                    if (currentOccupancy >= unit.maximum_residents) {
+                        throw new Error('Clinical unit is at full capacity');
+                    }
+                    
+                    if (editingPlacement.value) {
+                        // Update existing placement
+                        const { error } = await supabase
+                            .from('resident_rotations')
+                            .update(placementForm.value)
+                            .eq('id', editingPlacement.value);
+                        
+                        if (error) throw error;
+                        showToast('Placement updated successfully', 'success');
+                    } else {
+                        // Create new placement
+                        const { error } = await supabase
+                            .from('resident_rotations')
+                            .insert([placementForm.value]);
+                        
+                        if (error) throw error;
+                        showToast('Resident placed successfully', 'success');
+                    }
+                    
+                    // Refresh data
+                    await loadInitialData();
+                    closePlacementModal();
+                    
+                } catch (error) {
+                    console.error('Error saving placement:', error);
+                    showToast('Error saving placement: ' + error.message, 'error');
+                } finally {
+                    saving.value = false;
+                }
+            };
+            
+            const extendPlacement = async (placement) => {
+                const newEndDate = prompt('Enter new end date (YYYY-MM-DD):', placement.rotation_end_date);
+                if (newEndDate) {
+                    try {
+                        const { error } = await supabase
+                            .from('resident_rotations')
+                            .update({ 
+                                rotation_end_date: newEndDate,
+                                rotation_status: 'extended'
+                            })
+                            .eq('id', placement.id);
+                        
+                        if (error) throw error;
+                        
+                        showToast('Placement extended successfully', 'success');
+                        await loadInitialData();
+                        
+                    } catch (error) {
+                        console.error('Error extending placement:', error);
+                        showToast('Error extending placement', 'error');
+                    }
+                }
+            };
+            
+            const endPlacement = async (placement) => {
+                if (confirm('End this placement? The resident will be marked as unplaced.')) {
+                    try {
+                        const { error } = await supabase
+                            .from('resident_rotations')
+                            .update({ 
+                                rotation_status: 'terminated_early',
+                                clinical_notes: 'Ended by user request'
+                            })
+                            .eq('id', placement.id);
+                        
+                        if (error) throw error;
+                        
+                        showToast('Placement ended successfully', 'success');
+                        await loadInitialData();
+                        
+                    } catch (error) {
+                        console.error('Error ending placement:', error);
+                        showToast('Error ending placement', 'error');
+                    }
+                }
+            };
+            
+            // ============ NAVIGATION FUNCTIONS ============
+            
+            const switchView = (view) => {
+                currentView.value = view;
+                closeMobileMenu();
+            };
+            
+            const getCurrentTitle = () => {
+                const titles = {
+                    residents: 'Resident Management',
+                    clinical_units: 'Clinical Units',
+                    rotations: 'Rotation Calendar',
+                    placements: 'Resident Placements',
+                    department_overview: 'Department Overview',
+                    staff_management: 'Staff Management',
+                    schedule_approval: 'Schedule Approval',
+                    schedule: 'Department Schedule',
+                    oncall: 'On-call Schedule',
+                    leave: 'Leave & Coverage',
+                    reports: 'Reports & Analytics'
+                };
+                
+                return titles[currentView.value] || 'PneumoCare Pro';
+            };
+            
+            const getCurrentSubtitle = () => {
+                const subtitles = {
+                    residents: 'Manage resident placements and rotations',
+                    clinical_units: 'Configure clinical units and capacities',
+                    rotations: 'View rotation schedules and changes',
+                    placements: 'Assign residents to clinical units',
+                    department_overview: 'Monitor department operations and metrics',
+                    staff_management: 'Manage department staff and roles',
+                    schedule_approval: 'Review and approve department schedules',
+                    schedule: 'View and manage weekly assignments',
+                    oncall: 'Manage on-call rotations and coverage',
+                    leave: 'Handle leave requests and coverage arrangements',
+                    reports: 'Generate department reports and analytics'
+                };
+                
+                return subtitles[currentView.value] || '';
+            };
+            
+            const getSearchPlaceholder = () => {
+                const placeholders = {
+                    residents: 'Search residents by name or ID...',
+                    clinical_units: 'Search clinical units...',
+                    placements: 'Search placements...',
+                    staff_management: 'Search staff...',
+                    schedule: 'Search assignments...',
+                    leave: 'Search leave requests...',
+                    reports: 'Search reports...'
+                };
+                
+                return placeholders[currentView.value] || 'Search...';
+            };
+            
+            const toggleMobileMenu = () => {
+                mobileMenuOpen.value = !mobileMenuOpen.value;
+            };
+            
+            const closeMobileMenu = () => {
+                mobileMenuOpen.value = false;
+            };
+            
+            const toggleUserMenu = () => {
+                showToast('User menu would open here', 'info');
+            };
+            
+            const handleSearch = () => {
+                // Search is handled by computed properties
+            };
+            
+            // ============ SCHEDULE FUNCTIONS ============
+            
+            const updateWeekRange = () => {
+                const today = new Date();
+                const dayOfWeek = today.getDay();
+                const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+                
+                const start = new Date(today);
+                start.setDate(diff);
+                start.setHours(0, 0, 0, 0);
+                
+                const end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                
+                currentWeekStart.value = start;
+                currentWeekEnd.value = end;
+            };
+            
+            const prevWeek = () => {
+                const newStart = new Date(currentWeekStart.value);
+                newStart.setDate(newStart.getDate() - 7);
+                currentWeekStart.value = newStart;
+                
+                const newEnd = new Date(newStart);
+                newEnd.setDate(newStart.getDate() + 6);
+                currentWeekEnd.value = newEnd;
+                
+                // Reload assignments for new week
+                loadAssignmentsForWeek();
+            };
+            
+            const nextWeek = () => {
+                const newStart = new Date(currentWeekStart.value);
+                newStart.setDate(newStart.getDate() + 7);
+                currentWeekStart.value = newStart;
+                
+                const newEnd = new Date(newStart);
+                newEnd.setDate(newStart.getDate() + 6);
+                currentWeekEnd.value = newEnd;
+                
+                // Reload assignments for new week
+                loadAssignmentsForWeek();
+            };
+            
+            const loadAssignmentsForWeek = async () => {
+                try {
+                    const weekStart = new Date(currentWeekStart.value);
+                    const weekEnd = new Date(currentWeekEnd.value);
+                    
+                    const { data, error } = await supabase
+                        .from('daily_assignments')
+                        .select('*')
+                        .gte('assignment_date', weekStart.toISOString().split('T')[0])
+                        .lte('assignment_date', weekEnd.toISOString().split('T')[0])
+                        .order('assignment_date')
+                        .order('start_time');
+                    
+                    if (error) throw error;
+                    dailyAssignments.value = data;
+                    
+                } catch (error) {
+                    console.error('Error loading assignments:', error);
+                    showToast('Error loading schedule data', 'error');
+                }
+            };
+            
+            // ============ LEAVE MANAGEMENT FUNCTIONS ============
+            
+            const showNewLeaveModal = () => {
+                const today = new Date();
+                leaveRequestForm.value = {
+                    request_id: generateSystemId('LEAVE'),
+                    staff_member_id: '',
+                    leave_category: 'vacation_leave',
+                    leave_start_date: today.toISOString().split('T')[0],
+                    leave_end_date: today.toISOString().split('T')[0],
+                    total_days: 1,
+                    leave_reason: '',
+                    coverage_required: true,
+                    coverage_assigned: false,
+                    coverage_notes: '',
+                    approval_status: 'pending_review'
+                };
+                showLeaveModal.value = true;
+            };
+            
+            const closeLeaveModal = () => {
+                showLeaveModal.value = false;
+            };
+            
+            const saveLeaveRequest = async () => {
+                saving.value = true;
+                
+                try {
+                    const { error } = await supabase
+                        .from('leave_requests')
+                        .insert([leaveRequestForm.value]);
+                    
+                    if (error) throw error;
+                    
+                    showToast('Leave request submitted successfully', 'success');
+                    await loadInitialData();
+                    closeLeaveModal();
+                    
+                } catch (error) {
+                    console.error('Error submitting leave request:', error);
+                    showToast('Error submitting leave request: ' + error.message, 'error');
+                } finally {
+                    saving.value = false;
+                }
+            };
+            
+            const approveLeaveRequest = async (request) => {
+                try {
+                    const { error } = await supabase
+                        .from('leave_requests')
+                        .update({ 
+                            approval_status: 'approved',
+                            reviewed_by: currentUser.value.id
+                        })
+                        .eq('id', request.id);
+                    
+                    if (error) throw error;
+                    
+                    showToast('Leave request approved', 'success');
+                    await loadInitialData();
+                    
+                } catch (error) {
+                    console.error('Error approving leave request:', error);
+                    showToast('Error approving leave request', 'error');
+                }
+            };
+            
+            const rejectLeaveRequest = async (request) => {
+                try {
+                    const { error } = await supabase
+                        .from('leave_requests')
+                        .update({ 
+                            approval_status: 'rejected',
+                            reviewed_by: currentUser.value.id
+                        })
+                        .eq('id', request.id);
+                    
+                    if (error) throw error;
+                    
+                    showToast('Leave request rejected', 'success');
+                    await loadInitialData();
+                    
+                } catch (error) {
+                    console.error('Error rejecting leave request:', error);
+                    showToast('Error rejecting leave request', 'error');
+                }
+            };
+            
+            // ============ ON-CALL FUNCTIONS ============
+            
+            const showNewOnCallModal = () => {
+                const today = new Date();
+                onCallForm.value = {
+                    schedule_id: generateSystemId('ONCALL'),
+                    duty_date: today.toISOString().split('T')[0],
+                    shift_type: 'primary_call',
+                    primary_physician_id: '',
+                    backup_physician_id: null,
+                    start_time: '17:00',
+                    end_time: '08:00',
+                    coverage_notes: ''
+                };
+                showOnCallModal.value = true;
+            };
+            
+            const closeOnCallModal = () => {
+                showOnCallModal.value = false;
+            };
+            
+            const saveOnCallAssignment = async () => {
+                saving.value = true;
+                
+                try {
+                    const { error } = await supabase
+                        .from('oncall_schedule')
+                        .insert([onCallForm.value]);
+                    
+                    if (error) throw error;
+                    
+                    showToast('On-call assignment created successfully', 'success');
+                    await loadInitialData();
+                    closeOnCallModal();
+                    
+                } catch (error) {
+                    console.error('Error creating on-call assignment:', error);
+                    showToast('Error creating on-call assignment: ' + error.message, 'error');
+                } finally {
+                    saving.value = false;
+                }
+            };
+            
+            // ============ INITIALIZATION ============
+            
+            onMounted(() => {
+                // Set default dates
+                const today = new Date();
+                assignmentForm.value.assignment_date = today.toISOString().split('T')[0];
+                leaveRequestForm.value.leave_start_date = today.toISOString().split('T')[0];
+                leaveRequestForm.value.leave_end_date = today.toISOString().split('T')[0];
+                onCallForm.value.duty_date = today.toISOString().split('T')[0];
+                
+                // Update week range
+                updateWeekRange();
+                
+                // Check for existing session
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                    if (session) {
+                        // User is already logged in
+                        supabase.auth.getUser().then(async ({ data: { user } }) => {
+                            if (user) {
+                                const { data: userProfile, error } = await supabase
+                                    .from('app_users')
+                                    .select('*')
+                                    .eq('user_id', user.id)
+                                    .single();
+                                
+                                if (!error && userProfile) {
+                                    currentUser.value = {
+                                        ...userProfile,
+                                        session
+                                    };
+                                    await loadInitialData();
+                                }
+                            }
+                        });
+                    }
+                });
+            });
+            
+            // ============ RETURN ============
+            
+            return {
+                // State
+                currentUser,
+                loginForm,
+                loading,
+                saving,
+                currentView,
+                sidebarCollapsed,
+                mobileMenuOpen,
+                searchQuery,
+                
+                // Data
+                medicalStaff,
+                trainingUnits,
+                residentRotations,
+                dailyAssignments,
+                oncallSchedule,
+                leaveRequests,
+                
+                // Computed Properties
+                residents,
+                clinicalUnits,
+                stats,
+                supervisors,
+                unplacedResidents,
+                availableUnits,
+                activePlacements,
+                filteredResidents,
+                filteredStaff,
+                weekDays,
+                onCallDays,
+                calendarDays,
+                currentMonthName,
+                pendingLeaveRequests,
+                activeLeave,
+                
+                // Forms
+                residentForm,
+                unitForm,
+                placementForm,
+                staffForm,
+                assignmentForm,
+                leaveRequestForm,
+                onCallForm,
+                
+                // Modals
+                showResidentModal,
+                showUnitModal,
+                showPlacementModal,
+                showStaffModal,
+                showAssignmentModal,
+                showLeaveModal,
+                showOnCallModal,
+                
+                // UI
+                toast,
+                
+                // Utility Functions
+                getInitials,
+                formatDate,
+                formatDateShort,
+                formatDateTime,
+                formatTime,
+                formatTimeRange,
+                formatDateRange,
+                formatDayHeader,
+                isToday,
+                getUserRoleName,
+                formatResidentCategory,
+                formatStaffType,
+                
+                // Navigation
+                switchView,
+                getCurrentTitle,
+                getCurrentSubtitle,
+                getSearchPlaceholder,
+                toggleMobileMenu,
+                closeMobileMenu,
+                toggleUserMenu,
+                handleSearch,
+                
+                // Authentication
+                handleLogin,
+                
+                // Resident Management
+                showAddResidentModal,
+                editResident,
+                closeResidentModal,
+                saveResident,
+                
+                // Clinical Unit Management
+                showAddUnitModal,
+                editUnit,
+                closeUnitModal,
+                saveClinicalUnit,
+                toggleUnitStatus,
+                
+                // Placement Management
+                showNewPlacementModal,
+                quickPlaceResident,
+                editPlacement,
+                closePlacementModal,
+                savePlacement,
+                extendPlacement,
+                endPlacement,
+                getUnitName,
+                getSupervisorName,
+                getDaysRemaining,
+                getDaysRemainingClass,
+                
+                // Schedule
+                prevWeek,
+                nextWeek,
+                getAssignmentsForDay,
+                
+                // Leave Management
+                showNewLeaveModal,
+                closeLeaveModal,
+                saveLeaveRequest,
+                approveLeaveRequest,
+                rejectLeaveRequest,
+                
+                // On-call Management
+                showNewOnCallModal,
+                closeOnCallModal,
+                saveOnCallAssignment,
+                
+                // Calendar
+                prevMonth,
+                nextMonth,
+                getRotationsForDate,
+                getRotationEventsForDate
+            };
+        }
+    }).mount('#app');
+    </script>
+</body>
+</html>
