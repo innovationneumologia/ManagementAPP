@@ -1981,41 +1981,47 @@ const supabaseClient = createSupabaseClient();
             };
 
             const handleLogin = async () => {
-                loading.value = true;
-                
-                try {
-                    const email = loginForm.value.email.trim().toLowerCase();
-                    const password = loginForm.value.password;
-                    
-                    if (!email || !password) {
-                        throw new Error('Please fill in all fields');
-                    }
-                    
-                    if (showSetupAdmin.value) {
-                        await createFirstAdmin(email, password);
-                        return;
-                    }
-                    
-                    const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
-                        email: email,
-                        password: password
-                    });
-                    
-                    if (authError) {
-                        if (authError.message.includes('Invalid login credentials')) {
-                            throw new Error('Invalid email or password');
-                        }
-                        throw authError;
-                    }
-                    
-                    await getUserProfile(authData.user.email);
-                    
-                } catch (error) {
-                    console.error('Login error:', error);
-                    showToast(error.message || 'Login failed', 'error');
-                    loading.value = false;
-                }
-            };
+    loading.value = true;
+    
+    try {
+        const email = loginForm.value.email.trim().toLowerCase();
+        const password = loginForm.value.password;
+        
+        if (!email || !password) {
+            throw new Error('Please fill in all fields');
+        }
+        
+        // Check if Supabase is available
+        if (!supabaseClient) {
+            throw new Error('Database service temporarily unavailable. Please try again in a few minutes.');
+        }
+        
+        if (showSetupAdmin.value) {
+            await createFirstAdmin(email, password);
+            return;
+        }
+        
+        // Try Supabase login
+        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+        
+        if (authError) {
+            if (authError.message.includes('Invalid login credentials')) {
+                throw new Error('Invalid email or password');
+            }
+            throw new Error('Authentication service error: ' + authError.message);
+        }
+        
+        await getUserProfile(authData.user.email);
+        
+    } catch (error) {
+        console.error('Login error:', error);
+        showToast(error.message || 'Login failed. Please try again.', 'error');
+        loading.value = false;
+    }
+};
 
             const createFirstAdmin = async (email, password) => {
                 try {
@@ -2158,20 +2164,41 @@ const supabaseClient = createSupabaseClient();
                 }
             };
 
-            const loadSystemUsers = async () => {
-                try {
-                    const { data, error } = await supabaseClient
-                        .from('app_users')
-                        .select('*')
-                        .order('created_at', { ascending: false });
-                    
-                    if (error) throw error;
-                    systemUsers.value = data || [];
-                } catch (error) {
-                    console.error('Error loading users:', error);
-                    throw error;
-                }
-            };
+          const loadSystemUsers = async () => {
+    try {
+        if (!supabaseClient) {
+            throw new Error('Database service unavailable');
+        }
+        
+        const { data, error } = await supabaseClient
+            .from('app_users')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        if (error) {
+            if (error.code === 'PGRST301' || error.code === 'PGRST302') {
+                throw new Error('Database table not found. Please run setup SQL.');
+            }
+            throw error;
+        }
+        
+        systemUsers.value = data || [];
+        
+    } catch (error) {
+        console.error('Error loading users:', error);
+        
+        // Show user-friendly message
+        if (error.message.includes('Database service unavailable')) {
+            showToast('Database service is temporarily down. Some features may be limited.', 'warning');
+        } else if (error.message.includes('table not found')) {
+            showToast('Database setup required. Please contact system administrator.', 'error');
+        } else {
+            showToast('Error loading user data: ' + error.message, 'error');
+        }
+        
+        throw error;
+    }
+};
 
             const loadMedicalStaff = async () => {
                 try {
@@ -2220,67 +2247,72 @@ const supabaseClient = createSupabaseClient();
                 showAddUserModal.value = false;
             };
 
-            const saveNewUser = async () => {
-                saving.value = true;
-                
-                try {
-                    const userPrefix = {
-                        system_admin: 'SYS',
-                        resident_manager: 'RM',
-                        department_head: 'DH',
-                        viewing_doctor: 'VD'
-                    };
-                    
-                    const user_id = `${userPrefix[newUserForm.value.user_role]}-${Date.now().toString().slice(-6)}`;
-                    
-                    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
-                        email: newUserForm.value.email,
-                        password: newUserForm.value.password,
-                        options: {
-                            data: {
-                                full_name: newUserForm.value.full_name,
-                                user_role: newUserForm.value.user_role
-                            }
-                        }
-                    });
-                    
-                    if (authError) {
-                        if (authError.message.includes('User already registered')) {
-                            showToast('User already exists. Use different email.', 'warning');
-                            return;
-                        }
-                        throw authError;
-                    }
-                    
-                    const userRecord = {
-                        id: authData?.user?.id || crypto.randomUUID(),
-                        email: newUserForm.value.email,
-                        full_name: newUserForm.value.full_name,
-                        user_role: newUserForm.value.user_role,
-                        department: newUserForm.value.department,
-                        user_id: user_id,
-                        account_status: newUserForm.value.account_status,
-                        created_at: new Date().toISOString()
-                    };
-                    
-                    const { error: dbError } = await supabaseClient
-                        .from('app_users')
-                        .insert([userRecord]);
-                    
-                    if (dbError) throw dbError;
-                    
-                    showToast('User created successfully', 'success');
-                    closeAddUserModal();
-                    await loadSystemUsers();
-                    
-                } catch (error) {
-                    console.error('Error creating user:', error);
-                    showToast('Error creating user: ' + error.message, 'error');
-                } finally {
-                    saving.value = false;
-                }
+           const saveNewUser = async () => {
+    saving.value = true;
+    
+    try {
+        if (!supabaseClient) {
+            throw new Error('Database service unavailable');
+        }
+        
+        // Use retry logic
+        await retryOperation(async () => {
+            const userPrefix = {
+                system_admin: 'SYS',
+                resident_manager: 'RM',
+                department_head: 'DH',
+                viewing_doctor: 'VD'
             };
-
+            
+            const user_id = `${userPrefix[newUserForm.value.user_role]}-${Date.now().toString().slice(-6)}`;
+            
+            const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                email: newUserForm.value.email,
+                password: newUserForm.value.password,
+                options: {
+                    data: {
+                        full_name: newUserForm.value.full_name,
+                        user_role: newUserForm.value.user_role
+                    }
+                }
+            });
+            
+            if (authError) {
+                if (authError.message.includes('User already registered')) {
+                    throw new Error('User already exists. Use different email.');
+                }
+                throw authError;
+            }
+            
+            const userRecord = {
+                id: authData?.user?.id || crypto.randomUUID(),
+                email: newUserForm.value.email,
+                full_name: newUserForm.value.full_name,
+                user_role: newUserForm.value.user_role,
+                department: newUserForm.value.department,
+                user_id: user_id,
+                account_status: newUserForm.value.account_status,
+                created_at: new Date().toISOString()
+            };
+            
+            const { error: dbError } = await supabaseClient
+                .from('app_users')
+                .insert([userRecord]);
+            
+            if (dbError) throw dbError;
+        }, 2);
+        
+        showToast('User created successfully', 'success');
+        closeAddUserModal();
+        await loadSystemUsers();
+        
+    } catch (error) {
+        console.error('Error creating user:', error);
+        showToast('Error: ' + error.message, 'error');
+    } finally {
+        saving.value = false;
+    }
+};
             const editUser = (user) => {
                 showToast('Edit user - Coming soon', 'info');
             };
@@ -2392,22 +2424,61 @@ const supabaseClient = createSupabaseClient();
 
             // ============ INITIALIZATION ============
             onMounted(async () => {
-                await checkFirstTimeSetup();
+    // Check database connectivity
+    const checkDatabase = async () => {
+        try {
+            if (supabaseClient) {
+                const { error } = await supabaseClient
+                    .from('app_users')
+                    .select('count')
+                    .limit(1);
                 
-                supabaseClient.auth.getSession().then(({ data: { session } }) => {
-                    if (session) {
-                        getUserProfile(session.user.email);
-                    }
-                });
-                
-                supabaseClient.auth.onAuthStateChange((event, session) => {
-                    if (event === 'SIGNED_OUT') {
-                        currentUser.value = null;
-                        currentView.value = 'login';
-                        checkFirstTimeSetup();
-                    }
-                });
-            });
+                if (error && error.code !== 'PGRST301') {
+                    console.warn('Database connection issue:', error);
+                    showToast('Database connection unstable', 'warning');
+                }
+            }
+        } catch (error) {
+            console.warn('Database check failed:', error);
+        }
+    };
+    
+    await checkDatabase();
+    await checkFirstTimeSetup();
+    
+    // Check for existing session
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+            console.log('Existing session found:', session.user.email);
+            getUserProfile(session.user.email);
+        }
+    });
+    
+    // Set up auth state listener
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        console.log('Auth state changed:', event);
+        if (event === 'SIGNED_OUT') {
+            currentUser.value = null;
+            currentView.value = 'login';
+            // Re-check setup status on logout
+            checkFirstTimeSetup();
+        } else if (event === 'SIGNED_IN' && session && !currentUser.value) {
+            // If signed in but no current user, get profile
+            getUserProfile(session.user.email);
+        }
+    });
+    
+    // Initialize week range for schedule views
+    updateWeekRange();
+    
+    // Set default dates in forms
+    const today = new Date().toISOString().split('T')[0];
+    if (assignmentForm) assignmentForm.value.assignment_date = today;
+    if (leaveRequestForm) leaveRequestForm.value.leave_start_date = today;
+    if (leaveRequestForm) leaveRequestForm.value.leave_end_date = today;
+    if (onCallForm) onCallForm.value.duty_date = today;
+    if (announcementForm) announcementForm.value.publish_start_date = today;
+});
 
             // ============ RETURN STATEMENT ============
             return {
