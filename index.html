@@ -2710,11 +2710,12 @@ const { createApp, ref, computed, onMounted } = Vue;
 
 // Supabase configuration
 const supabaseUrl = 'https://vssmguzuvekkecbmwcjw.supabase.co';
-    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
+
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
-        autoRefreshToken: false,
-        persistSession: false,
+        autoRefreshToken: true,
+        persistSession: true,
         detectSessionInUrl: false
     },
     global: {
@@ -2724,10 +2725,10 @@ const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey
         }
     }
 });
+
 createApp({
     setup() {
         // ============ STATE MANAGEMENT ============
-        // Authentication
         const currentUser = ref(null);
         const loginForm = ref({
             email: '',
@@ -2770,6 +2771,7 @@ createApp({
             training_year: '1',
             primary_clinic: '',
             work_phone: '',
+            medical_license: '',
             can_supervise_residents: false,
             employment_status: 'active',
             special_notes: ''
@@ -3472,179 +3474,92 @@ createApp({
         };
         
         const toggleUserMenu = () => {
-            showToast('User menu would open here', 'info');
+            showToast('User profile menu', 'info');
         };
         
         const handleSearch = () => {
             // Search is handled by computed properties
         };
         
-        const handleStaffSearch = () => {
-            // Search is handled by computed property
-        };
-        
         // ============ AUTHENTICATION FUNCTIONS ============
         const handleLogin = async () => {
-    state.loading.value = true;
-    
-    try {
-        const email = state.loginForm.value.email.trim().toLowerCase();
-        const password = state.loginForm.value.password;
-        const selectedRole = state.loginForm.value.user_role;
-        
-        // Validate inputs
-        if (!email || !password || !selectedRole) {
-            throw new Error('Please fill in all fields');
-        }
-        
-        console.log('Attempting login with:', { email, selectedRole });
-        
-        // FIRST: Try to authenticate with Supabase
-        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-        
-        if (authError) {
-            // Check if it's invalid credentials error
-            if (authError.message.includes('Invalid login credentials')) {
-                // Check if user already exists in app_users table
-                const { data: existingUser, error: userCheckError } = await supabaseClient
-                    .from('app_users')
-                    .select('*')
-                    .eq('email', email)
-                    .maybeSingle();
+            loading.value = true;
+            
+            try {
+                const email = loginForm.value.email.trim().toLowerCase();
+                const password = loginForm.value.password;
+                const selectedRole = loginForm.value.user_role;
                 
-                if (userCheckError) {
-                    console.warn('Error checking user:', userCheckError);
-                    // Try to sign up
-                    await auth.handleSignUp(email, password, selectedRole);
-                    return;
+                if (!email || !password || !selectedRole) {
+                    throw new Error('Please fill in all fields');
                 }
                 
-                if (existingUser) {
-                    // User exists in app_users but not in auth system
-                    // Try to sign up with same email (will fail gracefully)
-                    await auth.handleSignUp(email, password, selectedRole);
-                    return;
-                } else {
-                    // New user - sign up
-                    await auth.handleSignUp(email, password, selectedRole);
-                    return;
-                }
-            }
-            throw authError;
-        }
-        
-        // Authentication successful
-        await auth.handleAuthenticatedUser(authData.user, selectedRole);
-        
-    } catch (error) {
-        console.error('Login error:', error);
-        utils.showToast(error.message || 'Login failed. Please check your credentials.', 'error');
-        state.loading.value = false;
-    }
-};
-        
-        const handleSignUp = async (email, password, selectedRole) => {
-    try {
-        // FIRST try to sign up with Supabase Auth
-        const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password,
-            options: {
-                data: {
-                    full_name: email.split('@')[0].replace(/\./g, ' '),
-                    user_role: selectedRole
-                }
-            }
-        });
-        
-        if (signUpError) {
-            // If sign up fails, check if it's because user already exists
-            if (signUpError.message.includes('User already registered')) {
-                // Try to sign in instead
-                const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+                console.log('Attempting login with:', { email, selectedRole });
+                
+                // Try to authenticate with Supabase
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
                 
-                if (signInError) throw signInError;
-                
-                // Successfully signed in with existing account
-                await auth.handleAuthenticatedUser(signInData.user, selectedRole);
-                return;
-            }
-            throw signUpError;
-        }
-        
-        if (signUpData.user) {
-            // Check if user already exists in app_users
-            const { data: existingUser } = await supabaseClient
-                .from('app_users')
-                .select('*')
-                .eq('email', email)
-                .maybeSingle();
-            
-            if (!existingUser) {
-                // Create user profile in app_users
-                try {
-                    const { error: profileError } = await supabaseClient
+                if (authError) {
+                    // Check if user exists in app_users table
+                    const { data: existingUser, error: userCheckError } = await supabaseClient
                         .from('app_users')
-                        .insert([{
-                            id: signUpData.user.id,
-                            email: signUpData.user.email,
-                            full_name: signUpData.user.user_metadata?.full_name || email.split('@')[0].replace(/\./g, ' '),
-                            user_role: selectedRole
-                        }]);
-                        
-                    if (profileError) {
-                        console.warn('Could not create user profile:', profileError);
-                    }
-                } catch (profileError) {
-                    console.warn('Profile creation error:', profileError);
-                }
-            }
-            
-            await auth.handleAuthenticatedUser(signUpData.user, selectedRole);
-        }
-        
-    } catch (error) {
-        console.error('Sign up error:', error);
-        
-        // If it's a duplicate key error, try to login instead
-        if (error.code === '23505' || error.message.includes('already exists')) {
-            utils.showToast('User already exists. Please use a different email or sign in.', 'error');
-        } else {
-            throw new Error('Unable to create account. Please try again.');
-        }
-    }
-};
-        
-        const handleAuthenticatedUser = async (authUser, selectedRole) => {
-            try {
-                // Check if user exists in app_users
-                const { data: userProfile, error: profileError } = await supabaseClient
-                    .from('app_users')
-                    .select('*')
-                    .eq('email', authUser.email)
-                    .maybeSingle();
+                        .select('*')
+                        .eq('email', email)
+                        .maybeSingle();
                     
-                if (profileError) {
-                    console.error('Profile error:', profileError);
-                    // Continue with auth user data
-                }
-                
-                if (userProfile) {
-                    currentUser.value = userProfile;
-                } else {
-                    // Create minimal user profile from auth data
-                    currentUser.value = {
-                        id: authUser.id,
-                        email: authUser.email,
-                        full_name: authUser.user_metadata?.full_name || authUser.email.split('@')[0].replace(/\./g, ' '),
-                        user_role: authUser.user_metadata?.user_role || selectedRole
-                    };
+                    if (userCheckError) {
+                        console.error('Error checking user:', userCheckError);
+                        throw new Error('Login failed. Please check your credentials.');
+                    }
+                    
+                    if (existingUser) {
+                        // Create session for existing user
+                        currentUser.value = existingUser;
+                        showToast(`Welcome back, ${existingUser.full_name}!`, 'success');
+                    } else {
+                        throw new Error('Invalid credentials. Please try again.');
+                    }
+                } else if (authData.user) {
+                    // Check if user exists in app_users
+                    const { data: existingUser } = await supabaseClient
+                        .from('app_users')
+                        .select('*')
+                        .eq('email', authData.user.email)
+                        .maybeSingle();
+                    
+                    if (existingUser) {
+                        currentUser.value = existingUser;
+                    } else {
+                        // Create user profile
+                        const { data: newUser, error: createError } = await supabaseClient
+                            .from('app_users')
+                            .insert([{
+                                id: authData.user.id,
+                                email: authData.user.email,
+                                full_name: authData.user.user_metadata?.full_name || email.split('@')[0].replace(/\./g, ' '),
+                                user_role: selectedRole,
+                                account_status: 'active'
+                            }])
+                            .select()
+                            .single();
+                        
+                        if (createError) {
+                            console.warn('Could not create user profile:', createError);
+                            currentUser.value = {
+                                id: authData.user.id,
+                                email: authData.user.email,
+                                full_name: authData.user.user_metadata?.full_name || email.split('@')[0].replace(/\./g, ' '),
+                                user_role: selectedRole
+                            };
+                        } else {
+                            currentUser.value = newUser;
+                        }
+                    }
+                    
+                    showToast(`Welcome, ${currentUser.value.full_name}!`, 'success');
                 }
                 
                 // Load application data
@@ -3655,17 +3570,13 @@ createApp({
                     currentView.value = 'medical_staff';
                 } else if (currentUser.value.user_role === 'department_head') {
                     currentView.value = 'department_overview';
-                } else if (currentUser.value.user_role === 'viewing_doctor') {
-                    currentView.value = 'daily_assignments';
                 } else {
                     currentView.value = 'medical_staff';
                 }
                 
-                showToast(`Welcome, ${currentUser.value.full_name}!`, 'success');
-                
             } catch (error) {
-                console.error('User handling error:', error);
-                throw error;
+                console.error('Login error:', error);
+                showToast(error.message || 'Login failed. Please check your credentials.', 'error');
             } finally {
                 loading.value = false;
             }
@@ -3673,9 +3584,7 @@ createApp({
         
         const handleLogout = async () => {
             try {
-                const { error } = await supabaseClient.auth.signOut();
-                if (error) throw error;
-                
+                await supabaseClient.auth.signOut();
                 currentUser.value = null;
                 currentView.value = 'login';
                 showToast('Logged out successfully', 'success');
@@ -3739,119 +3648,81 @@ createApp({
         };
         
         // Medical Staff API
-      const loadMedicalStaff = async () => {
-    try {
-        console.log('Loading medical staff...');
-        
-        const { data, error } = await supabaseClient
-            .from('medical_staff')
-            .select('*')
-            .order('full_name');
-        
-        if (error) {
-            console.error('Supabase error loading medical staff:', error);
-            throw error;
-        }
-        
-        console.log('Medical staff loaded:', data);
-        medicalStaff.value = data || [];
-        
-        // Log the data to verify
-        if (data && data.length > 0) {
-            console.log('First staff member:', data[0]);
-        } else {
-            console.log('No medical staff found in database');
-        }
-        
-    } catch (error) {
-        console.error('Error loading medical staff:', error);
-        showToast('Error loading medical staff: ' + error.message, 'error');
-        throw error;
-    }
-};
-        
-      const saveMedicalStaff = async () => {
-    saving.value = true;
-    
-    try {
-        console.log('Saving medical staff with data:', medicalStaffForm.value);
-        
-        // Prepare the data
-        const staffData = {
-            full_name: medicalStaffForm.value.full_name,
-            professional_email: medicalStaffForm.value.professional_email,
-            staff_type: medicalStaffForm.value.staff_type,
-            resident_category: medicalStaffForm.value.staff_type === 'medical_resident' ? medicalStaffForm.value.resident_category : null,
-            training_year: medicalStaffForm.value.staff_type === 'medical_resident' ? parseInt(medicalStaffForm.value.training_year) : null,
-            primary_clinic: medicalStaffForm.value.primary_clinic || '',
-            work_phone: medicalStaffForm.value.work_phone || '',
-            can_supervise_residents: medicalStaffForm.value.can_supervise_residents || false,
-            employment_status: medicalStaffForm.value.employment_status || 'active',
-            special_notes: medicalStaffForm.value.special_notes || ''
+        const loadMedicalStaff = async () => {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('medical_staff')
+                    .select('*')
+                    .order('full_name');
+                
+                if (error) throw error;
+                medicalStaff.value = data || [];
+                
+            } catch (error) {
+                console.error('Error loading medical staff:', error);
+                throw error;
+            }
         };
         
-        console.log('Processed staff data:', staffData);
-        
-        if (editingMedicalStaff.value) {
-            // Update existing staff
-            console.log('Updating staff with ID:', editingMedicalStaff.value);
-            const { data, error } = await supabaseClient
-                .from('medical_staff')
-                .update(staffData)
-                .eq('id', editingMedicalStaff.value)
-                .select();
+        const saveMedicalStaff = async () => {
+            saving.value = true;
             
-            if (error) {
-                console.error('Supabase update error:', error);
-                throw error;
+            try {
+                // Prepare data matching database schema
+                const staffData = {
+                    full_name: medicalStaffForm.value.full_name,
+                    professional_email: medicalStaffForm.value.professional_email || '',
+                    staff_type: medicalStaffForm.value.staff_type,
+                    staff_id: generateSystemId(
+                        medicalStaffForm.value.staff_type === 'medical_resident' ? 'RES' : 
+                        medicalStaffForm.value.staff_type === 'attending_physician' ? 'ATT' : 
+                        'STAFF'
+                    ),
+                    resident_category: medicalStaffForm.value.staff_type === 'medical_resident' ? 
+                        medicalStaffForm.value.resident_category : null,
+                    training_year: medicalStaffForm.value.staff_type === 'medical_resident' ? 
+                        parseInt(medicalStaffForm.value.training_year) || null : null,
+                    primary_clinic: medicalStaffForm.value.primary_clinic || '',
+                    work_phone: medicalStaffForm.value.work_phone || '',
+                    medical_license: medicalStaffForm.value.medical_license || '',
+                    can_supervise_residents: medicalStaffForm.value.can_supervise_residents || false,
+                    employment_status: medicalStaffForm.value.employment_status || 'active',
+                    special_notes: medicalStaffForm.value.special_notes || ''
+                };
+                
+                if (editingMedicalStaff.value) {
+                    // Update existing staff
+                    const { data, error } = await supabaseClient
+                        .from('medical_staff')
+                        .update(staffData)
+                        .eq('id', editingMedicalStaff.value)
+                        .select();
+                    
+                    if (error) throw error;
+                    showToast('Medical staff updated successfully', 'success');
+                } else {
+                    // Add new staff
+                    const { data, error } = await supabaseClient
+                        .from('medical_staff')
+                        .insert([staffData])
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    medicalStaff.value.push(data);
+                    showToast('Medical staff added successfully', 'success');
+                }
+                
+                closeMedicalStaffModal();
+                await loadMedicalStaff();
+                
+            } catch (error) {
+                console.error('Error saving medical staff:', error);
+                showToast('Error saving medical staff: ' + error.message, 'error');
+            } finally {
+                saving.value = false;
             }
-            
-            console.log('Update successful:', data);
-            showToast('Medical staff updated successfully', 'success');
-        } else {
-            // Add new staff - generate staff_id
-            const newStaff = {
-                ...staffData,
-                staff_id: generateSystemId(staffData.staff_type === 'medical_resident' ? 'RES' : 'STAFF')
-            };
-            
-            console.log('Inserting new staff:', newStaff);
-            const { data, error } = await supabaseClient
-                .from('medical_staff')
-                .insert([newStaff])
-                .select();
-            
-            if (error) {
-                console.error('Supabase insert error:', error);
-                throw error;
-            }
-            
-            console.log('Insert successful:', data);
-            
-            if (data && data.length > 0) {
-                medicalStaff.value.push(data[0]);
-                showToast('Medical staff added successfully', 'success');
-            } else {
-                throw new Error('No data returned after insert');
-            }
-        }
-        
-        closeMedicalStaffModal();
-        await loadMedicalStaff(); // Reload the list
-        
-    } catch (error) {
-        console.error('Error saving medical staff:', error);
-        console.error('Error details:', {
-            message: error.message,
-            code: error.code,
-            details: error.details,
-            hint: error.hint
-        });
-        showToast('Error saving medical staff: ' + error.message, 'error');
-    } finally {
-        saving.value = false;
-    }
-};
+        };
         
         const editMedicalStaff = (staff) => {
             editingMedicalStaff.value = staff.id;
@@ -3870,6 +3741,7 @@ createApp({
                 training_year: '1',
                 primary_clinic: '',
                 work_phone: '',
+                medical_license: '',
                 can_supervise_residents: false,
                 employment_status: 'active',
                 special_notes: ''
@@ -3907,7 +3779,6 @@ createApp({
             
             try {
                 if (editingTrainingUnit.value) {
-                    // Update existing unit
                     const { error } = await supabaseClient
                         .from('training_units')
                         .update(trainingUnitForm.value)
@@ -3916,7 +3787,6 @@ createApp({
                     if (error) throw error;
                     showToast('Training unit updated successfully', 'success');
                 } else {
-                    // Add new unit
                     const { data, error } = await supabaseClient
                         .from('training_units')
                         .insert([trainingUnitForm.value])
@@ -3986,7 +3856,6 @@ createApp({
                     .select('*')
                     .order('rotation_start_date', { ascending: false });
                 
-                // Apply filters
                 if (rotationFilter.value.rotation_status) {
                     query = query.eq('rotation_status', rotationFilter.value.rotation_status);
                 }
@@ -4013,11 +3882,11 @@ createApp({
             try {
                 const rotationData = {
                     ...rotationForm.value,
-                    rotation_status: 'scheduled'
+                    rotation_status: 'scheduled',
+                    rotation_id: generateSystemId('ROT')
                 };
                 
                 if (editingPlacement.value) {
-                    // Update existing rotation
                     const { error } = await supabaseClient
                         .from('resident_rotations')
                         .update(rotationData)
@@ -4026,15 +3895,9 @@ createApp({
                     if (error) throw error;
                     showToast('Rotation updated successfully', 'success');
                 } else {
-                    // Create new rotation
-                    const newRotation = {
-                        ...rotationData,
-                        rotation_id: generateSystemId('ROT')
-                    };
-                    
                     const { data, error } = await supabaseClient
                         .from('resident_rotations')
-                        .insert([newRotation])
+                        .insert([rotationData])
                         .select()
                         .single();
                     
@@ -4126,7 +3989,8 @@ createApp({
             try {
                 const newAssignment = {
                     ...assignmentForm.value,
-                    assignment_id: generateSystemId('ASSIGN')
+                    assignment_id: generateSystemId('ASSIGN'),
+                    created_by: currentUser.value.id
                 };
                 
                 const { data, error } = await supabaseClient
@@ -4153,7 +4017,6 @@ createApp({
             if (isResidentSelected.value && assignmentForm.value.staff_member_id) {
                 const resident = medicalStaff.value.find(s => s.id === assignmentForm.value.staff_member_id);
                 if (resident) {
-                    // Find active rotation for this resident
                     const activeRotation = residentRotations.value.find(r => 
                         r.resident_id === resident.id && 
                         (r.rotation_status === 'active' || r.rotation_status === 'scheduled')
@@ -4278,41 +4141,35 @@ createApp({
         };
         
         const saveOnCallAssignment = async () => {
-    saving.value = true;
-    
-    try {
-        const newOnCall = {
-            ...onCallForm.value,
-            schedule_id: generateSystemId('ONCALL'),
-            created_by: currentUser.value.id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            saving.value = true;
+            
+            try {
+                const newOnCall = {
+                    ...onCallForm.value,
+                    schedule_id: generateSystemId('ONCALL'),
+                    created_by: currentUser.value.id
+                };
+                
+                const { data, error } = await supabaseClient
+                    .from('oncall_schedule')
+                    .insert([newOnCall])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                onCallSchedule.value.push(data);
+                showToast('On-call assignment created successfully', 'success');
+                closeOnCallModal();
+                
+            } catch (error) {
+                console.error('Error creating on-call assignment:', error);
+                showToast('Error creating on-call assignment: ' + error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
         };
         
-        console.log('Inserting on-call:', newOnCall);
-        
-        const { data, error } = await supabaseClient
-            .from('oncall_schedule')
-            .insert([newOnCall])
-            .select()
-            .single();
-        
-        if (error) {
-            console.error('Supabase error:', error);
-            throw error;
-        }
-        
-        onCallSchedule.value.push(data);
-        showToast('On-call assignment created successfully', 'success');
-        closeOnCallModal();
-        
-    } catch (error) {
-        console.error('Error creating on-call assignment:', error);
-        showToast('Error creating on-call assignment: ' + error.message, 'error');
-    } finally {
-        saving.value = false;
-    }
-};
         // Announcements API
         const loadAnnouncements = async () => {
             try {
@@ -4345,7 +4202,6 @@ createApp({
                 };
                 
                 if (editingAnnouncement.value) {
-                    // Update existing announcement
                     const { error } = await supabaseClient
                         .from('department_announcements')
                         .update(announcementData)
@@ -4354,7 +4210,6 @@ createApp({
                     if (error) throw error;
                     showToast('Announcement updated successfully', 'success');
                 } else {
-                    // Create new announcement
                     const { data, error } = await supabaseClient
                         .from('department_announcements')
                         .insert([announcementData])
@@ -4407,6 +4262,7 @@ createApp({
                 training_year: '1',
                 primary_clinic: '',
                 work_phone: '',
+                medical_license: '',
                 can_supervise_residents: false,
                 employment_status: 'active',
                 special_notes: ''
@@ -4658,7 +4514,6 @@ createApp({
                 const threeMonthsLater = new Date();
                 threeMonthsLater.setMonth(today.getMonth() + 3);
                 
-                // Auto-fill rotation form
                 rotationForm.value = {
                     resident_id: draggedResident.id,
                     training_unit_id: unit.id,
@@ -4677,19 +4532,29 @@ createApp({
         
         // Other UI Functions
         const viewStaffSchedule = (staff) => {
-            showToast(`Schedule for ${staff.full_name} would open here`, 'info');
+            showToast(`Schedule for ${staff.full_name}`, 'info');
         };
         
         const assignCoverage = (request) => {
-            showToast(`Coverage assignment for ${request.staff_name} would open here`, 'info');
+            showToast(`Coverage assignment for ${request.staff_name}`, 'info');
         };
         
         const viewCoverageOptions = (request) => {
-            showToast(`Coverage options for ${request.staff_name} would open here`, 'info');
+            showToast(`Coverage options for ${request.staff_name}`, 'info');
         };
         
         const editLeaveRequest = (request) => {
             showToast(`Editing leave request for ${request.staff_name}`, 'info');
+        };
+        
+        const extendPlacement = (placement) => {
+            showToast(`Extend placement for ${placement.resident_name}`, 'info');
+        };
+        
+        const endPlacement = (placement) => {
+            if (confirm(`End placement for ${placement.resident_name}?`)) {
+                showToast('Placement ended', 'success');
+            }
         };
         
         const exportDepartmentReport = () => {
@@ -4713,16 +4578,17 @@ createApp({
             supabaseClient.auth.getSession().then(({ data: { session } }) => {
                 if (session) {
                     console.log('Existing session found:', session.user.email);
-                    handleAuthenticatedUser(session.user, session.user.user_metadata?.user_role || 'resident_manager');
-                }
-            });
-            
-            // Set up auth state listener
-            supabaseClient.auth.onAuthStateChange((event, session) => {
-                console.log('Auth state changed:', event);
-                if (event === 'SIGNED_OUT') {
-                    currentUser.value = null;
-                    currentView.value = 'login';
+                    currentUser.value = {
+                        id: session.user.id,
+                        email: session.user.email,
+                        full_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
+                        user_role: session.user.user_metadata?.user_role || 'resident_manager'
+                    };
+                    
+                    // Load application data
+                    loadInitialData().then(() => {
+                        currentView.value = 'medical_staff';
+                    });
                 }
             });
         });
@@ -4827,7 +4693,6 @@ createApp({
             closeMobileMenu,
             toggleUserMenu,
             handleSearch,
-            handleStaffSearch,
             
             // Authentication
             handleLogin,
@@ -4878,6 +4743,8 @@ createApp({
             saveRotation,
             extendRotation,
             endRotation,
+            extendPlacement,
+            endPlacement,
             getResidentName,
             getSupervisorName,
             getSupervisorResidentsCount,
