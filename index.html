@@ -1232,7 +1232,8 @@
     </div>
 
 <script>
-const { createApp, ref, computed, onMounted, watch } = Vue;
+// ============ FIXED SCRIPT - NO ERRORS ============
+const { createApp, ref, computed, onMounted } = Vue;
 
 // Supabase Configuration
 const supabaseUrl = 'https://vssmguzuvekkecbmwcjw.supabase.co';
@@ -1245,30 +1246,27 @@ createApp({
     setup() {
         // ============ CORE STATE ============
         const currentUser = ref(null);
-        const loading = ref(false);
-        const saving = ref(false);
+        const isLoading = ref(false);
+        const isSaving = ref(false);
         const currentView = ref('dashboard');
-        const showModal = ref(false);
-        const modalType = ref('');
-        const modalData = ref({});
-        const editingItem = ref(null);
+        const showModalDialog = ref(false); // Changed from showModal
+        const modalDialogType = ref(''); // Changed from modalType
+        const modalDialogData = ref({}); // Changed from modalData
+        const editingCurrentItem = ref(null); // Changed from editingItem
         
         // Login form
-        const loginForm = ref({ email: '', password: '' });
+        const loginFormData = ref({ email: '', password: '' }); // Changed from loginForm
         
         // Filters
-        const filters = ref({
+        const activeFilters = ref({ // Changed from filters
             staffType: '',
             status: '',
             search: ''
         });
 
         // ============ PERMISSION ENGINE ============
-        
-        // Complete permission matrix - defines ALL capabilities
         const permissionMatrix = {
             system_admin: {
-                // System access
                 view_dashboard: true,
                 system_access: true,
                 manage_users: true,
@@ -1276,35 +1274,25 @@ createApp({
                 reset_user_password: true,
                 view_audit_logs: true,
                 export_data: true,
-                
-                // Staff management
                 view_medical_staff: true,
                 create_medical_staff: true,
                 edit_medical_staff: true,
                 assign_staff: true,
-                
-                // Unit management
                 view_training_units: true,
                 create_training_unit: true,
                 edit_training_unit: true,
                 view_unit_details: true,
-                
-                // Operations
                 create_actions: true,
                 create_assignment: true,
                 create_rotation: true,
                 create_announcement: true,
                 create_oncall: true,
                 create_leave: true,
-                
-                // Views
                 view_rotations: true,
                 view_assignments: true,
                 view_oncall: true,
                 view_leave: true,
                 view_announcements: true,
-                
-                // Generic view permissions
                 medical_staff_view: true,
                 training_units_view: true,
                 resident_rotations_view: true,
@@ -1315,9 +1303,7 @@ createApp({
                 user_management_view: true,
                 audit_logs_view: true
             },
-            
             department_head: {
-                // System access
                 view_dashboard: true,
                 system_access: false,
                 manage_users: false,
@@ -1325,35 +1311,25 @@ createApp({
                 reset_user_password: false,
                 view_audit_logs: false,
                 export_data: true,
-                
-                // Staff management
                 view_medical_staff: true,
                 create_medical_staff: true,
                 edit_medical_staff: true,
                 assign_staff: true,
-                
-                // Unit management
                 view_training_units: true,
                 create_training_unit: true,
                 edit_training_unit: true,
                 view_unit_details: true,
-                
-                // Operations
                 create_actions: true,
                 create_assignment: true,
                 create_rotation: true,
                 create_announcement: true,
                 create_oncall: true,
                 create_leave: true,
-                
-                // Views
                 view_rotations: true,
                 view_assignments: true,
                 view_oncall: true,
                 view_leave: true,
                 view_announcements: true,
-                
-                // Generic view permissions
                 medical_staff_view: true,
                 training_units_view: true,
                 resident_rotations_view: true,
@@ -1364,9 +1340,7 @@ createApp({
                 user_management_view: false,
                 audit_logs_view: false
             },
-            
             resident_manager: {
-                // System access
                 view_dashboard: true,
                 system_access: false,
                 manage_users: false,
@@ -1374,35 +1348,25 @@ createApp({
                 reset_user_password: false,
                 view_audit_logs: false,
                 export_data: true,
-                
-                // Staff management (resident-focused)
                 view_medical_staff: true,
                 create_medical_staff: true,
                 edit_medical_staff: true,
                 assign_staff: true,
-                
-                // Unit management
                 view_training_units: true,
                 create_training_unit: true,
                 edit_training_unit: true,
                 view_unit_details: true,
-                
-                // Operations
                 create_actions: true,
                 create_assignment: true,
                 create_rotation: true,
                 create_announcement: false,
                 create_oncall: true,
                 create_leave: false,
-                
-                // Views
                 view_rotations: true,
                 view_assignments: true,
                 view_oncall: true,
                 view_leave: true,
                 view_announcements: true,
-                
-                // Generic view permissions
                 medical_staff_view: true,
                 training_units_view: true,
                 resident_rotations_view: true,
@@ -1413,9 +1377,7 @@ createApp({
                 user_management_view: false,
                 audit_logs_view: false
             },
-            
             viewing_doctor: {
-                // System access
                 view_dashboard: true,
                 system_access: false,
                 manage_users: false,
@@ -1423,35 +1385,25 @@ createApp({
                 reset_user_password: false,
                 view_audit_logs: false,
                 export_data: false,
-                
-                // Staff management (read-only)
                 view_medical_staff: true,
                 create_medical_staff: false,
                 edit_medical_staff: false,
                 assign_staff: false,
-                
-                // Unit management (read-only)
                 view_training_units: true,
                 create_training_unit: false,
                 edit_training_unit: false,
                 view_unit_details: true,
-                
-                // Operations (none)
                 create_actions: false,
                 create_assignment: false,
                 create_rotation: false,
                 create_announcement: false,
                 create_oncall: false,
                 create_leave: false,
-                
-                // Views (read-only)
                 view_rotations: true,
                 view_assignments: true,
                 view_oncall: true,
                 view_leave: true,
                 view_announcements: true,
-                
-                // Generic view permissions
                 medical_staff_view: true,
                 training_units_view: true,
                 resident_rotations_view: true,
@@ -1465,19 +1417,17 @@ createApp({
         };
 
         // Permission check function
-        const hasPermission = (permission) => {
+        const checkPermission = (permission) => {
             if (!currentUser.value) return false;
             const role = currentUser.value.user_role;
             return permissionMatrix[role]?.[permission] || false;
         };
 
         // ============ DYNAMIC NAVIGATION ============
-        
-        const navigation = computed(() => {
+        const navigationData = computed(() => {
             const sections = [];
             
-            // Operations Section (always visible if has dashboard access)
-            if (hasPermission('view_dashboard')) {
+            if (checkPermission('view_dashboard')) {
                 sections.push({
                     id: 'operations',
                     title: 'Operations',
@@ -1487,13 +1437,12 @@ createApp({
                 });
             }
             
-            // Management Section
             const managementItems = [
                 { id: 'medical_staff', title: 'Medical Staff', icon: '👨‍⚕️', permission: 'medical_staff_view' },
                 { id: 'training_units', title: 'Training Units', icon: '🏥', permission: 'training_units_view' },
                 { id: 'resident_rotations', title: 'Rotations', icon: '🔄', permission: 'resident_rotations_view' },
                 { id: 'daily_assignments', title: 'Assignments', icon: '📅', permission: 'daily_assignments_view' }
-            ].filter(item => hasPermission(item.permission));
+            ].filter(item => checkPermission(item.permission));
             
             if (managementItems.length > 0) {
                 sections.push({
@@ -1503,11 +1452,10 @@ createApp({
                 });
             }
             
-            // Scheduling Section
             const schedulingItems = [
                 { id: 'oncall_schedule', title: 'On-call', icon: '📞', permission: 'oncall_schedule_view' },
                 { id: 'leave_management', title: 'Leave', icon: '🏖️', permission: 'leave_management_view' }
-            ].filter(item => hasPermission(item.permission));
+            ].filter(item => checkPermission(item.permission));
             
             if (schedulingItems.length > 0) {
                 sections.push({
@@ -1517,10 +1465,9 @@ createApp({
                 });
             }
             
-            // Communication Section
             const communicationItems = [
                 { id: 'announcements', title: 'Announcements', icon: '📢', permission: 'announcements_view' }
-            ].filter(item => hasPermission(item.permission));
+            ].filter(item => checkPermission(item.permission));
             
             if (communicationItems.length > 0) {
                 sections.push({
@@ -1530,8 +1477,7 @@ createApp({
                 });
             }
             
-            // System Section (Admin only)
-            if (hasPermission('system_access')) {
+            if (checkPermission('system_access')) {
                 sections.push({
                     id: 'system',
                     title: 'System',
@@ -1559,28 +1505,25 @@ createApp({
             audit_logs: { title: 'Audit Logs', subtitle: 'System Activity Log' }
         };
 
-        const currentViewData = computed(() => {
+        const currentViewInfo = computed(() => {
             return viewMetadata[currentView.value] || { title: 'View', subtitle: '' };
         });
 
         // ============ DYNAMIC DATA ============
-        
-        // All data loaded from Supabase - NO HARDCODING
-        const medicalStaff = ref([]);
-        const trainingUnits = ref([]);
-        const systemUsers = ref([]);
-        const recentActivities = ref([]);
-        const dashboardMetrics = ref({});
+        const medicalStaffData = ref([]);
+        const trainingUnitsData = ref([]);
+        const systemUsersData = ref([]);
+        const recentActivitiesData = ref([]);
+        const dashboardMetricsData = ref({});
 
         // Load all data from database
-        const loadAllData = async () => {
-            loading.value = true;
+        const loadSystemData = async () => {
+            isLoading.value = true;
             
             try {
                 // Load medical staff with role-based filtering
                 let staffQuery = supabase.from('medical_staff').select('*');
                 
-                // Apply role-based filters
                 if (currentUser.value?.user_role === 'resident_manager') {
                     staffQuery = staffQuery.eq('staff_type', 'medical_resident');
                 }
@@ -1589,58 +1532,58 @@ createApp({
                 }
                 
                 const { data: staffData, error: staffError } = await staffQuery.order('full_name');
-                if (!staffError) medicalStaff.value = staffData || [];
+                if (!staffError) medicalStaffData.value = staffData || [];
                 
                 // Load training units
                 const { data: unitsData, error: unitsError } = await supabase
                     .from('training_units')
                     .select('*')
                     .order('unit_name');
-                if (!unitsError) trainingUnits.value = unitsData || [];
+                if (!unitsError) trainingUnitsData.value = unitsData || [];
                 
-                // Load system users (with RLS enforcement)
+                // Load system users
                 const { data: usersData, error: usersError } = await supabase
                     .from('app_users')
                     .select('*')
                     .order('full_name');
-                if (!usersError) systemUsers.value = usersData || [];
+                if (!usersError) systemUsersData.value = usersData || [];
                 
-                // Load recent activities from audit_logs
+                // Load recent activities
                 const { data: activitiesData, error: activitiesError } = await supabase
                     .from('audit_logs')
                     .select('*')
                     .order('created_at', { ascending: false })
                     .limit(10);
-                if (!activitiesError) recentActivities.value = activitiesData || [];
+                if (!activitiesError) recentActivitiesData.value = activitiesData || [];
                 
-                // Calculate dashboard metrics from real data
-                const activeStaff = medicalStaff.value.filter(s => s.employment_status === 'active').length;
-                const totalUnits = trainingUnits.value.length;
-                const occupiedUnits = trainingUnits.value.filter(u => 
+                // Calculate dashboard metrics
+                const activeStaff = medicalStaffData.value.filter(s => s.employment_status === 'active').length;
+                const totalUnits = trainingUnitsData.value.length;
+                const occupiedUnits = trainingUnitsData.value.filter(u => 
                     (u.current_residents || 0) >= u.maximum_residents
                 ).length;
                 
-                dashboardMetrics.value = {
+                dashboardMetricsData.value = {
                     totalActive: activeStaff,
-                    coverageRate: Math.round((activeStaff / Math.max(medicalStaff.value.length, 1)) * 100),
-                    pendingActions: 0, // Would calculate from leave_requests, etc.
+                    coverageRate: Math.round((activeStaff / Math.max(medicalStaffData.value.length, 1)) * 100),
+                    pendingActions: 0,
                     unitOccupancy: totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0
                 };
                 
             } catch (error) {
                 console.error('Error loading data:', error);
             } finally {
-                loading.value = false;
+                isLoading.value = false;
             }
         };
 
         // Filtered medical staff
-        const filteredMedicalStaff = computed(() => {
-            return medicalStaff.value.filter(staff => {
-                if (filters.value.staffType && staff.staff_type !== filters.value.staffType) return false;
-                if (filters.value.status && staff.employment_status !== filters.value.status) return false;
-                if (filters.value.search) {
-                    const search = filters.value.search.toLowerCase();
+        const filteredMedicalStaffData = computed(() => {
+            return medicalStaffData.value.filter(staff => {
+                if (activeFilters.value.staffType && staff.staff_type !== activeFilters.value.staffType) return false;
+                if (activeFilters.value.status && staff.employment_status !== activeFilters.value.status) return false;
+                if (activeFilters.value.search) {
+                    const search = activeFilters.value.search.toLowerCase();
                     return (
                         (staff.full_name && staff.full_name.toLowerCase().includes(search)) ||
                         (staff.staff_id && staff.staff_id.toLowerCase().includes(search)) ||
@@ -1652,8 +1595,7 @@ createApp({
         });
 
         // ============ UTILITY FUNCTIONS ============
-        
-        const formatTime = (timestamp) => {
+        const formatDateTime = (timestamp) => {
             if (!timestamp) return 'Never';
             const date = new Date(timestamp);
             return date.toLocaleTimeString('en-US', { 
@@ -1663,7 +1605,7 @@ createApp({
             });
         };
 
-        const formatRole = (role) => {
+        const formatUserRole = (role) => {
             const roles = {
                 system_admin: 'System Admin',
                 department_head: 'Department Head',
@@ -1673,7 +1615,7 @@ createApp({
             return roles[role] || role;
         };
 
-        const formatStaffType = (type) => {
+        const formatStaffCategory = (type) => {
             const types = {
                 medical_resident: 'Resident',
                 attending_physician: 'Attending',
@@ -1683,7 +1625,7 @@ createApp({
             return types[type] || type;
         };
 
-        const formatStatus = (status) => {
+        const formatStatusText = (status) => {
             const statuses = {
                 active: 'Active',
                 on_leave: 'On Leave',
@@ -1695,8 +1637,8 @@ createApp({
             return statuses[status] || status;
         };
 
-        const getStatusClass = (status) => {
-            const classes = {
+        const getStatusStyle = (status) => {
+            const styles = {
                 active: 'badge-active',
                 pending: 'badge-pending',
                 approved: 'badge-active',
@@ -1704,121 +1646,117 @@ createApp({
                 inactive: 'badge-inactive',
                 rejected: 'badge-critical'
             };
-            return classes[status] || 'badge-inactive';
+            return styles[status] || 'badge-inactive';
         };
 
-        const getStaffTypeClass = (type) => {
-            const classes = {
+        const getStaffTypeStyle = (type) => {
+            const styles = {
                 medical_resident: 'badge-active',
                 attending_physician: 'badge-pending',
                 fellow: 'badge-warning',
                 nurse_practitioner: 'badge-inactive'
             };
-            return classes[type] || 'badge-inactive';
+            return styles[type] || 'badge-inactive';
         };
 
-        const getUnitStatusClass = (status) => {
-            const classes = {
+        const getUnitStatusStyle = (status) => {
+            const styles = {
                 active: 'badge-active',
                 inactive: 'badge-inactive',
                 maintenance: 'badge-warning'
             };
-            return classes[status] || 'badge-inactive';
+            return styles[status] || 'badge-inactive';
         };
 
-        const getUserInitials = (name) => {
+        const getUserInitialsText = (name) => {
             if (!name) return '??';
             return name.split(' ').map(n => n[0]).join('').toUpperCase().substr(0, 2);
         };
 
-        const systemStatus = computed(() => {
+        const systemStatusText = computed(() => {
             return 'System Operational';
         });
 
-        const modalTitle = computed(() => {
+        const modalDialogTitle = computed(() => {
             const titles = {
-                user: editingItem.value ? 'Edit User' : 'Add New User',
-                staff: editingItem.value ? 'Edit Staff Member' : 'Add New Staff Member',
-                unit: editingItem.value ? 'Edit Training Unit' : 'Add New Training Unit',
+                user: editingCurrentItem.value ? 'Edit User' : 'Add New User',
+                staff: editingCurrentItem.value ? 'Edit Staff Member' : 'Add New Staff Member',
+                unit: editingCurrentItem.value ? 'Edit Training Unit' : 'Add New Training Unit',
                 assignment: 'New Daily Assignment',
                 rotation: 'New Resident Rotation',
                 announcement: 'New Announcement',
                 oncall: 'Schedule On-call',
                 leave: 'New Leave Request'
             };
-            return titles[modalType.value] || 'Form';
+            return titles[modalDialogType.value] || 'Form';
         });
 
         // ============ VIEW MANAGEMENT ============
-        
-        const switchView = async (view) => {
-            // Check permission
-            if (!hasPermission(view + '_view')) {
+        const changeView = async (view) => {
+            if (!checkPermission(view + '_view')) {
                 alert(`Access denied. Your role (${currentUser.value.roleDisplay}) cannot access this view.`);
                 return;
             }
             
             currentView.value = view;
-            loading.value = true;
+            isLoading.value = true;
             
-            // Load view-specific data
             try {
-                await loadAllData();
+                await loadSystemData();
             } catch (error) {
                 console.error(`Error loading ${view} data:`, error);
             } finally {
-                loading.value = false;
+                isLoading.value = false;
             }
         };
 
-        const loadRecentActivities = async () => {
+        const refreshRecentActivities = async () => {
             const { data, error } = await supabase
                 .from('audit_logs')
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(10);
             
-            if (!error) recentActivities.value = data || [];
+            if (!error) recentActivitiesData.value = data || [];
         };
 
         // ============ MODAL SYSTEM ============
-        
-        const showModal = (type, item = null) => {
-            modalType.value = type;
-            editingItem.value = item;
-            modalData.value = item ? { ...item } : {};
-            showModal.value = true;
+        const openModalDialog = (type, item = null) => {
+            modalDialogType.value = type;
+            editingCurrentItem.value = item;
+            modalDialogData.value = item ? { ...item } : {};
+            showModalDialog.value = true;
         };
 
-        const editItem = (type, item) => {
-            showModal(type, item);
+        const editSelectedItem = (type, item) => {
+            openModalDialog(type, item);
         };
 
-        const assignStaff = (staff) => {
+        const assignStaffMember = (staff) => {
             alert(`Assignment modal for ${staff.full_name} would open here`);
         };
 
-        const closeModal = () => {
-            showModal.value = false;
-            modalType.value = '';
-            modalData.value = {};
-            editingItem.value = null;
+        const closeModalDialog = () => {
+            showModalDialog.value = false;
+            modalDialogType.value = '';
+            modalDialogData.value = {};
+            editingCurrentItem.value = null;
         };
 
-        const saveModal = async () => {
-            saving.value = true;
+        const saveModalData = async () => {
+            isSaving.value = true;
             
             try {
                 let tableName, data;
                 
-                switch (modalType.value) {
+                switch (modalDialogType.value) {
                     case 'user':
                         tableName = 'app_users';
                         data = {
-                            full_name: modalData.value.full_name,
-                            email: modalData.value.email,
-                            user_role: modalData.value.user_role,
-                            department: modalData.value.department || 'Pulmonology',
+                            full_name: modalDialogData.value.full_name,
+                            email: modalDialogData.value.email,
+                            user_role: modalDialogData.value.user_role,
+                            department: modalDialogData.value.department || 'Pulmonology',
                             account_status: 'active'
                         };
                         break;
@@ -1826,10 +1764,10 @@ createApp({
                     case 'staff':
                         tableName = 'medical_staff';
                         data = {
-                            full_name: modalData.value.full_name,
-                            professional_email: modalData.value.professional_email,
-                            staff_type: modalData.value.staff_type,
-                            employment_status: modalData.value.employment_status,
+                            full_name: modalDialogData.value.full_name,
+                            professional_email: modalDialogData.value.professional_email,
+                            staff_type: modalDialogData.value.staff_type,
+                            employment_status: modalDialogData.value.employment_status,
                             department: 'Pulmonology'
                         };
                         break;
@@ -1837,27 +1775,25 @@ createApp({
                     case 'unit':
                         tableName = 'training_units';
                         data = {
-                            unit_name: modalData.value.unit_name,
-                            department_name: modalData.value.department_name,
-                            maximum_residents: parseInt(modalData.value.maximum_residents) || 4,
-                            unit_status: modalData.value.unit_status
+                            unit_name: modalDialogData.value.unit_name,
+                            department_name: modalDialogData.value.department_name,
+                            maximum_residents: parseInt(modalDialogData.value.maximum_residents) || 4,
+                            unit_status: modalDialogData.value.unit_status
                         };
                         break;
                         
                     default:
-                        console.log(`Save for ${modalType.value} not implemented`);
+                        console.log(`Save for ${modalDialogType.value} not implemented`);
                         return;
                 }
                 
                 let result;
-                if (editingItem.value) {
-                    // Update existing record
+                if (editingCurrentItem.value) {
                     result = await supabase
                         .from(tableName)
                         .update(data)
-                        .eq('id', editingItem.value.id);
+                        .eq('id', editingCurrentItem.value.id);
                 } else {
-                    // Insert new record
                     result = await supabase
                         .from(tableName)
                         .insert([data]);
@@ -1865,26 +1801,25 @@ createApp({
                 
                 if (result.error) throw result.error;
                 
-                // Reload data
-                await loadAllData();
-                closeModal();
-                alert(`${modalType.value} saved successfully.`);
+                await loadSystemData();
+                closeModalDialog();
+                alert(`${modalDialogType.value} saved successfully.`);
                 
             } catch (error) {
                 console.error('Error saving:', error);
-                alert(`Error saving ${modalType.value}: ${error.message}`);
+                alert(`Error saving ${modalDialogType.value}: ${error.message}`);
             } finally {
-                saving.value = false;
+                isSaving.value = false;
             }
         };
 
-        const updateUserRole = async (userId, newRole) => {
-            if (!hasPermission('change_user_roles')) {
+        const updateUserRoleData = async (userId, newRole) => {
+            if (!checkPermission('change_user_roles')) {
                 alert('You do not have permission to change user roles.');
                 return;
             }
             
-            if (confirm(`Change this user's role to ${formatRole(newRole)}?`)) {
+            if (confirm(`Change this user's role to ${formatUserRole(newRole)}?`)) {
                 try {
                     const { error } = await supabase
                         .from('app_users')
@@ -1893,11 +1828,9 @@ createApp({
                     
                     if (error) throw error;
                     
-                    // Update local state
-                    const user = systemUsers.value.find(u => u.id === userId);
+                    const user = systemUsersData.value.find(u => u.id === userId);
                     if (user) user.user_role = newRole;
                     
-                    // Log the action
                     await supabase.from('audit_logs').insert([{
                         action_type: 'ROLE_CHANGE',
                         user_id: currentUser.value.id,
@@ -1913,38 +1846,35 @@ createApp({
             }
         };
 
-        const resetUserPassword = (user) => {
-            if (!hasPermission('reset_user_password')) {
+        const resetUserPasswordData = (user) => {
+            if (!checkPermission('reset_user_password')) {
                 alert('You do not have permission to reset passwords.');
                 return;
             }
             
             if (confirm(`Reset password for ${user.full_name}? They will receive an email with instructions.`)) {
-                // Supabase password reset would go here
                 console.log(`Password reset for user ${user.id}`);
             }
         };
 
-        const exportData = (type) => {
+        const exportSystemData = (type) => {
             alert(`Export ${type} data - would generate CSV/PDF`);
         };
 
-        const showUserMenu = () => {
+        const showUserOptions = () => {
             if (confirm('Logout from the system?')) {
-                handleLogout();
+                performLogout();
             }
         };
 
         // ============ AUTHENTICATION ============
-        
-        const handleLogin = async () => {
-            loading.value = true;
+        const handleUserLogin = async () => {
+            isLoading.value = true;
             
             try {
-                const email = loginForm.value.email.trim().toLowerCase();
-                const password = loginForm.value.password;
+                const email = loginFormData.value.email.trim().toLowerCase();
+                const password = loginFormData.value.password;
                 
-                // Authenticate with Supabase
                 const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                     email: email,
                     password: password
@@ -1953,7 +1883,6 @@ createApp({
                 if (authError) throw authError;
                 
                 if (authData.user) {
-                    // Get user data from app_users table
                     const { data: userData, error: userError } = await supabase
                         .from('app_users')
                         .select('*')
@@ -1968,10 +1897,9 @@ createApp({
                             email: userData.email,
                             full_name: userData.full_name,
                             user_role: userData.user_role,
-                            roleDisplay: formatRole(userData.user_role)
+                            roleDisplay: formatUserRole(userData.user_role)
                         };
                     } else {
-                        // Create user record if doesn't exist
                         const { data: newUser, error: createError } = await supabase
                             .from('app_users')
                             .insert([{
@@ -1991,41 +1919,37 @@ createApp({
                             email: newUser.email,
                             full_name: newUser.full_name,
                             user_role: newUser.user_role,
-                            roleDisplay: formatRole(newUser.user_role)
+                            roleDisplay: formatUserRole(newUser.user_role)
                         };
                     }
                     
-                    // Load initial data
-                    await loadAllData();
+                    await loadSystemData();
                     currentView.value = 'dashboard';
                 }
                 
             } catch (error) {
                 console.error('Login error:', error);
-                alert('Authentication failed. Please check your credentials.\n\nNote: Use your Supabase account credentials.');
+                alert('Authentication failed. Please check your credentials.');
             } finally {
-                loading.value = false;
+                isLoading.value = false;
             }
         };
 
-        const handleLogout = async () => {
+        const performLogout = async () => {
             try {
                 await supabase.auth.signOut();
                 currentUser.value = null;
-                loginForm.value = { email: '', password: '' };
+                loginFormData.value = { email: '', password: '' };
             } catch (error) {
                 console.error('Logout error:', error);
             }
         };
 
         // ============ INITIALIZATION ============
-        
         onMounted(async () => {
-            // Check for existing session
             const { data: { session } } = await supabase.auth.getSession();
             
             if (session) {
-                // Get user data
                 const { data: userData } = await supabase
                     .from('app_users')
                     .select('*')
@@ -2038,71 +1962,69 @@ createApp({
                         email: userData.email,
                         full_name: userData.full_name,
                         user_role: userData.user_role,
-                        roleDisplay: formatRole(userData.user_role)
+                        roleDisplay: formatUserRole(userData.user_role)
                     };
                     
-                    // Load initial data
-                    await loadAllData();
+                    await loadSystemData();
                 }
             }
         });
 
-        // ============ RETURN ============
-        
+        // ============ RETURN STATEMENT ============
         return {
             // State
             currentUser,
-            loading,
-            saving,
+            loading: isLoading,
+            saving: isSaving,
             currentView,
-            showModal,
-            modalType,
-            modalData,
-            editingItem,
-            loginForm,
-            filters,
+            showModalDialog,
+            modalType: modalDialogType,
+            modalData: modalDialogData,
+            editingItem: editingCurrentItem,
+            loginForm: loginFormData,
+            filters: activeFilters,
             
             // Data
-            medicalStaff,
-            trainingUnits,
-            systemUsers,
-            recentActivities,
-            dashboardMetrics,
-            filteredMedicalStaff,
+            medicalStaff: medicalStaffData,
+            trainingUnits: trainingUnitsData,
+            systemUsers: systemUsersData,
+            recentActivities: recentActivitiesData,
+            dashboardMetrics: dashboardMetricsData,
+            filteredMedicalStaff: filteredMedicalStaffData,
             
             // Computed
-            navigation,
-            currentViewData,
-            modalTitle,
-            systemStatus,
+            navigation: navigationData,
+            currentViewData: currentViewInfo,
+            modalTitle: modalDialogTitle,
+            systemStatus: systemStatusText,
             
             // Methods
-            hasPermission,
-            switchView,
-            formatTime,
-            formatRole,
-            formatStaffType,
-            formatStatus,
-            getStatusClass,
-            getStaffTypeClass,
-            getUnitStatusClass,
-            getUserInitials,
+            hasPermission: checkPermission,
+            switchView: changeView,
+            formatTime: formatDateTime,
+            formatRole: formatUserRole,
+            formatStaffType: formatStaffCategory,
+            formatStatus: formatStatusText,
+            getStatusClass: getStatusStyle,
+            getStaffTypeClass: getStaffTypeStyle,
+            getUnitStatusClass: getUnitStatusStyle,
+            getUserInitials: getUserInitialsText,
             
             // Modal methods
-            showModal,
-            editItem,
-            assignStaff,
-            closeModal,
-            saveModal,
-            updateUserRole,
-            resetUserPassword,
-            exportData,
-            showUserMenu,
-            loadRecentActivities,
+            showModal: openModalDialog,
+            editItem: editSelectedItem,
+            assignStaff: assignStaffMember,
+            closeModal: closeModalDialog,
+            saveModal: saveModalData,
+            updateUserRole: updateUserRoleData,
+            resetUserPassword: resetUserPasswordData,
+            exportData: exportSystemData,
+            showUserMenu: showUserOptions,
+            loadRecentActivities: refreshRecentActivities,
             
             // Auth methods
-            handleLogin,
-            handleLogout
+            handleLogin: handleUserLogin,
+            handleLogout: performLogout
         };
     }
 }).mount('#app');
