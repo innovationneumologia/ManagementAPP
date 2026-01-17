@@ -2709,19 +2709,13 @@
 <script>
 const { createApp, ref, computed, onMounted } = Vue;
 
-// Supabase Configuration - DECLARED ONCE AT TOP LEVEL
+// Use a different name to avoid conflict
 const supabaseUrl = 'https://vssmguzuvekkecbmwcjw.supabase.co';
 const supabaseAnonKey = 'sb_publishable_QDZP5eQTlHHn0SZibWFvCQ_6RqH2f01';
 
-// Create Supabase client - ONLY DECLARED ONCE HERE
-let supabase;
-try {
-    supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
-} catch (error) {
-    console.error('Failed to initialize Supabase:', error);
-}
+// Use supabaseClient instead of supabase
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
-// Create Vue App
 createApp({
     setup() {
         // ============ STATE MANAGEMENT ============
@@ -4481,7 +4475,7 @@ createApp({
         // ============ RETURN ============
         return {
             // State
-             supabase, // ← ADD THIS LINE to your existing return statement
+             supabase: supabaseClient, // ← ADD THIS LINE to your existing return statement
             currentUser,
             loginForm,
             loading,
