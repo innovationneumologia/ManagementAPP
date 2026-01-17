@@ -1408,26 +1408,25 @@
                                         </div>
                                     </div>
 
-                                    <!-- Medical Staff List -->
-                                    <div style="margin-top: 2rem;">
-                                        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
-                                            <select class="form-select" style="width: 180px;" v-model="staffFilter.staff_type" @change="loadMedicalStaff">
-                                                <option value="">All Types</option>
-                                                <option value="medical_resident">Medical Resident</option>
-                                                <option value="attending_physician">Attending Physician</option>
-                                                <option value="fellow">Fellow</option>
-                                                <option value="nurse_practitioner">Nurse Practitioner</option>
-                                            </select>
-                                            <select class="form-select" style="width: 180px;" v-model="staffFilter.employment_status" @change="loadMedicalStaff">
-                                                <option value="">All Status</option>
-                                                <option value="active">Active</option>
-                                                <option value="on_leave">On Leave</option>
-                                                <option value="inactive">Inactive</option>
-                                            </select>
-                                            <input type="text" class="form-input" style="width: 200px;" 
-                                                   v-model="staffSearch" placeholder="Search staff..." @input="handleStaffSearch">
-                                        </div>
-
+                                  <!-- Medical Staff List -->
+<div style="margin-top: 2rem;">
+    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+        <select class="form-select" style="width: 180px;" v-model="staffFilter.staff_type">
+            <option value="">All Types</option>
+            <option value="medical_resident">Medical Resident</option>
+            <option value="attending_physician">Attending Physician</option>
+            <option value="fellow">Fellow</option>
+            <option value="nurse_practitioner">Nurse Practitioner</option>
+        </select>
+        <select class="form-select" style="width: 180px;" v-model="staffFilter.employment_status">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="on_leave">On Leave</option>
+            <option value="inactive">Inactive</option>
+        </select>
+        <input type="text" class="form-input" style="width: 200px;" 
+               v-model="staffSearch" placeholder="Search staff...">
+    </div>
                                         <div v-if="filteredMedicalStaff.length > 0" style="display: grid; gap: 1rem;">
                                             <div v-for="staff in filteredMedicalStaff" :key="staff.id" class="person-card">
                                                 <div class="person-avatar" :class="{ resident: staff.staff_type === 'medical_resident' }">
