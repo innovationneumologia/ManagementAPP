@@ -3819,71 +3819,115 @@ console.log('Auth available:', supabaseClient.auth);
                     }
                 };
 
-                // ============ AUTHENTICATION ============
-                const handleAdvancedLogin = async () => {
-                    loading.value = true;
-                    
-                    try {
-                        // Enhanced authentication with permission validation
-                        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                            email: loginForm.value.email,
-                            password: loginForm.value.password
-                        });
-                        
-                        if (authError) throw authError;
-                        
-                        // Get user from database with permissions
-                        const { data: userData } = await supabase
-                            .from('app_users')
-                            .select('*')
-                            .eq('email', loginForm.value.email)
-                            .single();
-                        
-                        if (!userData) {
-                            throw new Error('User not found in system');
-                        }
-                        
-                        currentUser.value = {
-                            ...userData,
-                            permissions: PermissionSystem.roles[userData.user_role]?.permissions || {}
-                        };
-                        
-                        // Initialize permissions
-                        initializePermissions(userData.user_role);
-                        
-                        showAdvancedToast(
-                            'Login Successful',
-                            `Welcome back, ${userData.full_name}!`,
-                            'success'
-                        );
-                        
-                        logAudit('LOGIN_SUCCESS', `User logged in as ${userData.user_role}`, 'auth');
-                        
-                        // Load initial data
-                        await loadInitialData();
-                        
-                        // Set initial view based on permissions
-                        if (hasPermission('daily_operations', 'read')) {
-                            currentView.value = 'daily_operations';
-                        } else if (hasPermission('medical_staff', 'read')) {
-                            currentView.value = 'medical_staff';
-                        } else {
-                            currentView.value = 'daily_operations';
-                        }
-                        
-                    } catch (error) {
-                        console.error('Login error:', error);
-                        showAdvancedToast(
-                            'Login Failed',
-                            error.message || 'Invalid credentials',
-                            'error'
-                        );
-                        logAudit('LOGIN_FAILED', `Failed login attempt for ${loginForm.value.email}`, 'auth');
-                    } finally {
-                        loading.value = false;
-                    }
-                };
-
+               const handleAdvancedLogin = async () => {
+    loading.value = true;
+    
+    try {
+        // ============ TEMPORARY TEST CREDENTIALS ============
+        // Use these while setting up Supabase database
+        const testCredentials = {
+            'resident.manager@hospital.com': 'password123',
+            'department.head@hospital.com': 'password123',
+            'system.admin@hospital.com': 'password123',
+            'viewing.doctor@hospital.com': 'password123'
+        };
+        
+        const email = loginForm.value.email.trim().toLowerCase();
+        const password = loginForm.value.password;
+        
+        // Check if using test credentials
+        if (testCredentials[email] && password === testCredentials[email]) {
+            console.log('🔐 Using test credentials for:', email);
+            
+            // Create mock user based on email
+            const userMap = {
+                'resident.manager@hospital.com': {
+                    id: 'test-resident-manager-' + Date.now(),
+                    full_name: 'Dr. Sarah Miller',
+                    user_role: 'resident_manager',
+                    email: email
+                },
+                'department.head@hospital.com': {
+                    id: 'test-department-head-' + Date.now(),
+                    full_name: 'Dr. James Wilson',
+                    user_role: 'department_head',
+                    email: email
+                },
+                'system.admin@hospital.com': {
+                    id: 'test-system-admin-' + Date.now(),
+                    full_name: 'System Administrator',
+                    user_role: 'system_admin',
+                    email: email
+                },
+                'viewing.doctor@hospital.com': {
+                    id: 'test-viewing-doctor-' + Date.now(),
+                    full_name: 'Dr. Emily Chen',
+                    user_role: 'viewing_doctor',
+                    email: email
+                }
+            };
+            
+            const userData = userMap[email] || {
+                id: 'test-user-' + Date.now(),
+                full_name: 'Test User',
+                user_role: loginForm.value.user_role,
+                email: email
+            };
+            
+            currentUser.value = {
+                ...userData,
+                permissions: PermissionSystem.roles[userData.user_role]?.permissions || {}
+            };
+            
+            // Initialize permissions
+            initializePermissions(userData.user_role);
+            
+            showAdvancedToast(
+                'Login Successful (Test Mode)',
+                `Welcome ${userData.full_name}!`,
+                'success'
+            );
+            
+            console.log('✅ Test login successful:', currentUser.value);
+            
+            // Load initial data
+            await loadInitialData();
+            
+            // Set initial view
+            if (hasPermission('daily_operations', 'read')) {
+                currentView.value = 'daily_operations';
+            } else if (hasPermission('medical_staff', 'read')) {
+                currentView.value = 'medical_staff';
+            } else {
+                currentView.value = 'daily_operations';
+            }
+            
+            return; // Stop here, don't try Supabase auth
+        }
+        // ============ END TEMPORARY TEST CREDENTIALS ============
+        
+        // Original Supabase authentication (only if not using test credentials)
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email: loginForm.value.email,
+            password: loginForm.value.password
+        });
+        
+        if (authError) throw authError;
+        
+        // Rest of your original code...
+        
+    } catch (error) {
+        console.error('Login error:', error);
+        showAdvancedToast(
+            'Login Failed',
+            error.message || 'Invalid credentials',
+            'error'
+        );
+        logAudit('LOGIN_FAILED', `Failed login attempt for ${loginForm.value.email}`, 'auth');
+    } finally {
+        loading.value = false;
+    }
+};
                 const handleLogout = async () => {
                     try {
                         logAudit('LOGOUT', 'User logged out', 'auth');
