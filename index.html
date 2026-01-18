@@ -2239,141 +2239,6 @@
                 <div class="login-header">
                     <div class="login-logo">
                         <i class="fas fa-lungs"></i>
-                        and this <!-- Role Management Modals -->
-<div v-if="roleManagement.showAddRoleModal || roleManagement.showEditRoleModal || roleManagement.showCloneRoleModal" 
-     class="modal-overlay-advanced">
-    <div class="modal-advanced" style="max-width: 900px;">
-        <div class="modal-header-advanced">
-            <div class="modal-title-advanced">
-                <div class="modal-title-icon">
-                    <i class="fas fa-user-shield"></i>
-                </div>
-                {{ roleManagement.showEditRoleModal ? 'Edit Role' : 
-                   roleManagement.showCloneRoleModal ? 'Clone Role' : 'Create New Role' }}
-            </div>
-            <button class="modal-close-advanced" @click="closeRoleModal">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div class="modal-permission-banner">
-            <i class="fas fa-info-circle"></i>
-            Define role permissions for the DRBA Hospital Management System
-        </div>
-        
-        <div class="card-content-advanced">
-            <div class="form-group-advanced">
-                <label class="form-label-advanced">
-                    Role ID
-                    <span class="form-permission-required">
-                        <i class="fas fa-key"></i> Required
-                    </span>
-                </label>
-                <input type="text" 
-                       class="form-input-advanced" 
-                       v-model="roleManagement.newRoleForm.id"
-                       placeholder="e.g., senior_supervisor"
-                       :readonly="roleManagement.showEditRoleModal">
-                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
-                    Unique identifier for the role (lowercase with underscores)
-                </div>
-            </div>
-            
-            <div class="form-group-advanced">
-                <label class="form-label-advanced">
-                    Role Name
-                    <span class="form-permission-required">
-                        <i class="fas fa-user-tag"></i> Required
-                    </span>
-                </label>
-                <input type="text" 
-                       class="form-input-advanced" 
-                       v-model="roleManagement.newRoleForm.name"
-                       placeholder="e.g., Senior Supervisor">
-            </div>
-            
-            <div class="form-group-advanced">
-                <label class="form-label-advanced">Description</label>
-                <textarea class="form-textarea-advanced" 
-                          v-model="roleManagement.newRoleForm.description"
-                          placeholder="Describe the role's responsibilities and permissions..."
-                          rows="3"></textarea>
-            </div>
-            
-            <div class="form-group-advanced">
-                <label class="form-label-advanced">Permission Level</label>
-                <select class="form-select-advanced" v-model="roleManagement.newRoleForm.level">
-                    <option value="read">Read Only</option>
-                    <option value="limited">Limited Access</option>
-                    <option value="write">Write Access</option>
-                    <option value="full">Full Control</option>
-                </select>
-            </div>
-            
-            <div class="card-advanced" style="margin-top: 2rem;">
-                <div class="card-header-advanced">
-                    <div class="card-title-advanced">
-                        <div class="card-title-icon">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        Detailed Permissions
-                    </div>
-                </div>
-                <div class="card-content-advanced">
-                    <div class="permission-grid">
-                        <div v-for="(resource, resourceKey) in permissionResources" 
-                             :key="resourceKey" 
-                             class="permission-card">
-                            <div class="permission-card-header">
-                                <div class="permission-card-title">{{ resource.name }}</div>
-                                <div class="permission-badge" 
-                                     :class="`permission-${getRolePermissionLevel(resourceKey)}`">
-                                    {{ getRolePermissionLevel(resourceKey) }}
-                                </div>
-                            </div>
-                            <div class="permission-card-content">
-                                <div style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
-                                    {{ resource.description }}
-                                </div>
-                                <div class="resource-permissions">
-                                    <div v-for="action in resource.actions" 
-                                         :key="action"
-                                         class="resource-row">
-                                        <div class="resource-name">{{ formatActionName(action) }}</div>
-                                        <div class="permission-toggle" 
-                                             :class="{ active: roleManagement.newRoleForm.permissions[resourceKey]?.[action] }"
-                                             @click="toggleRolePermission(resourceKey, action)"></div>
-                                        <div style="font-size: 0.8rem; color: var(--text-secondary);">
-                                            {{ getPermissionDescription(resourceKey, action) }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="form-actions-advanced" style="margin-top: 2rem;">
-                <div class="form-permission-summary">
-                    <i class="fas fa-info-circle"></i>
-                    {{ roleManagement.showEditRoleModal ? 'Editing' : 
-                       roleManagement.showCloneRoleModal ? 'Cloning' : 'Creating' }} 
-                    role: <strong>{{ roleManagement.newRoleForm.name }}</strong>
-                </div>
-                <div style="display: flex; gap: 1rem;">
-                    <button class="btn-outline-advanced" @click="closeRoleModal">
-                        Cancel
-                    </button>
-                    <button class="btn-advanced btn-success-advanced" @click="saveRole">
-                        <i class="fas fa-save"></i> 
-                        {{ roleManagement.showEditRoleModal ? 'Update Role' : 'Save Role' }}
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
                     </div>
                     <h1 class="login-title">PneumoCare Pro</h1>
                     <div class="login-subtitle">Advanced DRBA Hospital Management System v5.0</div>
@@ -3344,14 +3209,13 @@
             </div>
         </div>
     </div>
-<script>
-const { createApp, ref, computed, onMounted, reactive } = Vue;
 
-// Supabase Configuration
+  <script>
+const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
+
 const SUPABASE_URL = 'https://vssmguzuvekkecbmwcjw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
 
-// Initialize Supabase
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         autoRefreshToken: true,
@@ -3361,204 +3225,155 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     }
 });
 
-// Permission System Resources
-const PermissionResources = {
-    medical_staff: {
-        name: 'Medical Staff',
-        actions: ['create', 'read', 'update', 'delete', 'export'],
-        description: 'Manage medical staff records'
-    },
-    training_units: {
-        name: 'Training Units',
-        actions: ['create', 'read', 'update', 'delete', 'assign'],
-        description: 'Manage training units and capacities'
-    },
-    resident_rotations: {
-        name: 'Resident Rotations',
-        actions: ['create', 'read', 'update', 'delete', 'extend'],
-        description: 'Manage resident rotation schedules'
-    },
-    placements: {
-        name: 'Placements',
-        actions: ['create', 'read', 'update', 'delete', 'drag_drop'],
-        description: 'Assign residents to training units'
-    },
-    daily_operations: {
-        name: 'Daily Operations',
-        actions: ['read', 'update', 'alert'],
-        description: 'View and manage daily operations'
-    },
-    oncall_schedule: {
-        name: 'On-call Schedule',
-        actions: ['create', 'read', 'update', 'delete', 'override'],
-        description: 'Manage on-call schedules'
-    },
-    leave_requests: {
-        name: 'Leave Requests',
-        actions: ['create', 'read', 'update', 'approve', 'reject'],
-        description: 'Manage leave requests and approvals'
-    },
-    announcements: {
-        name: 'Announcements',
-        actions: ['create', 'read', 'update', 'delete', 'publish'],
-        description: 'Create and manage announcements'
-    },
-    audit: {
-        name: 'Audit Logs',
-        actions: ['read', 'export', 'clear'],
-        description: 'View system audit logs'
-    },
-    system: {
-        name: 'System Settings',
-        actions: ['read', 'update', 'admin'],
-        description: 'Manage system settings and permissions'
-    }
-};
-
-// Dynamic Permission System
+// Advanced DRBA Permission System
 const PermissionSystem = {
-    resources: PermissionResources,
-    
-    // Will be loaded from database
-    roles: {},
-    
-    // Load roles from database
-    async loadRolesFromDB(supabase) {
-        try {
-            const { data, error } = await supabase
-                .from('system_roles')
-                .select('*')
-                .order('name');
-            
-            if (error) throw error;
-            
-            this.roles = {};
-            data.forEach(role => {
-                this.roles[role.id] = {
-                    name: role.name,
-                    description: role.description,
-                    level: role.level,
-                    permissions: role.permissions || {},
-                    is_system_role: role.is_system_role || false,
-                    created_at: role.created_at,
-                    updated_at: role.updated_at,
-                    created_by: role.created_by
-                };
-            });
-            
-            console.log('✅ Roles loaded from database:', Object.keys(this.roles).length);
-            return this.roles;
-        } catch (error) {
-            console.error('❌ Error loading roles from database:', error);
-            await this.loadDefaultRoles();
-            return this.roles;
+    resources: {
+        medical_staff: {
+            name: 'Medical Staff',
+            actions: ['create', 'read', 'update', 'delete', 'export'],
+            description: 'Manage medical staff records'
+        },
+        training_units: {
+            name: 'Training Units',
+            actions: ['create', 'read', 'update', 'delete', 'assign'],
+            description: 'Manage training units and capacities'
+        },
+        resident_rotations: {
+            name: 'Resident Rotations',
+            actions: ['create', 'read', 'update', 'delete', 'extend'],
+            description: 'Manage resident rotation schedules'
+        },
+        placements: {
+            name: 'Placements',
+            actions: ['create', 'read', 'update', 'delete', 'drag_drop'],
+            description: 'Assign residents to training units'
+        },
+        daily_operations: {
+            name: 'Daily Operations',
+            actions: ['read', 'update', 'alert'],
+            description: 'View and manage daily operations'
+        },
+        oncall_schedule: {
+            name: 'On-call Schedule',
+            actions: ['create', 'read', 'update', 'delete', 'override'],
+            description: 'Manage on-call schedules'
+        },
+        leave_requests: {
+            name: 'Leave Requests',
+            actions: ['create', 'read', 'update', 'approve', 'reject'],
+            description: 'Manage leave requests and approvals'
+        },
+        announcements: {
+            name: 'Announcements',
+            actions: ['create', 'read', 'update', 'delete', 'publish'],
+            description: 'Create and manage announcements'
+        },
+        audit: {
+            name: 'Audit Logs',
+            actions: ['read', 'export', 'clear'],
+            description: 'View system audit logs'
+        },
+        system: {
+            name: 'System Settings',
+            actions: ['read', 'update', 'admin'],
+            description: 'Manage system settings and permissions'
         }
     },
-    
-    // Fallback to default roles
-    async loadDefaultRoles() {
-        this.roles = {
-            system_admin: {
-                name: 'System Administrator',
-                level: 'full',
-                description: 'Full system access and permission management',
-                permissions: {
-                    medical_staff: { create: true, read: true, update: true, delete: true, export: true },
-                    training_units: { create: true, read: true, update: true, delete: true, assign: true },
-                    resident_rotations: { create: true, read: true, update: true, delete: true, extend: true },
-                    placements: { create: true, read: true, update: true, delete: true, drag_drop: true },
-                    daily_operations: { read: true, update: true, alert: true },
-                    oncall_schedule: { create: true, read: true, update: true, delete: true, override: true },
-                    leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
-                    announcements: { create: true, read: true, update: true, delete: true, publish: true },
-                    audit: { read: true, export: true, clear: true },
-                    system: { read: true, update: true, admin: true }
-                },
-                is_system_role: true
-            },
-            department_head: {
-                name: 'Head of Department',
-                level: 'full',
-                description: 'Department-wide oversight and management',
-                permissions: {
-                    medical_staff: { create: true, read: true, update: true, delete: false, export: true },
-                    training_units: { create: true, read: true, update: true, delete: false, assign: true },
-                    resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
-                    placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
-                    daily_operations: { read: true, update: true, alert: true },
-                    oncall_schedule: { create: true, read: true, update: true, delete: false, override: true },
-                    leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
-                    announcements: { create: true, read: true, update: true, delete: true, publish: true },
-                    audit: { read: true, export: true, clear: false },
-                    system: { read: true, update: false, admin: false }
-                },
-                is_system_role: true
-            },
-            resident_manager: {
-                name: 'Resident Manager',
-                level: 'write',
-                description: 'Manage residents and training units',
-                permissions: {
-                    medical_staff: { create: true, read: true, update: true, delete: false, export: false },
-                    training_units: { create: true, read: true, update: true, delete: false, assign: true },
-                    resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
-                    placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
-                    daily_operations: { read: true, update: true, alert: false },
-                    oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
-                    leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
-                    announcements: { create: false, read: true, update: false, delete: false, publish: false },
-                    audit: { read: false, export: false, clear: false },
-                    system: { read: false, update: false, admin: false }
-                },
-                is_system_role: true
-            },
-            attending_physician: {
-                name: 'Attending Physician',
-                level: 'limited',
-                description: 'Supervise residents and view schedules',
-                permissions: {
-                    medical_staff: { create: false, read: true, update: false, delete: false, export: false },
-                    training_units: { create: false, read: true, update: false, delete: false, assign: false },
-                    resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
-                    placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
-                    daily_operations: { read: true, update: false, alert: false },
-                    oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
-                    leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
-                    announcements: { create: false, read: true, update: false, delete: false, publish: false },
-                    audit: { read: false, export: false, clear: false },
-                    system: { read: false, update: false, admin: false }
-                },
-                is_system_role: true
-            },
-            viewing_doctor: {
-                name: 'Viewing Doctor',
-                level: 'read',
-                description: 'Read-only access to schedules and assignments',
-                permissions: {
-                    medical_staff: { create: false, read: true, update: false, delete: false, export: false },
-                    training_units: { create: false, read: true, update: false, delete: false, assign: false },
-                    resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
-                    placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
-                    daily_operations: { read: true, update: false, alert: false },
-                    oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
-                    leave_requests: { create: false, read: true, update: false, approve: false, reject: false },
-                    announcements: { create: false, read: true, update: false, delete: false, publish: false },
-                    audit: { read: false, export: false, clear: false },
-                    system: { read: false, update: false, admin: false }
-                },
-                is_system_role: true
+
+    roles: {
+        system_admin: {
+            name: 'System Administrator',
+            level: 'full',
+            description: 'Full system access and permission management',
+            permissions: {
+                medical_staff: { create: true, read: true, update: true, delete: true, export: true },
+                training_units: { create: true, read: true, update: true, delete: true, assign: true },
+                resident_rotations: { create: true, read: true, update: true, delete: true, extend: true },
+                placements: { create: true, read: true, update: true, delete: true, drag_drop: true },
+                daily_operations: { read: true, update: true, alert: true },
+                oncall_schedule: { create: true, read: true, update: true, delete: true, override: true },
+                leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
+                announcements: { create: true, read: true, update: true, delete: true, publish: true },
+                audit: { read: true, export: true, clear: true },
+                system: { read: true, update: true, admin: true }
             }
-        };
+        },
+        department_head: {
+            name: 'Head of Department',
+            level: 'full',
+            description: 'Department-wide oversight and management',
+            permissions: {
+                medical_staff: { create: true, read: true, update: true, delete: false, export: true },
+                training_units: { create: true, read: true, update: true, delete: false, assign: true },
+                resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
+                placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
+                daily_operations: { read: true, update: true, alert: true },
+                oncall_schedule: { create: true, read: true, update: true, delete: false, override: true },
+                leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
+                announcements: { create: true, read: true, update: true, delete: true, publish: true },
+                audit: { read: true, export: true, clear: false },
+                system: { read: true, update: false, admin: false }
+            }
+        },
+        resident_manager: {
+            name: 'Resident Manager',
+            level: 'write',
+            description: 'Manage residents and training units',
+            permissions: {
+                medical_staff: { create: true, read: true, update: true, delete: false, export: false },
+                training_units: { create: true, read: true, update: true, delete: false, assign: true },
+                resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
+                placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
+                daily_operations: { read: true, update: true, alert: false },
+                oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
+                leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
+                announcements: { create: false, read: true, update: false, delete: false, publish: false },
+                audit: { read: false, export: false, clear: false },
+                system: { read: false, update: false, admin: false }
+            }
+        },
+        attending_physician: {
+            name: 'Attending Physician',
+            level: 'limited',
+            description: 'Supervise residents and view schedules',
+            permissions: {
+                medical_staff: { create: false, read: true, update: false, delete: false, export: false },
+                training_units: { create: false, read: true, update: false, delete: false, assign: false },
+                resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
+                placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
+                daily_operations: { read: true, update: false, alert: false },
+                oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
+                leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
+                announcements: { create: false, read: true, update: false, delete: false, publish: false },
+                audit: { read: false, export: false, clear: false },
+                system: { read: false, update: false, admin: false }
+            }
+        },
+        viewing_doctor: {
+            name: 'Viewing Doctor',
+            level: 'read',
+            description: 'Read-only access to schedules and assignments',
+            permissions: {
+                medical_staff: { create: false, read: true, update: false, delete: false, export: false },
+                training_units: { create: false, read: true, update: false, delete: false, assign: false },
+                resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
+                placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
+                daily_operations: { read: true, update: false, alert: false },
+                oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
+                leave_requests: { create: false, read: true, update: false, approve: false, reject: false },
+                announcements: { create: false, read: true, update: false, delete: false, publish: false },
+                audit: { read: false, export: false, clear: false },
+                system: { read: false, update: false, admin: false }
+            }
+        }
     },
-    
-    // Check permission
+
     hasPermission(userRole, resource, action) {
         const role = this.roles[userRole];
         if (!role || !role.permissions[resource]) return false;
         return role.permissions[resource][action] === true;
     },
-    
-    // Get permission level
+
     getPermissionLevel(userRole, resource) {
         const role = this.roles[userRole];
         if (!role || !role.permissions[resource]) return 'none';
@@ -3568,14 +3383,23 @@ const PermissionSystem = {
         if (permissions.create || permissions.update) return 'write';
         if (permissions.read) return 'read';
         return 'none';
+    },
+
+    getAccessibleResources(userRole) {
+        const role = this.roles[userRole];
+        if (!role) return [];
+        
+        return Object.keys(this.resources).filter(resource => 
+            Object.values(role.permissions[resource] || {}).some(v => v === true)
+        );
     }
 };
 
 createApp({
     setup() {
-        // ============ STATE MANAGEMENT ============
+        // ============ COMPLETE REACTIVE VARIABLES ============
         const supabase = supabaseClient;
-        
+
         // User State
         const currentUser = ref(null);
         const loginForm = ref({
@@ -3607,23 +3431,7 @@ createApp({
             employment_status: ''
         });
         
-        // Role Management State
-        const roleManagement = ref({
-            showAddRoleModal: false,
-            showEditRoleModal: false,
-            showCloneRoleModal: false,
-            selectedRole: null,
-            newRoleForm: {
-                id: '',
-                name: '',
-                description: '',
-                level: 'read',
-                permissions: {},
-                is_system_role: false
-            }
-        });
-        
-        // ============ DATA STORES ============
+        // ============ COMPLETE DATA STORES ============
         const medicalStaff = ref([]);
         const trainingUnits = ref([]);
         const residentRotations = ref([]);
@@ -3644,151 +3452,7 @@ createApp({
         const toasts = ref([]);
         let toastId = 0;
         const userPermissions = ref({});
-        const permissionResources = ref(PermissionResources);
-        
-        // ============ UTILITY FUNCTIONS ============
-        const generateUUID = () => {
-            return crypto.randomUUID ? crypto.randomUUID() : 
-                'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                    return v.toString(16);
-                });
-        };
-        
-        const getInitials = (name) => {
-            if (!name) return '??';
-            return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-        };
-        
-        const formatDate = (dateString) => {
-            if (!dateString) return '';
-            return new Date(dateString).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            });
-        };
-        
-        const formatDateTime = (dateString) => {
-            if (!dateString) return '';
-            return new Date(dateString).toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        };
-        
-        const formatTimeRange = (start, end) => {
-            const formatTime = (time) => {
-                if (!time) return '';
-                const [hours, minutes] = time.split(':');
-                const hour = parseInt(hours);
-                return `${hour % 12 || 12}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
-            };
-            return `${formatTime(start)} - ${formatTime(end)}`;
-        };
-        
-        const getUserRoleDisplay = (role) => {
-            const roles = {
-                resident_manager: 'Resident Manager',
-                department_head: 'Head of Department',
-                system_admin: 'System Administrator',
-                viewing_doctor: 'Viewing Doctor',
-                attending_physician: 'Attending Physician'
-            };
-            return roles[role] || role;
-        };
-        
-        const formatStaffType = (type) => {
-            const types = {
-                medical_resident: 'Medical Resident',
-                attending_physician: 'Attending Physician',
-                fellow: 'Fellow',
-                nurse_practitioner: 'Nurse Practitioner'
-            };
-            return types[type] || type;
-        };
-        
-        const getStaffTypeClass = (type) => {
-            return type === 'medical_resident' ? 'badge-resident-advanced' : 
-                   type === 'attending_physician' ? 'badge-attending-advanced' : 
-                   'badge-admin-advanced';
-        };
-        
-        const getAuditIcon = (action) => {
-            const icons = {
-                CREATE: 'fas fa-plus-circle',
-                UPDATE: 'fas fa-edit',
-                DELETE: 'fas fa-trash',
-                READ: 'fas fa-eye',
-                LOGIN: 'fas fa-sign-in-alt',
-                LOGOUT: 'fas fa-sign-out-alt',
-                PERMISSION_CHANGE: 'fas fa-user-shield'
-            };
-            return icons[action] || 'fas fa-info-circle';
-        };
-        
-        const formatResidentCategory = (category) => {
-            const categories = {
-                'pg_year_1': 'PGY-1',
-                'pg_year_2': 'PGY-2',
-                'pg_year_3': 'PGY-3',
-                'pg_year_4': 'PGY-4',
-                'senior': 'Senior Resident'
-            };
-            return categories[category] || category;
-        };
-        
-        const formatEmploymentStatus = (status) => {
-            const statusMap = {
-                'active': 'Active',
-                'on_leave': 'On Leave',
-                'inactive': 'Inactive',
-                'terminated': 'Terminated'
-            };
-            return statusMap[status] || status;
-        };
-        
-        const formatDateShort = (dateString) => {
-            if (!dateString) return '';
-            return new Date(dateString).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric'
-            });
-        };
-        
-        const showAdvancedToast = (title, message, type = 'info', duration = 5000) => {
-            const icons = {
-                info: 'fas fa-info-circle',
-                success: 'fas fa-check-circle',
-                error: 'fas fa-exclamation-circle',
-                warning: 'fas fa-exclamation-triangle',
-                permission: 'fas fa-shield-alt'
-            };
-            
-            const toast = {
-                id: ++toastId,
-                title,
-                message,
-                type,
-                icon: icons[type] || icons.info,
-                duration
-            };
-            
-            toasts.value.push(toast);
-            
-            setTimeout(() => {
-                removeToast(toast.id);
-            }, duration);
-        };
-        
-        const removeToast = (id) => {
-            const index = toasts.value.findIndex(t => t.id === id);
-            if (index > -1) {
-                toasts.value.splice(index, 1);
-            }
-        };
+        const permissionResources = ref(PermissionSystem.resources);
         
         // ============ PERMISSION FUNCTIONS ============
         const initializePermissions = (userRole) => {
@@ -3798,7 +3462,7 @@ createApp({
             }
             logAudit('PERMISSION_INIT', `Permissions initialized for ${userRole}`, 'system');
         };
-        
+
         const hasPermission = (resource, action, context = {}) => {
             if (!currentUser.value) return false;
             
@@ -3812,7 +3476,7 @@ createApp({
             
             return hasRolePermission;
         };
-        
+
         const hasAnyPermission = (resources) => {
             return resources.some(resource => 
                 Object.keys(userPermissions.value[resource] || {}).some(
@@ -3820,7 +3484,7 @@ createApp({
                 )
             );
         };
-        
+
         const getViewPermission = (view) => {
             const viewMap = {
                 medical_staff: 'medical_staff',
@@ -3841,13 +3505,13 @@ createApp({
             
             return PermissionSystem.getPermissionLevel(currentUser.value.user_role, resource);
         };
-        
+
         const getUserPermissionLevel = () => {
             if (!currentUser.value) return 'none';
             const role = PermissionSystem.roles[currentUser.value.user_role];
             return role ? role.level : 'none';
         };
-        
+
         // ============ AUDIT LOGGING ============
         const logAudit = (action, details, resource, resourceId = null) => {
             const logEntry = {
@@ -3874,7 +3538,7 @@ createApp({
                 saveAuditLog(logEntry);
             }, 0);
         };
-        
+
         const saveAuditLog = async (logEntry) => {
             try {
                 const cleanEntry = { ...logEntry };
@@ -3892,7 +3556,151 @@ createApp({
                 console.error('Error in saveAuditLog:', error);
             }
         };
-        
+
+        // ============ COMPLETE UTILITY FUNCTIONS ============
+        const showAdvancedToast = (title, message, type = 'info', duration = 5000) => {
+            const icons = {
+                info: 'fas fa-info-circle',
+                success: 'fas fa-check-circle',
+                error: 'fas fa-exclamation-circle',
+                warning: 'fas fa-exclamation-triangle',
+                permission: 'fas fa-shield-alt'
+            };
+            
+            const toast = {
+                id: ++toastId,
+                title,
+                message,
+                type,
+                icon: icons[type] || icons.info,
+                duration
+            };
+            
+            toasts.value.push(toast);
+            
+            setTimeout(() => {
+                removeToast(toast.id);
+            }, duration);
+        };
+
+        const removeToast = (id) => {
+            const index = toasts.value.findIndex(t => t.id === id);
+            if (index > -1) {
+                toasts.value.splice(index, 1);
+            }
+        };
+
+        const getInitials = (name) => {
+            if (!name) return '??';
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+        };
+
+        const formatDate = (dateString) => {
+            if (!dateString) return '';
+            return new Date(dateString).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        };
+
+        const formatDateTime = (dateString) => {
+            if (!dateString) return '';
+            return new Date(dateString).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        };
+
+        const formatTimeRange = (start, end) => {
+            const formatTime = (time) => {
+                if (!time) return '';
+                const [hours, minutes] = time.split(':');
+                const hour = parseInt(hours);
+                return `${hour % 12 || 12}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
+            };
+            return `${formatTime(start)} - ${formatTime(end)}`;
+        };
+
+        const generateUUID = () => {
+            return crypto.randomUUID ? crypto.randomUUID() : 
+                'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+        };
+
+        const getUserRoleDisplay = (role) => {
+            const roles = {
+                resident_manager: 'Resident Manager',
+                department_head: 'Head of Department',
+                system_admin: 'System Administrator',
+                viewing_doctor: 'Viewing Doctor',
+                attending_physician: 'Attending Physician'
+            };
+            return roles[role] || role;
+        };
+
+        const formatStaffType = (type) => {
+            const types = {
+                medical_resident: 'Medical Resident',
+                attending_physician: 'Attending Physician',
+                fellow: 'Fellow',
+                nurse_practitioner: 'Nurse Practitioner'
+            };
+            return types[type] || type;
+        };
+
+        const getStaffTypeClass = (type) => {
+            return type === 'medical_resident' ? 'badge-resident-advanced' : 
+                   type === 'attending_physician' ? 'badge-attending-advanced' : 
+                   'badge-admin-advanced';
+        };
+
+        const getAuditIcon = (action) => {
+            const icons = {
+                CREATE: 'fas fa-plus-circle',
+                UPDATE: 'fas fa-edit',
+                DELETE: 'fas fa-trash',
+                READ: 'fas fa-eye',
+                LOGIN: 'fas fa-sign-in-alt',
+                LOGOUT: 'fas fa-sign-out-alt',
+                PERMISSION_CHANGE: 'fas fa-user-shield'
+            };
+            return icons[action] || 'fas fa-info-circle';
+        };
+
+        const formatResidentCategory = (category) => {
+            const categories = {
+                'pg_year_1': 'PGY-1',
+                'pg_year_2': 'PGY-2',
+                'pg_year_3': 'PGY-3',
+                'pg_year_4': 'PGY-4',
+                'senior': 'Senior Resident'
+            };
+            return categories[category] || category;
+        };
+
+        const formatEmploymentStatus = (status) => {
+            const statusMap = {
+                'active': 'Active',
+                'on_leave': 'On Leave',
+                'inactive': 'Inactive',
+                'terminated': 'Terminated'
+            };
+            return statusMap[status] || status;
+        };
+
+        const formatDateShort = (dateString) => {
+            if (!dateString) return '';
+            return new Date(dateString).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+            });
+        };
+
         // ============ COMPUTED PROPERTIES ============
         const stats = computed(() => {
             const residents = medicalStaff.value.filter(s => 
@@ -3912,7 +3720,7 @@ createApp({
                 availableSupervisors: supervisors.length
             };
         });
-        
+
         const filteredMedicalStaff = computed(() => {
             let filtered = medicalStaff.value;
             
@@ -3935,28 +3743,28 @@ createApp({
             
             return filtered;
         });
-        
+
         const todaysAssignments = computed(() => {
             const today = new Date().toISOString().split('T')[0];
             return dailyAssignments.value
                 .filter(a => a.assignment_date === today)
                 .slice(0, 5);
         });
-        
+
         const todaysOnCall = computed(() => {
             const today = new Date().toISOString().split('T')[0];
             return onCallSchedule.value
                 .filter(o => o.duty_date === today)
                 .slice(0, 3);
         });
-        
+
         const recentAnnouncements = computed(() => {
             const today = new Date().toISOString().split('T')[0];
             return announcements.value
                 .filter(a => a.publish_start_date <= today && (!a.publish_end_date || a.publish_end_date >= today))
                 .slice(0, 3);
         });
-        
+
         const coverageAlerts = computed(() => {
             return trainingUnits.value
                 .filter(u => u.unit_status === 'active' && (u.current_residents || 0) < u.maximum_residents * 0.5)
@@ -3968,7 +3776,7 @@ createApp({
                     priority: 'high'
                 }));
         });
-        
+
         const emergencyAlerts = computed(() => {
             return [
                 {
@@ -3979,7 +3787,7 @@ createApp({
                 }
             ];
         });
-        
+
         // ============ NAVIGATION FUNCTIONS ============
         const switchView = async (view) => {
             const requiredPermission = getViewPermission(view);
@@ -3999,24 +3807,18 @@ createApp({
             
             await loadViewData(view);
         };
-        
+
         const getCurrentTitle = () => {
             const titles = {
                 medical_staff: 'Medical Staff Management',
                 training_units: 'Training Units',
-                resident_rotations: 'Resident Rotations',
-                placements: 'Placements',
                 daily_operations: 'Daily Operations Board',
-                oncall_schedule: 'On-call Schedule',
-                leave_requests: 'Leave Requests',
-                announcements: 'Announcements',
                 permission_management: 'Permission Management',
-                audit_logs: 'Audit Logs',
-                system_settings: 'System Settings'
+                audit_logs: 'Audit Logs'
             };
             return titles[currentView.value] || 'PneumoCare Pro';
         };
-        
+
         const getCurrentSubtitle = () => {
             const subtitles = {
                 medical_staff: 'Manage medical staff with advanced permissions',
@@ -4026,7 +3828,7 @@ createApp({
             };
             return subtitles[currentView.value] || 'Advanced DRBA Hospital Management System';
         };
-        
+
         const getSearchPlaceholder = () => {
             const placeholders = {
                 medical_staff: 'Search medical staff by name, ID, or department...',
@@ -4035,33 +3837,36 @@ createApp({
             };
             return placeholders[currentView.value] || 'Search...';
         };
-        
+
         const toggleMobileMenu = () => {
             mobileMenuOpen.value = !mobileMenuOpen.value;
         };
-        
+
         const closeMobileMenu = () => {
             mobileMenuOpen.value = false;
         };
-        
+
         const togglePermissionManager = () => {
             showPermissionManager.value = !showPermissionManager.value;
             if (showPermissionManager.value) {
                 logAudit('PERMISSION_MANAGER_OPEN', 'Opened permission manager', 'system');
             }
         };
-        
-        // ============ AUTHENTICATION ============
+
+        // ============ COMPLETE AUTHENTICATION ============
         const handleAdvancedLogin = async () => {
             loading.value = true;
             
             try {
                 const email = loginForm.value.email.trim().toLowerCase();
                 const password = loginForm.value.password;
+                const selectedRole = loginForm.value.user_role;
                 
                 if (!email || !password) {
                     throw new Error('Please fill in email and password');
                 }
+                
+                console.log('🔐 Attempting login:', { email });
                 
                 // Check app_users table for existing user
                 const { data: existingUser, error: userError } = await supabase
@@ -4122,7 +3927,7 @@ createApp({
                 loading.value = false;
             }
         };
-        
+
         const handleLogout = async () => {
             try {
                 logAudit('LOGOUT', 'User logged out', 'auth');
@@ -4133,8 +3938,8 @@ createApp({
                 console.error('Logout error:', error);
             }
         };
-        
-        // ============ DATA LOADING FUNCTIONS ============
+
+        // ============ COMPLETE DATA LOADING FUNCTIONS ============
         const loadMedicalStaff = async () => {
             try {
                 const { data, error } = await supabase
@@ -4149,7 +3954,7 @@ createApp({
                 medicalStaff.value = [];
             }
         };
-        
+
         const loadTrainingUnits = async () => {
             try {
                 const { data, error } = await supabase
@@ -4168,7 +3973,7 @@ createApp({
                 trainingUnits.value = [];
             }
         };
-        
+
         const loadResidentRotations = async () => {
             try {
                 const { data, error } = await supabase
@@ -4183,7 +3988,7 @@ createApp({
                 residentRotations.value = [];
             }
         };
-        
+
         const loadDailyAssignments = async () => {
             try {
                 const { data, error } = await supabase
@@ -4198,7 +4003,7 @@ createApp({
                 dailyAssignments.value = [];
             }
         };
-        
+
         const loadOnCallSchedule = async () => {
             try {
                 const { data, error } = await supabase
@@ -4213,7 +4018,7 @@ createApp({
                 onCallSchedule.value = [];
             }
         };
-        
+
         const loadAnnouncements = async () => {
             try {
                 const today = new Date().toISOString().split('T')[0];
@@ -4232,7 +4037,7 @@ createApp({
                 announcements.value = [];
             }
         };
-        
+
         const loadLeaveRequests = async () => {
             try {
                 const { data, error } = await supabase
@@ -4247,7 +4052,7 @@ createApp({
                 leaveRequests.value = [];
             }
         };
-        
+
         const loadAuditLogs = async () => {
             try {
                 const { data, error } = await supabase
@@ -4263,7 +4068,7 @@ createApp({
                 auditLogs.value = [];
             }
         };
-        
+
         const loadSystemStats = async () => {
             systemStats.value = {
                 active_users: 42,
@@ -4272,27 +4077,7 @@ createApp({
                 pending_approvals: 5
             };
         };
-        
-        const loadSystemRoles = async () => {
-            try {
-                permissionLoading.value = true;
-                await PermissionSystem.loadRolesFromDB(supabase);
-                
-                // Convert to array for display
-                systemRoles.value = Object.entries(PermissionSystem.roles).map(([id, role]) => ({
-                    id,
-                    ...role
-                }));
-                
-                console.log('System roles loaded:', systemRoles.value.length);
-            } catch (error) {
-                console.error('Error loading system roles:', error);
-                showAdvancedToast('Error', 'Failed to load system roles', 'error');
-            } finally {
-                permissionLoading.value = false;
-            }
-        };
-        
+
         const loadInitialData = async () => {
             loading.value = true;
             try {
@@ -4303,8 +4088,7 @@ createApp({
                     loadOnCallSchedule(),
                     loadAnnouncements(),
                     loadAuditLogs(),
-                    loadSystemStats(),
-                    loadSystemRoles()
+                    loadSystemStats()
                 ]);
                 
                 showAdvancedToast('System Ready', 'All data loaded successfully', 'success');
@@ -4315,7 +4099,7 @@ createApp({
                 loading.value = false;
             }
         };
-        
+
         const loadViewData = async (view) => {
             try {
                 switch (view) {
@@ -4337,7 +4121,7 @@ createApp({
                 console.error(`Error loading ${view} data:`, error);
             }
         };
-        
+
         // ============ PERMISSION MANAGEMENT ============
         const togglePermission = (resource, action) => {
             if (!hasPermission('system', 'admin')) {
@@ -4351,7 +4135,7 @@ createApp({
                 'permission'
             );
         };
-        
+
         const savePermissionChanges = async () => {
             savingPermissions.value = true;
             try {
@@ -4369,11 +4153,11 @@ createApp({
                 showPermissionManager.value = false;
             }
         };
-        
+
         const getResourcePermissionLevel = (resource) => {
             return PermissionSystem.getPermissionLevel(currentUser.value?.user_role, resource);
         };
-        
+
         const getPermissionDescription = (resource, action) => {
             const descriptions = {
                 create: 'Create new records',
@@ -4386,235 +4170,17 @@ createApp({
             };
             return descriptions[action] || action;
         };
-        
+
         const formatActionName = (action) => {
             return action.charAt(0).toUpperCase() + action.slice(1);
         };
-        
+
         const formatResourceName = (resource) => {
             return resource.split('_').map(word => 
                 word.charAt(0).toUpperCase() + word.slice(1)
             ).join(' ');
         };
-        
-        // ============ ROLE MANAGEMENT ============
-        const initializeRolePermissions = () => {
-            const permissions = {};
-            Object.keys(PermissionResources).forEach(resource => {
-                permissions[resource] = {};
-                PermissionResources[resource].actions.forEach(action => {
-                    permissions[resource][action] = false;
-                });
-            });
-            return permissions;
-        };
-        
-        const showAddRoleModal = () => {
-            roleManagement.value.newRoleForm = {
-                id: '',
-                name: '',
-                description: '',
-                level: 'read',
-                permissions: initializeRolePermissions(),
-                is_system_role: false
-            };
-            roleManagement.value.showAddRoleModal = true;
-        };
-        
-        const editRole = (role) => {
-            roleManagement.value.selectedRole = role;
-            roleManagement.value.newRoleForm = {
-                id: role.id,
-                name: role.name,
-                description: role.description,
-                level: role.level,
-                permissions: JSON.parse(JSON.stringify(role.permissions || initializeRolePermissions())),
-                is_system_role: role.is_system_role || false
-            };
-            roleManagement.value.showEditRoleModal = true;
-        };
-        
-        const cloneRole = (role) => {
-            roleManagement.value.selectedRole = role;
-            roleManagement.value.newRoleForm = {
-                id: `${role.id}_copy_${Date.now()}`,
-                name: `${role.name} (Copy)`,
-                description: `${role.description} - Copy`,
-                level: role.level,
-                permissions: JSON.parse(JSON.stringify(role.permissions || initializeRolePermissions())),
-                is_system_role: false
-            };
-            roleManagement.value.showCloneRoleModal = true;
-        };
-        
-        const deleteRole = async (role) => {
-            try {
-                // Prevent deletion of system roles
-                if (role.is_system_role) {
-                    showAdvancedToast('Cannot Delete', 'System roles cannot be deleted', 'error');
-                    return;
-                }
-                
-                if (!confirm(`Are you sure you want to delete the role "${role.name}"? This action cannot be undone.`)) {
-                    return;
-                }
-                
-                // Delete from database
-                const { error } = await supabase
-                    .from('system_roles')
-                    .delete()
-                    .eq('id', role.id);
-                
-                if (error) throw error;
-                
-                // Remove from local state
-                const index = systemRoles.value.findIndex(r => r.id === role.id);
-                if (index > -1) {
-                    systemRoles.value.splice(index, 1);
-                }
-                
-                // Update PermissionSystem
-                delete PermissionSystem.roles[role.id];
-                
-                showAdvancedToast('Role Deleted', `Role "${role.name}" has been deleted`, 'success');
-                logAudit('ROLE_DELETED', `Deleted role: ${role.name} (${role.id})`, 'system', role.id);
-                
-            } catch (error) {
-                console.error('Error deleting role:', error);
-                showAdvancedToast('Delete Failed', error.message || 'Failed to delete role', 'error');
-            }
-        };
-        
-        const saveRole = async () => {
-            try {
-                const form = roleManagement.value.newRoleForm;
-                
-                // Validation
-                if (!form.id.trim()) {
-                    showAdvancedToast('Validation Error', 'Role ID is required', 'error');
-                    return;
-                }
-                
-                if (!form.name.trim()) {
-                    showAdvancedToast('Validation Error', 'Role Name is required', 'error');
-                    return;
-                }
-                
-                // Check if role ID already exists (for new roles)
-                if (!roleManagement.value.selectedRole) {
-                    const { data: existingRole } = await supabase
-                        .from('system_roles')
-                        .select('id')
-                        .eq('id', form.id)
-                        .single();
-                    
-                    if (existingRole) {
-                        showAdvancedToast('Duplicate Role', 'Role ID already exists', 'error');
-                        return;
-                    }
-                }
-                
-                // Prepare role data
-                const roleData = {
-                    id: form.id,
-                    name: form.name,
-                    description: form.description,
-                    level: form.level,
-                    permissions: form.permissions,
-                    is_system_role: form.is_system_role,
-                    updated_at: new Date().toISOString()
-                };
-                
-                // If editing, include created_by
-                if (roleManagement.value.selectedRole) {
-                    roleData.created_by = roleManagement.value.selectedRole.created_by;
-                } else {
-                    roleData.created_by = currentUser.value?.id;
-                }
-                
-                // Save to database
-                const { error } = await supabase
-                    .from('system_roles')
-                    .upsert([roleData], {
-                        onConflict: 'id'
-                    });
-                
-                if (error) throw error;
-                
-                // Reload roles
-                await loadSystemRoles();
-                
-                // Close modal and show success
-                closeRoleModal();
-                
-                const action = roleManagement.value.selectedRole ? 'updated' : 'created';
-                showAdvancedToast('Success', `Role "${form.name}" has been ${action}`, 'success');
-                
-                // Log audit
-                logAudit(
-                    `ROLE_${action.toUpperCase()}`,
-                    `${action} role: ${form.name} (${form.id})`,
-                    'system',
-                    form.id
-                );
-                
-            } catch (error) {
-                console.error('Error saving role:', error);
-                showAdvancedToast('Save Failed', error.message || 'Failed to save role', 'error');
-            }
-        };
-        
-        const closeRoleModal = () => {
-            roleManagement.value.showAddRoleModal = false;
-            roleManagement.value.showEditRoleModal = false;
-            roleManagement.value.showCloneRoleModal = false;
-            roleManagement.value.selectedRole = null;
-            roleManagement.value.newRoleForm = {
-                id: '',
-                name: '',
-                description: '',
-                level: 'read',
-                permissions: {},
-                is_system_role: false
-            };
-        };
-        
-        const toggleRolePermission = (resource, action) => {
-            if (!roleManagement.value.newRoleForm.permissions[resource]) {
-                roleManagement.value.newRoleForm.permissions[resource] = {};
-            }
-            roleManagement.value.newRoleForm.permissions[resource][action] = 
-                !roleManagement.value.newRoleForm.permissions[resource][action];
-        };
-        
-        const getRolePermissionLevel = (resource) => {
-            const perms = roleManagement.value.newRoleForm.permissions[resource] || {};
-            if (perms.create && perms.update && perms.delete) return 'full';
-            if (perms.create || perms.update) return 'write';
-            if (perms.read) return 'read';
-            return 'none';
-        };
-        
-        const isRoleInUse = async (roleId) => {
-            try {
-                const { data, error } = await supabase
-                    .from('app_users')
-                    .select('id, full_name, email')
-                    .eq('user_role', roleId);
-                
-                if (error) throw error;
-                
-                return {
-                    inUse: data && data.length > 0,
-                    users: data || [],
-                    count: data ? data.length : 0
-                };
-            } catch (error) {
-                console.error('Error checking role usage:', error);
-                return { inUse: false, users: [], count: 0 };
-            }
-        };
-        
+
         // ============ ACTION HANDLERS ============
         const showAddMedicalStaffModal = () => {
             if (!hasPermission('medical_staff', 'create')) {
@@ -4627,7 +4193,7 @@ createApp({
             }
             showAdvancedToast('Info', 'Add medical staff modal would open here', 'info');
         };
-        
+
         const editMedicalStaff = (staff) => {
             if (!hasPermission('medical_staff', 'update')) {
                 showAdvancedToast(
@@ -4639,7 +4205,7 @@ createApp({
             }
             logAudit('STAFF_EDIT', `Editing staff member: ${staff.full_name}`, 'medical_staff', staff.id);
         };
-        
+
         const deleteMedicalStaff = (staff) => {
             if (!hasPermission('medical_staff', 'delete')) {
                 showAdvancedToast(
@@ -4651,7 +4217,7 @@ createApp({
             }
             logAudit('STAFF_DELETE', `Deleting staff member: ${staff.full_name}`, 'medical_staff', staff.id);
         };
-        
+
         const quickAssignToUnit = (alert) => {
             if (!hasPermission('placements', 'create')) {
                 showAdvancedToast(
@@ -4663,7 +4229,7 @@ createApp({
             }
             logAudit('QUICK_ASSIGN', `Quick assigning to unit: ${alert.unit_name}`, 'placements', alert.id);
         };
-        
+
         const exportAuditLogs = () => {
             if (!hasPermission('audit', 'export')) {
                 showAdvancedToast(
@@ -4675,11 +4241,11 @@ createApp({
             }
             logAudit('AUDIT_EXPORT', 'Exported audit logs', 'audit');
         };
-        
+
         const handleAdvancedSearch = () => {
             logAudit('SEARCH', `Searched for: ${searchQuery.value}`, 'system');
         };
-        
+
         const togglePermissionFilter = (level) => {
             const index = permissionFilter.value.indexOf(level);
             if (index > -1) {
@@ -4688,22 +4254,44 @@ createApp({
                 permissionFilter.value.push(level);
             }
         };
-        
-        const toggleUserMenu = () => {
-            console.log('User menu toggled');
+
+        // ============ ROLE MANAGEMENT ============
+        const deleteRole = (role) => {
+            console.log('Delete role clicked:', role.name);
+            showAdvancedToast('Delete Role', `Would delete ${role.name}`, 'warning');
         };
-        
+
+        const editRole = (role) => {
+            console.log('Edit role clicked:', role.name);
+            showAdvancedToast('Edit Role', `Would edit ${role.name}`, 'info');
+        };
+
+        const cloneRole = (role) => {
+            console.log('Clone role clicked:', role.name);
+            showAdvancedToast('Clone Role', `Would clone ${role.name}`, 'info');
+        };
+
+        const showAddRoleModal = () => {
+            console.log('Show add role modal clicked');
+            showAdvancedToast('Add Role', 'Would show add role modal', 'info');
+        };
+
         // ============ INITIALIZATION ============
-        onMounted(async () => {
-            // Check for existing session
+        onMounted(() => {
             supabase.auth.getSession().then(({ data: { session } }) => {
                 console.log('Session:', session);
             }).catch(error => {
                 console.error('Error getting session:', error);
             });
+            
+            // Load system roles
+            systemRoles.value = Object.entries(PermissionSystem.roles).map(([id, role]) => ({
+                id,
+                ...role
+            }));
         });
-        
-        // ============ RETURN STATEMENT ============
+
+        // ============ COMPLETE RETURN STATEMENT ============
         return {
             // State
             currentUser,
@@ -4720,7 +4308,6 @@ createApp({
             permissionFilter,
             staffSearch,
             staffFilter,
-            roleManagement,
             
             // Data
             medicalStaff,
@@ -4792,7 +4379,6 @@ createApp({
             exportAuditLogs,
             handleAdvancedSearch,
             togglePermissionFilter,
-            toggleUserMenu,
             
             // Permission Management
             togglePermission,
@@ -4802,16 +4388,15 @@ createApp({
             removeToast,
             
             // Role Management
-            loadSystemRoles,
-            showAddRoleModal,
+            deleteRole,
             editRole,
             cloneRole,
-            deleteRole,
-            saveRole,
-            closeRoleModal,
-            toggleRolePermission,
-            getRolePermissionLevel,
-            isRoleInUse
+            showAddRoleModal,
+            
+            // User Menu
+            toggleUserMenu: () => {
+                console.log('User menu toggled');
+            }
         };
     }
 }).mount('#app');
