@@ -4226,7 +4226,20 @@ const initializeApp = () => {
                 require_mfa: false,
                 mfa_code: ''
             });
-            
+                const announcementModal = ref({
+        show: false,
+        mode: 'add',
+        announcement: null,
+        form: {
+            announcement_title: '',
+            announcement_content: '',
+            publish_start_date: '',
+            publish_end_date: '',
+            priority_level: 'medium',
+            target_audience: 'all'
+        }
+    });
+    
             const loading = ref(false);
             const saving = ref(false);
             const permissionLoading = ref(false);
