@@ -3409,7 +3409,6 @@ console.log('Auth available:', supabaseClient.auth);
 
         createApp({
             setup() {
-                 toggleUserMenu,
                 // ============ ADVANCED STATE MANAGEMENT ============
              const supabase = supabaseClient;
 
@@ -4302,6 +4301,7 @@ onMounted(() => {
                 // ============ RETURN ============
                 return {
                     // State
+                     toggleUserMenu,
                     hasPermission,
                     currentUser,
                     loginForm,
