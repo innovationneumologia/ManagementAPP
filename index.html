@@ -3728,1258 +3728,264 @@
         </div>
     </div>
 
-    <script>
+   <script>
 const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 
-// Supabase Configuration
-const SUPABASE_URL = 'https://vssmguzuvekkecbmwcjw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
+// Use a different variable name or restructure to avoid duplicate declaration
+const initializeApp = () => {
+    // Supabase Configuration
+    const SUPABASE_URL = 'https://vssmguzuvekkecbmwcjw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: false,
-        storage: window.localStorage
-    }
-});
-
-// Advanced DRBA Permission System
-const PermissionSystem = {
-    resources: {
-        medical_staff: {
-            name: 'Medical Staff',
-            actions: ['create', 'read', 'update', 'delete', 'export'],
-            description: 'Manage medical staff records'
-        },
-        training_units: {
-            name: 'Training Units',
-            actions: ['create', 'read', 'update', 'delete', 'assign'],
-            description: 'Manage training units and capacities'
-        },
-        resident_rotations: {
-            name: 'Resident Rotations',
-            actions: ['create', 'read', 'update', 'delete', 'extend'],
-            description: 'Manage resident rotation schedules'
-        },
-        placements: {
-            name: 'Placements',
-            actions: ['create', 'read', 'update', 'delete', 'drag_drop'],
-            description: 'Assign residents to training units'
-        },
-        daily_operations: {
-            name: 'Daily Operations',
-            actions: ['read', 'update', 'alert'],
-            description: 'View and manage daily operations'
-        },
-        oncall_schedule: {
-            name: 'On-call Schedule',
-            actions: ['create', 'read', 'update', 'delete', 'override'],
-            description: 'Manage on-call schedules'
-        },
-        leave_requests: {
-            name: 'Leave Requests',
-            actions: ['create', 'read', 'update', 'approve', 'reject'],
-            description: 'Manage leave requests and approvals'
-        },
-        announcements: {
-            name: 'Announcements',
-            actions: ['create', 'read', 'update', 'delete', 'publish'],
-            description: 'Create and manage announcements'
-        },
-        audit: {
-            name: 'Audit Logs',
-            actions: ['read', 'export', 'clear'],
-            description: 'View system audit logs'
-        },
-        system: {
-            name: 'System Settings',
-            actions: ['read', 'update', 'admin'],
-            description: 'Manage system settings and permissions'
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: false,
+            storage: window.localStorage
         }
-    },
+    });
 
-    roles: {
-        system_admin: {
-            name: 'System Administrator',
-            level: 'full',
-            description: 'Full system access and permission management',
-            permissions: {
-                medical_staff: { create: true, read: true, update: true, delete: true, export: true },
-                training_units: { create: true, read: true, update: true, delete: true, assign: true },
-                resident_rotations: { create: true, read: true, update: true, delete: true, extend: true },
-                placements: { create: true, read: true, update: true, delete: true, drag_drop: true },
-                daily_operations: { read: true, update: true, alert: true },
-                oncall_schedule: { create: true, read: true, update: true, delete: true, override: true },
-                leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
-                announcements: { create: true, read: true, update: true, delete: true, publish: true },
-                audit: { read: true, export: true, clear: true },
-                system: { read: true, update: true, admin: true }
+    // Advanced DRBA Permission System
+    const PermissionSystem = {
+        resources: {
+            medical_staff: {
+                name: 'Medical Staff',
+                actions: ['create', 'read', 'update', 'delete', 'export'],
+                description: 'Manage medical staff records'
+            },
+            training_units: {
+                name: 'Training Units',
+                actions: ['create', 'read', 'update', 'delete', 'assign'],
+                description: 'Manage training units and capacities'
+            },
+            resident_rotations: {
+                name: 'Resident Rotations',
+                actions: ['create', 'read', 'update', 'delete', 'extend'],
+                description: 'Manage resident rotation schedules'
+            },
+            placements: {
+                name: 'Placements',
+                actions: ['create', 'read', 'update', 'delete', 'drag_drop'],
+                description: 'Assign residents to training units'
+            },
+            daily_operations: {
+                name: 'Daily Operations',
+                actions: ['read', 'update', 'alert'],
+                description: 'View and manage daily operations'
+            },
+            oncall_schedule: {
+                name: 'On-call Schedule',
+                actions: ['create', 'read', 'update', 'delete', 'override'],
+                description: 'Manage on-call schedules'
+            },
+            leave_requests: {
+                name: 'Leave Requests',
+                actions: ['create', 'read', 'update', 'approve', 'reject'],
+                description: 'Manage leave requests and approvals'
+            },
+            announcements: {
+                name: 'Announcements',
+                actions: ['create', 'read', 'update', 'delete', 'publish'],
+                description: 'Create and manage announcements'
+            },
+            audit: {
+                name: 'Audit Logs',
+                actions: ['read', 'export', 'clear'],
+                description: 'View system audit logs'
+            },
+            system: {
+                name: 'System Settings',
+                actions: ['read', 'update', 'admin'],
+                description: 'Manage system settings and permissions'
             }
         },
-        department_head: {
-            name: 'Head of Department',
-            level: 'full',
-            description: 'Department-wide oversight and management',
-            permissions: {
-                medical_staff: { create: true, read: true, update: true, delete: false, export: true },
-                training_units: { create: true, read: true, update: true, delete: false, assign: true },
-                resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
-                placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
-                daily_operations: { read: true, update: true, alert: true },
-                oncall_schedule: { create: true, read: true, update: true, delete: false, override: true },
-                leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
-                announcements: { create: true, read: true, update: true, delete: true, publish: true },
-                audit: { read: true, export: true, clear: false },
-                system: { read: true, update: false, admin: false }
+
+        roles: {
+            system_admin: {
+                name: 'System Administrator',
+                level: 'full',
+                description: 'Full system access and permission management',
+                permissions: {
+                    medical_staff: { create: true, read: true, update: true, delete: true, export: true },
+                    training_units: { create: true, read: true, update: true, delete: true, assign: true },
+                    resident_rotations: { create: true, read: true, update: true, delete: true, extend: true },
+                    placements: { create: true, read: true, update: true, delete: true, drag_drop: true },
+                    daily_operations: { read: true, update: true, alert: true },
+                    oncall_schedule: { create: true, read: true, update: true, delete: true, override: true },
+                    leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
+                    announcements: { create: true, read: true, update: true, delete: true, publish: true },
+                    audit: { read: true, export: true, clear: true },
+                    system: { read: true, update: true, admin: true }
+                }
+            },
+            department_head: {
+                name: 'Head of Department',
+                level: 'full',
+                description: 'Department-wide oversight and management',
+                permissions: {
+                    medical_staff: { create: true, read: true, update: true, delete: false, export: true },
+                    training_units: { create: true, read: true, update: true, delete: false, assign: true },
+                    resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
+                    placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
+                    daily_operations: { read: true, update: true, alert: true },
+                    oncall_schedule: { create: true, read: true, update: true, delete: false, override: true },
+                    leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
+                    announcements: { create: true, read: true, update: true, delete: true, publish: true },
+                    audit: { read: true, export: true, clear: false },
+                    system: { read: true, update: false, admin: false }
+                }
+            },
+            resident_manager: {
+                name: 'Resident Manager',
+                level: 'write',
+                description: 'Manage residents and training units',
+                permissions: {
+                    medical_staff: { create: true, read: true, update: true, delete: false, export: false },
+                    training_units: { create: true, read: true, update: true, delete: false, assign: true },
+                    resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
+                    placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
+                    daily_operations: { read: true, update: true, alert: false },
+                    oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
+                    leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
+                    announcements: { create: false, read: true, update: false, delete: false, publish: false },
+                    audit: { read: false, export: false, clear: false },
+                    system: { read: false, update: false, admin: false }
+                }
+            },
+            attending_physician: {
+                name: 'Attending Physician',
+                level: 'limited',
+                description: 'Supervise residents and view schedules',
+                permissions: {
+                    medical_staff: { create: false, read: true, update: false, delete: false, export: false },
+                    training_units: { create: false, read: true, update: false, delete: false, assign: false },
+                    resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
+                    placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
+                    daily_operations: { read: true, update: false, alert: false },
+                    oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
+                    leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
+                    announcements: { create: false, read: true, update: false, delete: false, publish: false },
+                    audit: { read: false, export: false, clear: false },
+                    system: { read: false, update: false, admin: false }
+                }
+            },
+            viewing_doctor: {
+                name: 'Viewing Doctor',
+                level: 'read',
+                description: 'Read-only access to schedules and assignments',
+                permissions: {
+                    medical_staff: { create: false, read: true, update: false, delete: false, export: false },
+                    training_units: { create: false, read: true, update: false, delete: false, assign: false },
+                    resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
+                    placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
+                    daily_operations: { read: true, update: false, alert: false },
+                    oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
+                    leave_requests: { create: false, read: true, update: false, approve: false, reject: false },
+                    announcements: { create: false, read: true, update: false, delete: false, publish: false },
+                    audit: { read: false, export: false, clear: false },
+                    system: { read: false, update: false, admin: false }
+                }
             }
         },
-        resident_manager: {
-            name: 'Resident Manager',
-            level: 'write',
-            description: 'Manage residents and training units',
-            permissions: {
-                medical_staff: { create: true, read: true, update: true, delete: false, export: false },
-                training_units: { create: true, read: true, update: true, delete: false, assign: true },
-                resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
-                placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
-                daily_operations: { read: true, update: true, alert: false },
-                oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
-                leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
-                announcements: { create: false, read: true, update: false, delete: false, publish: false },
-                audit: { read: false, export: false, clear: false },
-                system: { read: false, update: false, admin: false }
-            }
-        },
-        attending_physician: {
-            name: 'Attending Physician',
-            level: 'limited',
-            description: 'Supervise residents and view schedules',
-            permissions: {
-                medical_staff: { create: false, read: true, update: false, delete: false, export: false },
-                training_units: { create: false, read: true, update: false, delete: false, assign: false },
-                resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
-                placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
-                daily_operations: { read: true, update: false, alert: false },
-                oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
-                leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
-                announcements: { create: false, read: true, update: false, delete: false, publish: false },
-                audit: { read: false, export: false, clear: false },
-                system: { read: false, update: false, admin: false }
-            }
-        },
-        viewing_doctor: {
-            name: 'Viewing Doctor',
-            level: 'read',
-            description: 'Read-only access to schedules and assignments',
-            permissions: {
-                medical_staff: { create: false, read: true, update: false, delete: false, export: false },
-                training_units: { create: false, read: true, update: false, delete: false, assign: false },
-                resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
-                placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
-                daily_operations: { read: true, update: false, alert: false },
-                oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
-                leave_requests: { create: false, read: true, update: false, approve: false, reject: false },
-                announcements: { create: false, read: true, update: false, delete: false, publish: false },
-                audit: { read: false, export: false, clear: false },
-                system: { read: false, update: false, admin: false }
-            }
-        }
-    },
 
-    // Check if user has permission for a resource action
-    hasPermission(userRole, resource, action) {
-        const role = this.roles[userRole];
-        if (!role || !role.permissions[resource]) return false;
-        return role.permissions[resource][action] === true;
-    },
-
-    // Get permission level for a resource
-    getPermissionLevel(userRole, resource) {
-        const role = this.roles[userRole];
-        if (!role || !role.permissions[resource]) return 'none';
-        
-        const permissions = role.permissions[resource];
-        if (permissions.create && permissions.update && permissions.delete) return 'full';
-        if (permissions.create || permissions.update) return 'write';
-        if (permissions.read) return 'read';
-        return 'none';
-    },
-
-    // Get all resources user has access to
-    getAccessibleResources(userRole) {
-        const role = this.roles[userRole];
-        if (!role) return [];
-        
-        return Object.keys(this.resources).filter(resource => 
-            Object.values(role.permissions[resource] || {}).some(v => v === true)
-        );
-    }
-};
-
-createApp({
-    setup() {
-        // ============ ADVANCED STATE MANAGEMENT ============
-        const currentUser = ref(null);
-        const loginForm = ref({
-            email: '',
-            password: '',
-            user_role: 'resident_manager',
-            require_mfa: false,
-            mfa_code: ''
-        });
-        
-        const loading = ref(false);
-        const saving = ref(false);
-        const permissionLoading = ref(false);
-        const savingPermissions = ref(false);
-        
-        // Navigation
-        const currentView = ref('login');
-        const sidebarCollapsed = ref(false);
-        const mobileMenuOpen = ref(false);
-        const showPermissionManager = ref(false);
-        const searchQuery = ref('');
-        const permissionFilter = ref([]);
-        const userMenuOpen = ref(false);
-        
-        // Data Stores
-        const medicalStaff = ref([]);
-        const trainingUnits = ref([]);
-        const residentRotations = ref([]);
-        const dailyAssignments = ref([]);
-        const leaveRequests = ref([]);
-        const onCallSchedule = ref([]);
-        const announcements = ref([]);
-        const auditLogs = ref([]);
-        const systemRoles = ref([]);
-        const systemStats = ref({
-            active_users: 0,
-            total_staff: 0,
-            today_assignments: 0,
-            pending_approvals: 0
-        });
-        
-        // Toast System
-        const toasts = ref([]);
-        let toastId = 0;
-
-        // ============ MODAL STATES ============
-        const medicalStaffModal = ref({
-            show: false,
-            mode: 'add',
-            staff: null,
-            form: {
-                full_name: '',
-                staff_type: 'medical_resident',
-                staff_id: '',
-                employment_status: 'active',
-                can_supervise_residents: false,
-                primary_clinic: '',
-                professional_email: '',
-                resident_category: '',
-                training_year: null
-            }
-        });
-        
-        const addRoleModal = ref({
-            show: false,
-            mode: 'add',
-            role: null,
-            form: {
-                name: '',
-                description: '',
-                level: 'read'
-            }
-        });
-        
-        // Filter states
-        const staffSearch = ref('');
-        const staffFilter = ref({
-            staff_type: '',
-            employment_status: ''
-        });
-
-        // ============ PERMISSION SYSTEM ============
-        const userPermissions = ref({});
-        const permissionResources = ref(PermissionSystem.resources);
-        
-        // Initialize user permissions based on role
-        const initializePermissions = (userRole) => {
-            const role = PermissionSystem.roles[userRole];
-            if (role) {
-                userPermissions.value = role.permissions;
-            }
-            logAudit('PERMISSION_INIT', `Permissions initialized for ${userRole}`, 'system');
-        };
-
-        // Fixed hasPermission function
-        const hasPermission = (resource, action) => {
-            if (!currentUser.value) return false;
-            
-            // System admin always has permission
-            if (currentUser.value.user_role === 'system_admin') {
-                return true;
-            }
-            
-            const role = PermissionSystem.roles[currentUser.value.user_role];
-            if (!role || !role.permissions[resource]) {
-                return false;
-            }
-            
+        // Check if user has permission for a resource action
+        hasPermission(userRole, resource, action) {
+            const role = this.roles[userRole];
+            if (!role || !role.permissions[resource]) return false;
             return role.permissions[resource][action] === true;
-        };
+        },
 
-        const hasAnyPermission = (resources) => {
-            if (!currentUser.value) return false;
-            return resources.some(resource => 
-                Object.keys(userPermissions.value[resource] || {}).some(
-                    action => userPermissions.value[resource][action]
-                )
+        // Get permission level for a resource
+        getPermissionLevel(userRole, resource) {
+            const role = this.roles[userRole];
+            if (!role || !role.permissions[resource]) return 'none';
+            
+            const permissions = role.permissions[resource];
+            if (permissions.create && permissions.update && permissions.delete) return 'full';
+            if (permissions.create || permissions.update) return 'write';
+            if (permissions.read) return 'read';
+            return 'none';
+        },
+
+        // Get all resources user has access to
+        getAccessibleResources(userRole) {
+            const role = this.roles[userRole];
+            if (!role) return [];
+            
+            return Object.keys(this.resources).filter(resource => 
+                Object.values(role.permissions[resource] || {}).some(v => v === true)
             );
-        };
+        }
+    };
 
-        const getViewPermission = (view) => {
-            if (!currentUser.value) return 'none';
-            
-            const viewMap = {
-                medical_staff: 'medical_staff',
-                training_units: 'training_units',
-                resident_rotations: 'resident_rotations',
-                placements: 'placements',
-                daily_operations: 'daily_operations',
-                oncall_schedule: 'oncall_schedule',
-                leave_requests: 'leave_requests',
-                announcements: 'announcements',
-                audit_logs: 'audit',
-                department_overview: 'medical_staff',
-                staff_management: 'medical_staff',
-                schedule_approval: 'leave_requests',
-                permission_management: 'system',
-                system_settings: 'system'
-            };
-            
-            const resource = viewMap[view];
-            if (!resource) return 'none';
-            
-            return PermissionSystem.getPermissionLevel(currentUser.value.user_role, resource);
-        };
-
-        const getUserPermissionLevel = () => {
-            if (!currentUser.value) return 'none';
-            const role = PermissionSystem.roles[currentUser.value.user_role];
-            return role ? role.level : 'none';
-        };
-
-        // ============ AUDIT LOGGING SYSTEM ============
-        const logAudit = async (action, details, resource, resourceId = null) => {
-            const logEntry = {
-                id: generateUUID(),
-                timestamp: new Date().toISOString(),
-                user_id: currentUser.value?.id,
-                user_name: currentUser.value?.full_name,
-                user_role: currentUser.value?.user_role,
-                action,
-                details,
-                resource,
-                resource_id: resourceId,
-                permission_level: getUserPermissionLevel(),
-                ip_address: 'system',
-                user_agent: navigator.userAgent
-            };
-            
-            auditLogs.value.unshift(logEntry);
-            
-            try {
-                await supabase.from('audit_logs').insert([logEntry]);
-            } catch (error) {
-                console.error('Failed to save audit log:', error);
-            }
-        };
-
-        // ============ ADVANCED UTILITIES ============
-        const showAdvancedToast = (title, message, type = 'info', duration = 5000) => {
-            const icons = {
-                info: 'fas fa-info-circle',
-                success: 'fas fa-check-circle',
-                error: 'fas fa-exclamation-circle',
-                warning: 'fas fa-exclamation-triangle',
-                permission: 'fas fa-shield-alt'
-            };
-            
-            const toast = {
-                id: ++toastId,
-                title,
-                message,
-                type,
-                icon: icons[type] || icons.info,
-                duration
-            };
-            
-            toasts.value.push(toast);
-            
-            setTimeout(() => {
-                removeToast(toast.id);
-            }, duration);
-        };
-
-        const removeToast = (id) => {
-            const index = toasts.value.findIndex(t => t.id === id);
-            if (index > -1) {
-                toasts.value.splice(index, 1);
-            }
-        };
-
-        const getInitials = (name) => {
-            if (!name) return '??';
-            return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-        };
-
-        const formatDate = (dateString) => {
-            if (!dateString) return '';
-            return new Date(dateString).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
+    createApp({
+        setup() {
+            // ============ ADVANCED STATE MANAGEMENT ============
+            const currentUser = ref(null);
+            const loginForm = ref({
+                email: '',
+                password: '',
+                user_role: 'resident_manager',
+                require_mfa: false,
+                mfa_code: ''
             });
-        };
-
-        const formatDateTime = (dateString) => {
-            if (!dateString) return '';
-            return new Date(dateString).toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+            
+            const loading = ref(false);
+            const saving = ref(false);
+            const permissionLoading = ref(false);
+            const savingPermissions = ref(false);
+            
+            // Navigation
+            const currentView = ref('login');
+            const sidebarCollapsed = ref(false);
+            const mobileMenuOpen = ref(false);
+            const showPermissionManager = ref(false);
+            const searchQuery = ref('');
+            const permissionFilter = ref([]);
+            const userMenuOpen = ref(false);
+            
+            // Data Stores
+            const medicalStaff = ref([]);
+            const trainingUnits = ref([]);
+            const residentRotations = ref([]);
+            const dailyAssignments = ref([]);
+            const leaveRequests = ref([]);
+            const onCallSchedule = ref([]);
+            const announcements = ref([]);
+            const auditLogs = ref([]);
+            const systemRoles = ref([]);
+            const systemStats = ref({
+                active_users: 0,
+                total_staff: 0,
+                today_assignments: 0,
+                pending_approvals: 0
             });
-        };
-
-        const formatTimeRange = (start, end) => {
-            const formatTime = (time) => {
-                if (!time) return '';
-                const [hours, minutes] = time.split(':');
-                const hour = parseInt(hours);
-                return `${hour % 12 || 12}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
-            };
-            return `${formatTime(start)} - ${formatTime(end)}`;
-        };
-
-        const generateUUID = () => {
-            return crypto.randomUUID();
-        };
-
-        const getUserRoleDisplay = (role) => {
-            const roles = {
-                resident_manager: 'Resident Manager',
-                department_head: 'Head of Department',
-                system_admin: 'System Administrator',
-                viewing_doctor: 'Viewing Doctor',
-                attending_physician: 'Attending Physician'
-            };
-            return roles[role] || role;
-        };
-
-        const formatStaffType = (type) => {
-            const types = {
-                medical_resident: 'Medical Resident',
-                attending_physician: 'Attending Physician',
-                fellow: 'Fellow',
-                nurse_practitioner: 'Nurse Practitioner'
-            };
-            return types[type] || type;
-        };
-
-        const getStaffTypeClass = (type) => {
-            return type === 'medical_resident' ? 'badge-resident-advanced' : 
-                   type === 'attending_physician' ? 'badge-attending-advanced' : 
-                   'badge-admin-advanced';
-        };
-
-        const getAuditIcon = (action) => {
-            const icons = {
-                CREATE: 'fas fa-plus-circle',
-                UPDATE: 'fas fa-edit',
-                DELETE: 'fas fa-trash',
-                READ: 'fas fa-eye',
-                LOGIN: 'fas fa-sign-in-alt',
-                LOGOUT: 'fas fa-sign-out-alt',
-                PERMISSION_CHANGE: 'fas fa-user-shield'
-            };
-            return icons[action] || 'fas fa-info-circle';
-        };
-
-        const formatResidentCategory = (category) => {
-            const categories = {
-                pgy1: 'PGY-1',
-                pgy2: 'PGY-2',
-                pgy3: 'PGY-3',
-                pgy4: 'PGY-4',
-                pgy5: 'PGY-5'
-            };
-            return categories[category] || category;
-        };
-
-        const formatEmploymentStatus = (status) => {
-            const statuses = {
-                active: 'Active',
-                on_leave: 'On Leave',
-                inactive: 'Inactive'
-            };
-            return statuses[status] || status;
-        };
-
-        // ============ COMPUTED PROPERTIES ============
-        const stats = computed(() => {
-            const residents = medicalStaff.value.filter(s => 
-                s.staff_type === 'medical_resident' && s.employment_status === 'active'
-            );
-            const attendings = medicalStaff.value.filter(s => 
-                s.staff_type === 'attending_physician' && s.employment_status === 'active'
-            );
-            const supervisors = medicalStaff.value.filter(s => 
-                s.can_supervise_residents && s.employment_status === 'active'
-            );
             
-            return {
-                totalStaff: medicalStaff.value.length,
-                activeResidents: residents.length,
-                attendings: attendings.length,
-                availableSupervisors: supervisors.length
-            };
-        });
+            // Toast System
+            const toasts = ref([]);
+            let toastId = 0;
 
-        const filteredMedicalStaff = computed(() => {
-            let filtered = medicalStaff.value;
-            
-            if (staffSearch.value) {
-                const search = staffSearch.value.toLowerCase();
-                filtered = filtered.filter(s => 
-                    s.full_name.toLowerCase().includes(search) ||
-                    (s.staff_id && s.staff_id.toLowerCase().includes(search))
-                );
-            }
-            
-            if (staffFilter.value.staff_type) {
-                filtered = filtered.filter(s => s.staff_type === staffFilter.value.staff_type);
-            }
-            
-            if (staffFilter.value.employment_status) {
-                filtered = filtered.filter(s => s.employment_status === staffFilter.value.employment_status);
-            }
-            
-            return filtered;
-        });
-
-        const todaysAssignments = computed(() => {
-            const today = new Date().toISOString().split('T')[0];
-            return dailyAssignments.value
-                .filter(a => a.assignment_date === today)
-                .slice(0, 5);
-        });
-
-        const todaysOnCall = computed(() => {
-            const today = new Date().toISOString().split('T')[0];
-            return onCallSchedule.value
-                .filter(o => o.duty_date === today)
-                .slice(0, 3);
-        });
-
-        const recentAnnouncements = computed(() => {
-            const today = new Date().toISOString().split('T')[0];
-            return announcements.value
-                .filter(a => a.publish_start_date <= today && (!a.publish_end_date || a.publish_end_date >= today))
-                .slice(0, 3);
-        });
-
-        const coverageAlerts = computed(() => {
-            return trainingUnits.value
-                .filter(u => u.unit_status === 'active' && (u.current_residents || 0) < u.maximum_residents * 0.5)
-                .map(u => ({
-                    id: u.id,
-                    unit_name: u.unit_name,
-                    current: u.current_residents || 0,
-                    capacity: u.maximum_residents,
-                    priority: 'high'
-                }));
-        });
-
-        const emergencyAlerts = computed(() => {
-            return [
-                {
-                    id: 1,
-                    title: 'ICU Capacity Warning',
-                    message: 'ICU at 95% capacity - Consider diverting non-critical cases',
-                    priority: 'high'
-                }
-            ];
-        });
-
-        const departmentStats = computed(() => {
-            return {
-                totalStaff: medicalStaff.value.length,
-                activeUnits: trainingUnits.value.filter(u => u.unit_status === 'active').length,
-                coverageRate: Math.round((medicalStaff.value.filter(s => s.employment_status === 'active').length / medicalStaff.value.length) * 100),
-                pendingApprovals: leaveRequests.value.filter(r => r.status === 'pending').length
-            };
-        });
-
-        const nextSevenDays = computed(() => {
-            const days = [];
-            const today = new Date();
-            
-            for (let i = 0; i < 7; i++) {
-                const date = new Date(today);
-                date.setDate(today.getDate() + i);
-                const dateString = date.toISOString().split('T')[0];
-                
-                const schedule = onCallSchedule.value.find(o => o.duty_date === dateString);
-                
-                days.push({
-                    date: dateString,
-                    schedule: schedule,
-                    status: schedule ? 'covered' : 'uncovered'
-                });
-            }
-            
-            return days;
-        });
-
-        // ============ NAVIGATION & UI ============
-        const switchView = async (view) => {
-            currentView.value = view;
-            closeMobileMenu();
-            logAudit('VIEW_CHANGE', `Switched to ${view} view`, 'navigation');
-            
-            await loadViewData(view);
-        };
-
-        const getCurrentTitle = () => {
-            const titles = {
-                medical_staff: 'Medical Staff Management',
-                training_units: 'Training Units',
-                daily_operations: 'Daily Operations Board',
-                permission_management: 'Permission Management',
-                audit_logs: 'Audit Logs',
-                oncall_schedule: 'On-call Schedule',
-                leave_requests: 'Leave Requests',
-                department_overview: 'Department Overview',
-                staff_management: 'Staff Management',
-                schedule_approval: 'Schedule Approval'
-            };
-            return titles[currentView.value] || 'PneumoCare Pro';
-        };
-
-        const getCurrentSubtitle = () => {
-            const subtitles = {
-                medical_staff: 'Manage medical staff with advanced permissions',
-                daily_operations: 'Real-time department operations dashboard',
-                permission_management: 'Configure system permissions and roles',
-                audit_logs: 'Track all system activities and changes',
-                oncall_schedule: 'Manage on-call duties and coverage',
-                leave_requests: 'Review and approve leave requests'
-            };
-            return subtitles[currentView.value] || 'Advanced DRBA Hospital Management System';
-        };
-
-        const getSearchPlaceholder = () => {
-            const placeholders = {
-                medical_staff: 'Search medical staff by name, ID, or department...',
-                daily_operations: 'Search assignments, alerts, or announcements...',
-                audit_logs: 'Search audit logs by user, action, or resource...'
-            };
-            return placeholders[currentView.value] || 'Search...';
-        };
-
-        const toggleMobileMenu = () => {
-            mobileMenuOpen.value = !mobileMenuOpen.value;
-        };
-
-        const closeMobileMenu = () => {
-            mobileMenuOpen.value = false;
-        };
-
-        const togglePermissionManager = () => {
-            showPermissionManager.value = !showPermissionManager.value;
-            userMenuOpen.value = false;
-            if (showPermissionManager.value) {
-                logAudit('PERMISSION_MANAGER_OPEN', 'Opened permission manager', 'system');
-            }
-        };
-
-        const toggleUserMenu = () => {
-            userMenuOpen.value = !userMenuOpen.value;
-        };
-
-        const getDayStatus = (day) => {
-            return day.status === 'covered' ? 'status-available' : 'status-critical';
-        };
-
-        // ============ AUTHENTICATION ============
-        const handleAdvancedLogin = async () => {
-            loading.value = true;
-            
-            try {
-                const email = loginForm.value.email.trim().toLowerCase();
-                const password = loginForm.value.password;
-                const selectedRole = loginForm.value.user_role;
-                
-                if (!email || !password || !selectedRole) {
-                    throw new Error('Please fill in all fields');
-                }
-                
-                // For demo purposes, we'll use mock authentication
-                // In production, you would verify against Supabase
-                const mockUsers = {
-                    'admin@hospital.org': { role: 'system_admin', name: 'System Administrator' },
-                    'head@hospital.org': { role: 'department_head', name: 'Department Head' },
-                    'manager@hospital.org': { role: 'resident_manager', name: 'Resident Manager' },
-                    'doctor@hospital.org': { role: 'viewing_doctor', name: 'Viewing Doctor' }
-                };
-                
-                let userData;
-                
-                if (email in mockUsers && password === 'password123') {
-                    userData = {
-                        id: generateUUID(),
-                        email: email,
-                        full_name: mockUsers[email].name,
-                        user_role: mockUsers[email].role,
-                        account_status: 'active'
-                    };
-                } else {
-                    // Try to get from app_users table
-                    const { data: existingUser } = await supabase
-                        .from('app_users')
-                        .select('*')
-                        .eq('email', email)
-                        .maybeSingle();
-                    
-                    if (existingUser) {
-                        userData = existingUser;
-                    } else {
-                        // Create new user for demo
-                        userData = {
-                            id: generateUUID(),
-                            email: email,
-                            full_name: email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                            user_role: selectedRole,
-                            account_status: 'active'
-                        };
-                        
-                        // Save to database
-                        await supabase.from('app_users').insert([userData]);
-                    }
-                }
-                
-                currentUser.value = userData;
-                initializePermissions(userData.user_role);
-                
-                showAdvancedToast(
-                    'Login Successful',
-                    `Welcome ${userData.full_name}!`,
-                    'success'
-                );
-                
-                logAudit('LOGIN_SUCCESS', `User logged in as ${userData.user_role}`, 'auth', userData.id);
-                
-                await loadInitialData();
-                
-                // Set initial view based on permissions
-                if (hasPermission('daily_operations', 'read')) {
-                    currentView.value = 'daily_operations';
-                } else if (hasPermission('medical_staff', 'read')) {
-                    currentView.value = 'medical_staff';
-                } else {
-                    currentView.value = 'daily_operations';
-                }
-                
-            } catch (error) {
-                console.error('Login error:', error);
-                showAdvancedToast(
-                    'Login Failed',
-                    error.message || 'Invalid credentials',
-                    'error'
-                );
-                logAudit('LOGIN_FAILED', `Failed login attempt: ${error.message}`, 'auth');
-            } finally {
-                loading.value = false;
-            }
-        };
-
-        const handleLogout = async () => {
-            try {
-                logAudit('LOGOUT', 'User logged out', 'auth');
-                currentUser.value = null;
-                currentView.value = 'login';
-                userMenuOpen.value = false;
-                showAdvancedToast('Logged Out', 'You have been successfully logged out', 'info');
-            } catch (error) {
-                console.error('Logout error:', error);
-            }
-        };
-
-        // ============ DATA LOADING ============
-        const loadInitialData = async () => {
-            loading.value = true;
-            try {
-                await Promise.all([
-                    loadMedicalStaff(),
-                    loadTrainingUnits(),
-                    loadResidentRotations(),
-                    loadLeaveRequests(),
-                    loadDailyAssignments(),
-                    loadOnCallSchedule(),
-                    loadAnnouncements(),
-                    loadAuditLogs(),
-                    loadSystemStats()
-                ]);
-                
-                showAdvancedToast('System Ready', 'All data loaded successfully', 'success');
-            } catch (error) {
-                console.error('Error loading initial data:', error);
-                showAdvancedToast('Data Load Error', 'Failed to load system data', 'error');
-            } finally {
-                loading.value = false;
-            }
-        };
-
-        const loadViewData = async (view) => {
-            try {
-                switch (view) {
-                    case 'medical_staff':
-                        await loadMedicalStaff();
-                        break;
-                    case 'training_units':
-                        await loadTrainingUnits();
-                        break;
-                    case 'daily_operations':
-                        await Promise.all([
-                            loadDailyAssignments(),
-                            loadOnCallSchedule(),
-                            loadAnnouncements()
-                        ]);
-                        break;
-                    case 'audit_logs':
-                        await loadAuditLogs();
-                        break;
-                    case 'leave_requests':
-                        await loadLeaveRequests();
-                        break;
-                    case 'oncall_schedule':
-                        await loadOnCallSchedule();
-                        break;
-                }
-            } catch (error) {
-                console.error(`Error loading ${view} data:`, error);
-            }
-        };
-
-        // ============ API FUNCTIONS ============
-        const loadMedicalStaff = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('medical_staff')
-                    .select('*')
-                    .order('full_name');
-                
-                if (error) throw error;
-                medicalStaff.value = data || [];
-            } catch (error) {
-                console.error('Error loading medical staff:', error);
-                // For demo, create mock data
-                medicalStaff.value = [
-                    {
-                        id: '1',
-                        full_name: 'Dr. Sarah Chen',
-                        staff_type: 'attending_physician',
-                        staff_id: 'ATT-001',
-                        employment_status: 'active',
-                        can_supervise_residents: true,
-                        primary_clinic: 'Pulmonary Unit',
-                        professional_email: 's.chen@hospital.org',
-                        resident_category: null,
-                        training_year: null
-                    },
-                    {
-                        id: '2',
-                        full_name: 'Dr. Michael Rodriguez',
-                        staff_type: 'medical_resident',
-                        staff_id: 'RES-001',
-                        employment_status: 'active',
-                        can_supervise_residents: false,
-                        primary_clinic: 'ICU',
-                        professional_email: 'm.rodriguez@hospital.org',
-                        resident_category: 'pgy3',
-                        training_year: 2024
-                    }
-                ];
-            }
-        };
-
-        const loadTrainingUnits = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('training_units')
-                    .select('*')
-                    .order('unit_name');
-                
-                if (error) throw error;
-                trainingUnits.value = data || [];
-            } catch (error) {
-                console.error('Error loading training units:', error);
-                // Mock data
-                trainingUnits.value = [
-                    {
-                        id: '1',
-                        unit_name: 'Pulmonary Unit',
-                        unit_description: 'Specializes in pulmonary diseases and critical care',
-                        unit_status: 'active',
-                        maximum_residents: 8,
-                        current_residents: 6,
-                        specialty: 'Pulmonology'
-                    },
-                    {
-                        id: '2',
-                        unit_name: 'ICU',
-                        unit_description: 'Intensive Care Unit for critical patients',
-                        unit_status: 'active',
-                        maximum_residents: 12,
-                        current_residents: 9,
-                        specialty: 'Critical Care'
-                    }
-                ];
-            }
-        };
-
-        const loadResidentRotations = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('resident_rotations')
-                    .select('*')
-                    .order('rotation_start_date', { ascending: false });
-                
-                if (error) throw error;
-                residentRotations.value = data || [];
-            } catch (error) {
-                console.error('Error loading resident rotations:', error);
-                residentRotations.value = [];
-            }
-        };
-
-        const loadLeaveRequests = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('leave_requests')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (error) throw error;
-                leaveRequests.value = data || [];
-            } catch (error) {
-                console.error('Error loading leave requests:', error);
-                leaveRequests.value = [];
-            }
-        };
-
-        const loadDailyAssignments = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('daily_assignments')
-                    .select('*')
-                    .order('assignment_date', { ascending: false });
-                
-                if (error) throw error;
-                dailyAssignments.value = data || [];
-            } catch (error) {
-                console.error('Error loading daily assignments:', error);
-                dailyAssignments.value = [];
-            }
-        };
-
-        const loadOnCallSchedule = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('oncall_schedule')
-                    .select('*')
-                    .order('duty_date', { ascending: true });
-                
-                if (error) throw error;
-                onCallSchedule.value = data || [];
-            } catch (error) {
-                console.error('Error loading on-call schedule:', error);
-                onCallSchedule.value = [];
-            }
-        };
-
-        const loadAnnouncements = async () => {
-            try {
-                const today = new Date().toISOString().split('T')[0];
-                const { data, error } = await supabase
-                    .from('department_announcements')
-                    .select('*')
-                    .lte('publish_start_date', today)
-                    .or(`publish_end_date.is.null,publish_end_date.gte.${today}`)
-                    .order('priority_level', { ascending: false })
-                    .order('created_at', { ascending: false });
-                
-                if (error) throw error;
-                announcements.value = data || [];
-            } catch (error) {
-                console.error('Error loading announcements:', error);
-                announcements.value = [];
-            }
-        };
-
-        const loadAuditLogs = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('audit_logs')
-                    .select('*')
-                    .order('timestamp', { ascending: false })
-                    .limit(50);
-                
-                if (error) throw error;
-                auditLogs.value = data || [];
-            } catch (error) {
-                console.error('Error loading audit logs:', error);
-                auditLogs.value = [];
-            }
-        };
-
-        const loadSystemStats = async () => {
-            systemStats.value = {
-                active_users: 42,
-                total_staff: medicalStaff.value.length,
-                today_assignments: todaysAssignments.value.length,
-                pending_approvals: leaveRequests.value.filter(r => r.status === 'pending').length
-            };
-        };
-
-        const loadSystemRoles = () => {
-            systemRoles.value = Object.entries(PermissionSystem.roles).map(([id, role]) => ({
-                id,
-                ...role
-            }));
-        };
-
-        // ============ MEDICAL STAFF CRUD ============
-        const showAddMedicalStaffModal = () => {
-            if (!hasPermission('medical_staff', 'create')) {
-                showAdvancedToast(
-                    'Permission Denied',
-                    'You need create permission to add medical staff',
-                    'permission'
-                );
-                return;
-            }
-            
-            medicalStaffModal.value = {
-                show: true,
+            // ============ MODAL STATES ============
+            const medicalStaffModal = ref({
+                show: false,
                 mode: 'add',
                 staff: null,
                 form: {
                     full_name: '',
                     staff_type: 'medical_resident',
-                    staff_id: `MD-${Date.now().toString().slice(-6)}`,
+                    staff_id: '',
                     employment_status: 'active',
                     can_supervise_residents: false,
                     primary_clinic: '',
                     professional_email: '',
                     resident_category: '',
-                    training_year: new Date().getFullYear()
+                    training_year: null
                 }
-            };
+            });
             
-            logAudit('STAFF_MODAL_OPEN', 'Opened add medical staff modal', 'medical_staff');
-        };
-
-        const editMedicalStaff = (staff) => {
-            if (!hasPermission('medical_staff', 'update')) {
-                showAdvancedToast(
-                    'Permission Denied',
-                    'You need update permission to edit medical staff',
-                    'permission'
-                );
-                return;
-            }
-            
-            medicalStaffModal.value = {
-                show: true,
-                mode: 'edit',
-                staff: staff,
-                form: { ...staff }
-            };
-            
-            logAudit('STAFF_EDIT', `Editing staff member: ${staff.full_name}`, 'medical_staff', staff.id);
-        };
-
-        const saveMedicalStaff = async () => {
-            if (!hasPermission('medical_staff', medicalStaffModal.value.mode === 'add' ? 'create' : 'update')) {
-                showAdvancedToast('Permission Denied', 'Insufficient permissions', 'permission');
-                return;
-            }
-            
-            saving.value = true;
-            try {
-                // Validate form
-                if (!medicalStaffModal.value.form.full_name.trim()) {
-                    throw new Error('Full name is required');
-                }
-                
-                if (medicalStaffModal.value.mode === 'add') {
-                    // Add new staff
-                    const { data, error } = await supabase
-                        .from('medical_staff')
-                        .insert([{
-                            ...medicalStaffModal.value.form,
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                        }])
-                        .select()
-                        .single();
-                    
-                    if (error) throw error;
-                    
-                    medicalStaff.value.unshift(data);
-                    showAdvancedToast('Success', 'Medical staff added successfully', 'success');
-                    logAudit('STAFF_CREATE', `Added: ${data.full_name}`, 'medical_staff', data.id);
-                } else {
-                    // Update existing staff
-                    const { data, error } = await supabase
-                        .from('medical_staff')
-                        .update({
-                            ...medicalStaffModal.value.form,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', medicalStaffModal.value.staff.id)
-                        .select()
-                        .single();
-                    
-                    if (error) throw error;
-                    
-                    // Update in local array
-                    const index = medicalStaff.value.findIndex(s => s.id === data.id);
-                    if (index !== -1) {
-                        medicalStaff.value[index] = data;
-                    }
-                    
-                    showAdvancedToast('Success', 'Medical staff updated successfully', 'success');
-                    logAudit('STAFF_UPDATE', `Updated: ${data.full_name}`, 'medical_staff', data.id);
-                }
-                
-                medicalStaffModal.value.show = false;
-            } catch (error) {
-                console.error('Error saving medical staff:', error);
-                showAdvancedToast('Save Failed', error.message, 'error');
-            } finally {
-                saving.value = false;
-            }
-        };
-
-        const deleteMedicalStaff = async (staff) => {
-            if (!hasPermission('medical_staff', 'delete')) {
-                showAdvancedToast(
-                    'Permission Denied',
-                    'You need delete permission to remove medical staff',
-                    'permission'
-                );
-                return;
-            }
-            
-            if (!confirm(`Are you sure you want to delete ${staff.full_name}? This action cannot be undone.`)) {
-                return;
-            }
-            
-            try {
-                const { error } = await supabase
-                    .from('medical_staff')
-                    .delete()
-                    .eq('id', staff.id);
-                
-                if (error) throw error;
-                
-                // Remove from local array
-                const index = medicalStaff.value.findIndex(s => s.id === staff.id);
-                if (index !== -1) {
-                    medicalStaff.value.splice(index, 1);
-                }
-                
-                showAdvancedToast('Deleted', `${staff.full_name} has been removed`, 'success');
-                logAudit('STAFF_DELETE', `Deleted: ${staff.full_name}`, 'medical_staff', staff.id);
-            } catch (error) {
-                console.error('Error deleting medical staff:', error);
-                showAdvancedToast('Delete Failed', error.message, 'error');
-            }
-        };
-
-        // ============ PERMISSION MANAGEMENT ============
-        const togglePermission = (resource, action) => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            showAdvancedToast(
-                'Permission Updated',
-                `${action} permission for ${resource} toggled`,
-                'permission'
-            );
-        };
-
-        const savePermissionChanges = async () => {
-            savingPermissions.value = true;
-            try {
-                showAdvancedToast(
-                    'Permissions Saved',
-                    'All permission changes have been saved',
-                    'success'
-                );
-                logAudit('PERMISSIONS_SAVED', 'Updated system permissions', 'system');
-            } catch (error) {
-                console.error('Error saving permissions:', error);
-                showAdvancedToast('Save Failed', 'Failed to save permission changes', 'error');
-            } finally {
-                savingPermissions.value = false;
-                showPermissionManager.value = false;
-            }
-        };
-
-        const getResourcePermissionLevel = (resource) => {
-            return PermissionSystem.getPermissionLevel(currentUser.value?.user_role, resource);
-        };
-
-        const getPermissionDescription = (resource, action) => {
-            const descriptions = {
-                create: 'Create new records',
-                read: 'View records',
-                update: 'Edit existing records',
-                delete: 'Remove records',
-                export: 'Export data',
-                approve: 'Approve requests',
-                override: 'Override restrictions'
-            };
-            return descriptions[action] || action;
-        };
-
-        const formatActionName = (action) => {
-            return action.charAt(0).toUpperCase() + action.slice(1);
-        };
-
-        const formatResourceName = (resource) => {
-            return resource.split('_').map(word => 
-                word.charAt(0).toUpperCase() + word.slice(1)
-            ).join(' ');
-        };
-
-        // ============ ROLE MANAGEMENT ============
-        const showAddRoleModal = () => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            addRoleModal.value = {
-                show: true,
+            const addRoleModal = ref({
+                show: false,
                 mode: 'add',
                 role: null,
                 form: {
@@ -4987,350 +3993,1350 @@ createApp({
                     description: '',
                     level: 'read'
                 }
-            };
-        };
-
-        const editRole = (role) => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            addRoleModal.value = {
-                show: true,
-                mode: 'edit',
-                role: role,
-                form: {
-                    name: role.name,
-                    description: role.description,
-                    level: role.level
-                }
-            };
-        };
-
-        const cloneRole = (role) => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            addRoleModal.value = {
-                show: true,
-                mode: 'add',
-                role: null,
-                form: {
-                    name: `${role.name} (Copy)`,
-                    description: role.description,
-                    level: role.level
-                }
-            };
-        };
-
-        const deleteRole = (role) => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            if (role.id === 'system_admin') {
-                showAdvancedToast('Cannot Delete', 'System Admin role cannot be deleted', 'error');
-                return;
-            }
-            
-            if (confirm(`Are you sure you want to delete the "${role.name}" role?`)) {
-                systemRoles.value = systemRoles.value.filter(r => r.id !== role.id);
-                showAdvancedToast('Role Deleted', `${role.name} has been removed`, 'success');
-                logAudit('ROLE_DELETE', `Deleted role: ${role.name}`, 'system');
-            }
-        };
-
-        const saveRole = async () => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            saving.value = true;
-            try {
-                const newRole = {
-                    id: addRoleModal.value.mode === 'add' ? 
-                        addRoleModal.value.form.name.toLowerCase().replace(/\s+/g, '_') : 
-                        addRoleModal.value.role.id,
-                    name: addRoleModal.value.form.name,
-                    description: addRoleModal.value.form.description,
-                    level: addRoleModal.value.form.level,
-                    permissions: {}
-                };
-                
-                // Copy permissions from a similar role
-                const templateRole = PermissionSystem.roles[addRoleModal.value.form.level === 'full' ? 'system_admin' : 'resident_manager'];
-                if (templateRole) {
-                    newRole.permissions = { ...templateRole.permissions };
-                }
-                
-                if (addRoleModal.value.mode === 'add') {
-                    systemRoles.value.push(newRole);
-                    showAdvancedToast('Success', 'New role created successfully', 'success');
-                    logAudit('ROLE_CREATE', `Created role: ${newRole.name}`, 'system');
-                } else {
-                    const index = systemRoles.value.findIndex(r => r.id === newRole.id);
-                    if (index !== -1) {
-                        systemRoles.value[index] = newRole;
-                    }
-                    showAdvancedToast('Success', 'Role updated successfully', 'success');
-                    logAudit('ROLE_UPDATE', `Updated role: ${newRole.name}`, 'system');
-                }
-                
-                addRoleModal.value.show = false;
-            } catch (error) {
-                console.error('Error saving role:', error);
-                showAdvancedToast('Save Failed', error.message, 'error');
-            } finally {
-                saving.value = false;
-            }
-        };
-
-        // ============ ACTION HANDLERS ============
-        const viewStaffSchedule = (staff) => {
-            showAdvancedToast('Info', `Viewing schedule for ${staff.full_name}`, 'info');
-            logAudit('SCHEDULE_VIEW', `Viewed schedule for ${staff.full_name}`, 'schedules', staff.id);
-        };
-
-        const quickAssignToUnit = (alert) => {
-            if (!hasPermission('placements', 'create')) {
-                showAdvancedToast(
-                    'Permission Denied',
-                    'You need create permission to assign residents',
-                    'permission'
-                );
-                return;
-            }
-            
-            showAdvancedToast('Assign', `Assigning residents to ${alert.unit_name}`, 'info');
-            logAudit('QUICK_ASSIGN', `Quick assigning to unit: ${alert.unit_name}`, 'placements', alert.id);
-        };
-
-        const exportAuditLogs = () => {
-            if (!hasPermission('audit', 'export')) {
-                showAdvancedToast(
-                    'Permission Denied',
-                    'You need export permission to download audit logs',
-                    'permission'
-                );
-                return;
-            }
-            
-            showAdvancedToast('Export', 'Audit logs exported successfully', 'success');
-            logAudit('AUDIT_EXPORT', 'Exported audit logs', 'audit');
-        };
-
-        const handleAdvancedSearch = () => {
-            logAudit('SEARCH', `Searched for: ${searchQuery.value}`, 'system');
-        };
-
-        const togglePermissionFilter = (level) => {
-            const index = permissionFilter.value.indexOf(level);
-            if (index > -1) {
-                permissionFilter.value.splice(index, 1);
-            } else {
-                permissionFilter.value.push(level);
-            }
-        };
-
-        const showUserProfile = () => {
-            userMenuOpen.value = false;
-            showAdvancedToast('Profile', 'User profile would open here', 'info');
-        };
-
-        const showAddTrainingUnitModal = () => {
-            showAdvancedToast('Info', 'Add training unit modal would open here', 'info');
-        };
-
-        const editTrainingUnit = (unit) => {
-            showAdvancedToast('Info', `Editing ${unit.unit_name}`, 'info');
-        };
-
-        const assignResidentsToUnit = (unit) => {
-            showAdvancedToast('Info', `Assigning residents to ${unit.unit_name}`, 'info');
-        };
-
-        const showAddOnCallModal = () => {
-            showAdvancedToast('Info', 'Add on-call schedule modal would open here', 'info');
-        };
-
-        const editOnCallSchedule = (day) => {
-            showAdvancedToast('Info', `Editing on-call for ${formatDate(day.date)}`, 'info');
-        };
-
-        const overrideOnCall = (day) => {
-            showAdvancedToast('Info', `Overriding on-call for ${formatDate(day.date)}`, 'info');
-        };
-
-        const showAddLeaveRequestModal = () => {
-            showAdvancedToast('Info', 'Add leave request modal would open here', 'info');
-        };
-
-        const approveLeaveRequest = (request) => {
-            showAdvancedToast('Approved', `Leave request for ${request.staff_name} approved`, 'success');
-        };
-
-        const rejectLeaveRequest = (request) => {
-            showAdvancedToast('Rejected', `Leave request for ${request.staff_name} rejected`, 'error');
-        };
-
-        const viewLeaveRequestDetails = (request) => {
-            showAdvancedToast('Details', `Viewing details for ${request.staff_name}'s leave request`, 'info');
-        };
-
-        const showAddStaffModal = () => {
-            showAdvancedToast('Info', 'Add staff modal would open here', 'info');
-        };
-
-        // ============ INITIALIZATION ============
-        onMounted(() => {
-            // Check for existing session
-            supabase.auth.getSession().then(({ data: { session } }) => {
-                if (session) {
-                    console.log('Existing session found');
-                }
-            }).catch(error => {
-                console.error('Error getting session:', error);
             });
             
-            // Load system roles
-            loadSystemRoles();
-        });
+            // Filter states
+            const staffSearch = ref('');
+            const staffFilter = ref({
+                staff_type: '',
+                employment_status: ''
+            });
 
-        // ============ RETURN ============
-        return {
-            // State
-            currentUser,
-            loginForm,
-            loading,
-            saving,
-            permissionLoading,
-            savingPermissions,
-            currentView,
-            sidebarCollapsed,
-            mobileMenuOpen,
-            showPermissionManager,
-            searchQuery,
-            permissionFilter,
-            userMenuOpen,
+            // ============ PERMISSION SYSTEM ============
+            const userPermissions = ref({});
+            const permissionResources = ref(PermissionSystem.resources);
             
-            // Data
-            medicalStaff,
-            trainingUnits,
-            dailyAssignments,
-            onCallSchedule,
-            announcements,
-            auditLogs,
-            systemRoles,
-            systemStats,
-            
-            // UI
-            toasts,
-            permissionResources,
-            medicalStaffModal,
-            addRoleModal,
-            
-            // Computed
-            stats,
-            filteredMedicalStaff,
-            todaysAssignments,
-            todaysOnCall,
-            recentAnnouncements,
-            coverageAlerts,
-            emergencyAlerts,
-            departmentStats,
-            nextSevenDays,
-            
-            // Permission System
-            hasPermission,
-            hasAnyPermission,
-            getViewPermission,
-            getUserPermissionLevel,
-            getResourcePermissionLevel,
-            getPermissionDescription,
-            formatActionName,
-            formatResourceName,
-            
-            // Navigation
-            switchView,
-            getCurrentTitle,
-            getCurrentSubtitle,
-            getSearchPlaceholder,
-            toggleMobileMenu,
-            closeMobileMenu,
-            togglePermissionManager,
-            toggleUserMenu,
-            getDayStatus,
-            
-            // Authentication
-            handleAdvancedLogin,
-            handleLogout,
-            
-            // Utilities
-            getInitials,
-            formatDate,
-            formatDateTime,
-            formatTimeRange,
-            getUserRoleDisplay,
-            formatStaffType,
-            getStaffTypeClass,
-            getAuditIcon,
-            formatResidentCategory,
-            formatEmploymentStatus,
-            
-            // Medical Staff
-            showAddMedicalStaffModal,
-            editMedicalStaff,
-            saveMedicalStaff,
-            deleteMedicalStaff,
-            viewStaffSchedule,
-            
-            // Role Management
-            showAddRoleModal,
-            editRole,
-            cloneRole,
-            deleteRole,
-            saveRole,
-            
-            // Actions
-            quickAssignToUnit,
-            exportAuditLogs,
-            handleAdvancedSearch,
-            togglePermissionFilter,
-            showUserProfile,
-            
-            // Training Units
-            showAddTrainingUnitModal,
-            editTrainingUnit,
-            assignResidentsToUnit,
-            
-            // On-call Schedule
-            showAddOnCallModal,
-            editOnCallSchedule,
-            overrideOnCall,
-            
-            // Leave Requests
-            showAddLeaveRequestModal,
-            approveLeaveRequest,
-            rejectLeaveRequest,
-            viewLeaveRequestDetails,
-            
-            // Staff Management
-            showAddStaffModal,
-            
-            // Permission Management
-            togglePermission,
-            savePermissionChanges,
-            
-            // Toast
-            removeToast
-        };
-    }
-}).mount('#app');
-    </script>
+            // Initialize user permissions based on role
+            const initializePermissions = (userRole) => {
+                const role = PermissionSystem.roles[userRole];
+                if (role) {
+                    userPermissions.value = role.permissions;
+                }
+                logAudit('PERMISSION_INIT', `Permissions initialized for ${userRole}`, 'system');
+            };
+
+            // Fixed hasPermission function
+            const hasPermission = (resource, action) => {
+                if (!currentUser.value) return false;
+                
+                // System admin always has permission
+                if (currentUser.value.user_role === 'system_admin') {
+                    return true;
+                }
+                
+                const role = PermissionSystem.roles[currentUser.value.user_role];
+                if (!role || !role.permissions[resource]) {
+                    return false;
+                }
+                
+                return role.permissions[resource][action] === true;
+            };
+
+            const hasAnyPermission = (resources) => {
+                if (!currentUser.value) return false;
+                return resources.some(resource => 
+                    Object.keys(userPermissions.value[resource] || {}).some(
+                        action => userPermissions.value[resource][action]
+                    )
+                );
+            };
+
+            const getViewPermission = (view) => {
+                if (!currentUser.value) return 'none';
+                
+                const viewMap = {
+                    medical_staff: 'medical_staff',
+                    training_units: 'training_units',
+                    resident_rotations: 'resident_rotations',
+                    placements: 'placements',
+                    daily_operations: 'daily_operations',
+                    oncall_schedule: 'oncall_schedule',
+                    leave_requests: 'leave_requests',
+                    announcements: 'announcements',
+                    audit_logs: 'audit',
+                    department_overview: 'medical_staff',
+                    staff_management: 'medical_staff',
+                    schedule_approval: 'leave_requests',
+                    permission_management: 'system',
+                    system_settings: 'system'
+                };
+                
+                const resource = viewMap[view];
+                if (!resource) return 'none';
+                
+                return PermissionSystem.getPermissionLevel(currentUser.value.user_role, resource);
+            };
+
+            const getUserPermissionLevel = () => {
+                if (!currentUser.value) return 'none';
+                const role = PermissionSystem.roles[currentUser.value.user_role];
+                return role ? role.level : 'none';
+            };
+
+            // ============ AUDIT LOGGING SYSTEM ============
+            const logAudit = async (action, details, resource, resourceId = null) => {
+                const logEntry = {
+                    id: generateUUID(),
+                    timestamp: new Date().toISOString(),
+                    user_id: currentUser.value?.id,
+                    user_name: currentUser.value?.full_name,
+                    user_role: currentUser.value?.user_role,
+                    action,
+                    details,
+                    resource,
+                    resource_id: resourceId,
+                    permission_level: getUserPermissionLevel(),
+                    ip_address: 'system',
+                    user_agent: navigator.userAgent
+                };
+                
+                auditLogs.value.unshift(logEntry);
+                
+                try {
+                    await supabaseClient.from('audit_logs').insert([logEntry]);
+                } catch (error) {
+                    console.error('Failed to save audit log:', error);
+                }
+            };
+
+            // ============ ADVANCED UTILITIES ============
+            const showAdvancedToast = (title, message, type = 'info', duration = 5000) => {
+                const icons = {
+                    info: 'fas fa-info-circle',
+                    success: 'fas fa-check-circle',
+                    error: 'fas fa-exclamation-circle',
+                    warning: 'fas fa-exclamation-triangle',
+                    permission: 'fas fa-shield-alt'
+                };
+                
+                const toast = {
+                    id: ++toastId,
+                    title,
+                    message,
+                    type,
+                    icon: icons[type] || icons.info,
+                    duration
+                };
+                
+                toasts.value.push(toast);
+                
+                setTimeout(() => {
+                    removeToast(toast.id);
+                }, duration);
+            };
+
+            const removeToast = (id) => {
+                const index = toasts.value.findIndex(t => t.id === id);
+                if (index > -1) {
+                    toasts.value.splice(index, 1);
+                }
+            };
+
+            const getInitials = (name) => {
+                if (!name) return '??';
+                return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+            };
+
+            const formatDate = (dateString) => {
+                if (!dateString) return '';
+                return new Date(dateString).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            };
+
+            const formatDateTime = (dateString) => {
+                if (!dateString) return '';
+                return new Date(dateString).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            };
+
+            const formatTimeRange = (start, end) => {
+                const formatTime = (time) => {
+                    if (!time) return '';
+                    const [hours, minutes] = time.split(':');
+                    const hour = parseInt(hours);
+                    return `${hour % 12 || 12}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
+                };
+                return `${formatTime(start)} - ${formatTime(end)}`;
+            };
+
+            const generateUUID = () => {
+                return crypto.randomUUID();
+            };
+
+            const getUserRoleDisplay = (role) => {
+                const roles = {
+                    resident_manager: 'Resident Manager',
+                    department_head: 'Head of Department',
+                    system_admin: 'System Administrator',
+                    viewing_doctor: 'Viewing Doctor',
+                    attending_physician: 'Attending Physician'
+                };
+                return roles[role] || role;
+            };
+
+            const formatStaffType = (type) => {
+                const types = {
+                    medical_resident: 'Medical Resident',
+                    attending_physician: 'Attending Physician',
+                    fellow: 'Fellow',
+                    nurse_practitioner: 'Nurse Practitioner'
+                };
+                return types[type] || type;
+            };
+
+            const getStaffTypeClass = (type) => {
+                return type === 'medical_resident' ? 'badge-resident-advanced' : 
+                       type === 'attending_physician' ? 'badge-attending-advanced' : 
+                       'badge-admin-advanced';
+            };
+
+            const getAuditIcon = (action) => {
+                const icons = {
+                    CREATE: 'fas fa-plus-circle',
+                    UPDATE: 'fas fa-edit',
+                    DELETE: 'fas fa-trash',
+                    READ: 'fas fa-eye',
+                    LOGIN: 'fas fa-sign-in-alt',
+                    LOGOUT: 'fas fa-sign-out-alt',
+                    PERMISSION_CHANGE: 'fas fa-user-shield'
+                };
+                return icons[action] || 'fas fa-info-circle';
+            };
+
+            const formatResidentCategory = (category) => {
+                const categories = {
+                    pgy1: 'PGY-1',
+                    pgy2: 'PGY-2',
+                    pgy3: 'PGY-3',
+                    pgy4: 'PGY-4',
+                    pgy5: 'PGY-5'
+                };
+                return categories[category] || category;
+            };
+
+            const formatEmploymentStatus = (status) => {
+                const statuses = {
+                    active: 'Active',
+                    on_leave: 'On Leave',
+                    inactive: 'Inactive'
+                };
+                return statuses[status] || status;
+            };
+
+            // ============ COMPUTED PROPERTIES ============
+            const stats = computed(() => {
+                const residents = medicalStaff.value.filter(s => 
+                    s.staff_type === 'medical_resident' && s.employment_status === 'active'
+                );
+                const attendings = medicalStaff.value.filter(s => 
+                    s.staff_type === 'attending_physician' && s.employment_status === 'active'
+                );
+                const supervisors = medicalStaff.value.filter(s => 
+                    s.can_supervise_residents && s.employment_status === 'active'
+                );
+                
+                return {
+                    totalStaff: medicalStaff.value.length,
+                    activeResidents: residents.length,
+                    attendings: attendings.length,
+                    availableSupervisors: supervisors.length
+                };
+            });
+
+            const filteredMedicalStaff = computed(() => {
+                let filtered = medicalStaff.value;
+                
+                if (staffSearch.value) {
+                    const search = staffSearch.value.toLowerCase();
+                    filtered = filtered.filter(s => 
+                        s.full_name.toLowerCase().includes(search) ||
+                        (s.staff_id && s.staff_id.toLowerCase().includes(search))
+                    );
+                }
+                
+                if (staffFilter.value.staff_type) {
+                    filtered = filtered.filter(s => s.staff_type === staffFilter.value.staff_type);
+                }
+                
+                if (staffFilter.value.employment_status) {
+                    filtered = filtered.filter(s => s.employment_status === staffFilter.value.employment_status);
+                }
+                
+                return filtered;
+            });
+
+            const todaysAssignments = computed(() => {
+                const today = new Date().toISOString().split('T')[0];
+                return dailyAssignments.value
+                    .filter(a => a.assignment_date === today)
+                    .slice(0, 5);
+            });
+
+            const todaysOnCall = computed(() => {
+                const today = new Date().toISOString().split('T')[0];
+                return onCallSchedule.value
+                    .filter(o => o.duty_date === today)
+                    .slice(0, 3);
+            });
+
+            const recentAnnouncements = computed(() => {
+                const today = new Date().toISOString().split('T')[0];
+                return announcements.value
+                    .filter(a => a.publish_start_date <= today && (!a.publish_end_date || a.publish_end_date >= today))
+                    .slice(0, 3);
+            });
+
+            const coverageAlerts = computed(() => {
+                return trainingUnits.value
+                    .filter(u => u.unit_status === 'active' && (u.current_residents || 0) < u.maximum_residents * 0.5)
+                    .map(u => ({
+                        id: u.id,
+                        unit_name: u.unit_name,
+                        current: u.current_residents || 0,
+                        capacity: u.maximum_residents,
+                        priority: 'high'
+                    }));
+            });
+
+            const emergencyAlerts = computed(() => {
+                return [
+                    {
+                        id: 1,
+                        title: 'ICU Capacity Warning',
+                        message: 'ICU at 95% capacity - Consider diverting non-critical cases',
+                        priority: 'high'
+                    }
+                ];
+            });
+
+            const departmentStats = computed(() => {
+                return {
+                    totalStaff: medicalStaff.value.length,
+                    activeUnits: trainingUnits.value.filter(u => u.unit_status === 'active').length,
+                    coverageRate: Math.round((medicalStaff.value.filter(s => s.employment_status === 'active').length / medicalStaff.value.length) * 100),
+                    pendingApprovals: leaveRequests.value.filter(r => r.status === 'pending').length
+                };
+            });
+
+            const nextSevenDays = computed(() => {
+                const days = [];
+                const today = new Date();
+                
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(today);
+                    date.setDate(today.getDate() + i);
+                    const dateString = date.toISOString().split('T')[0];
+                    
+                    const schedule = onCallSchedule.value.find(o => o.duty_date === dateString);
+                    
+                    days.push({
+                        date: dateString,
+                        schedule: schedule,
+                        status: schedule ? 'covered' : 'uncovered'
+                    });
+                }
+                
+                return days;
+            });
+
+            // ============ NAVIGATION & UI ============
+            const switchView = async (view) => {
+                currentView.value = view;
+                closeMobileMenu();
+                logAudit('VIEW_CHANGE', `Switched to ${view} view`, 'navigation');
+                
+                await loadViewData(view);
+            };
+
+            const getCurrentTitle = () => {
+                const titles = {
+                    medical_staff: 'Medical Staff Management',
+                    training_units: 'Training Units',
+                    daily_operations: 'Daily Operations Board',
+                    permission_management: 'Permission Management',
+                    audit_logs: 'Audit Logs',
+                    oncall_schedule: 'On-call Schedule',
+                    leave_requests: 'Leave Requests',
+                    department_overview: 'Department Overview',
+                    staff_management: 'Staff Management',
+                    schedule_approval: 'Schedule Approval'
+                };
+                return titles[currentView.value] || 'PneumoCare Pro';
+            };
+
+            const getCurrentSubtitle = () => {
+                const subtitles = {
+                    medical_staff: 'Manage medical staff with advanced permissions',
+                    daily_operations: 'Real-time department operations dashboard',
+                    permission_management: 'Configure system permissions and roles',
+                    audit_logs: 'Track all system activities and changes',
+                    oncall_schedule: 'Manage on-call duties and coverage',
+                    leave_requests: 'Review and approve leave requests'
+                };
+                return subtitles[currentView.value] || 'Advanced DRBA Hospital Management System';
+            };
+
+            const getSearchPlaceholder = () => {
+                const placeholders = {
+                    medical_staff: 'Search medical staff by name, ID, or department...',
+                    daily_operations: 'Search assignments, alerts, or announcements...',
+                    audit_logs: 'Search audit logs by user, action, or resource...'
+                };
+                return placeholders[currentView.value] || 'Search...';
+            };
+
+            const toggleMobileMenu = () => {
+                mobileMenuOpen.value = !mobileMenuOpen.value;
+            };
+
+            const closeMobileMenu = () => {
+                mobileMenuOpen.value = false;
+            };
+
+            const togglePermissionManager = () => {
+                showPermissionManager.value = !showPermissionManager.value;
+                userMenuOpen.value = false;
+                if (showPermissionManager.value) {
+                    logAudit('PERMISSION_MANAGER_OPEN', 'Opened permission manager', 'system');
+                }
+            };
+
+            const toggleUserMenu = () => {
+                userMenuOpen.value = !userMenuOpen.value;
+            };
+
+            const getDayStatus = (day) => {
+                return day.status === 'covered' ? 'status-available' : 'status-critical';
+            };
+
+            // ============ AUTHENTICATION ============
+            const handleAdvancedLogin = async () => {
+                loading.value = true;
+                
+                try {
+                    const email = loginForm.value.email.trim().toLowerCase();
+                    const password = loginForm.value.password;
+                    const selectedRole = loginForm.value.user_role;
+                    
+                    if (!email || !password || !selectedRole) {
+                        throw new Error('Please fill in all fields');
+                    }
+                    
+                    // For demo purposes, we'll use mock authentication
+                    // In production, you would verify against Supabase
+                    const mockUsers = {
+                        'admin@hospital.org': { role: 'system_admin', name: 'System Administrator' },
+                        'head@hospital.org': { role: 'department_head', name: 'Department Head' },
+                        'manager@hospital.org': { role: 'resident_manager', name: 'Resident Manager' },
+                        'doctor@hospital.org': { role: 'viewing_doctor', name: 'Viewing Doctor' }
+                    };
+                    
+                    let userData;
+                    
+                    if (email in mockUsers && password === 'password123') {
+                        userData = {
+                            id: generateUUID(),
+                            email: email,
+                            full_name: mockUsers[email].name,
+                            user_role: mockUsers[email].role,
+                            account_status: 'active'
+                        };
+                    } else {
+                        // Try to get from app_users table
+                        const { data: existingUser } = await supabaseClient
+                            .from('app_users')
+                            .select('*')
+                            .eq('email', email)
+                            .maybeSingle();
+                        
+                        if (existingUser) {
+                            userData = existingUser;
+                        } else {
+                            // Create new user for demo
+                            userData = {
+                                id: generateUUID(),
+                                email: email,
+                                full_name: email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                                user_role: selectedRole,
+                                account_status: 'active'
+                            };
+                            
+                            // Save to database
+                            await supabaseClient.from('app_users').insert([userData]);
+                        }
+                    }
+                    
+                    currentUser.value = userData;
+                    initializePermissions(userData.user_role);
+                    
+                    showAdvancedToast(
+                        'Login Successful',
+                        `Welcome ${userData.full_name}!`,
+                        'success'
+                    );
+                    
+                    logAudit('LOGIN_SUCCESS', `User logged in as ${userData.user_role}`, 'auth', userData.id);
+                    
+                    await loadInitialData();
+                    
+                    // Set initial view based on permissions
+                    if (hasPermission('daily_operations', 'read')) {
+                        currentView.value = 'daily_operations';
+                    } else if (hasPermission('medical_staff', 'read')) {
+                        currentView.value = 'medical_staff';
+                    } else {
+                        currentView.value = 'daily_operations';
+                    }
+                    
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showAdvancedToast(
+                        'Login Failed',
+                        error.message || 'Invalid credentials',
+                        'error'
+                    );
+                    logAudit('LOGIN_FAILED', `Failed login attempt: ${error.message}`, 'auth');
+                } finally {
+                    loading.value = false;
+                }
+            };
+
+            const handleLogout = async () => {
+                try {
+                    logAudit('LOGOUT', 'User logged out', 'auth');
+                    currentUser.value = null;
+                    currentView.value = 'login';
+                    userMenuOpen.value = false;
+                    showAdvancedToast('Logged Out', 'You have been successfully logged out', 'info');
+                } catch (error) {
+                    console.error('Logout error:', error);
+                }
+            };
+
+            // ============ DATA LOADING ============
+            const loadInitialData = async () => {
+                loading.value = true;
+                try {
+                    await Promise.all([
+                        loadMedicalStaff(),
+                        loadTrainingUnits(),
+                        loadResidentRotations(),
+                        loadLeaveRequests(),
+                        loadDailyAssignments(),
+                        loadOnCallSchedule(),
+                        loadAnnouncements(),
+                        loadAuditLogs(),
+                        loadSystemStats()
+                    ]);
+                    
+                    showAdvancedToast('System Ready', 'All data loaded successfully', 'success');
+                } catch (error) {
+                    console.error('Error loading initial data:', error);
+                    showAdvancedToast('Data Load Error', 'Failed to load system data', 'error');
+                } finally {
+                    loading.value = false;
+                }
+            };
+
+            const loadViewData = async (view) => {
+                try {
+                    switch (view) {
+                        case 'medical_staff':
+                            await loadMedicalStaff();
+                            break;
+                        case 'training_units':
+                            await loadTrainingUnits();
+                            break;
+                        case 'daily_operations':
+                            await Promise.all([
+                                loadDailyAssignments(),
+                                loadOnCallSchedule(),
+                                loadAnnouncements()
+                            ]);
+                            break;
+                        case 'audit_logs':
+                            await loadAuditLogs();
+                            break;
+                        case 'leave_requests':
+                            await loadLeaveRequests();
+                            break;
+                        case 'oncall_schedule':
+                            await loadOnCallSchedule();
+                            break;
+                    }
+                } catch (error) {
+                    console.error(`Error loading ${view} data:`, error);
+                }
+            };
+
+            // ============ API FUNCTIONS ============
+            const loadMedicalStaff = async () => {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('medical_staff')
+                        .select('*')
+                        .order('full_name');
+                    
+                    if (error) throw error;
+                    medicalStaff.value = data || [];
+                } catch (error) {
+                    console.error('Error loading medical staff:', error);
+                    // For demo, create mock data
+                    medicalStaff.value = [
+                        {
+                            id: '1',
+                            full_name: 'Dr. Sarah Chen',
+                            staff_type: 'attending_physician',
+                            staff_id: 'ATT-001',
+                            employment_status: 'active',
+                            can_supervise_residents: true,
+                            primary_clinic: 'Pulmonary Unit',
+                            professional_email: 's.chen@hospital.org',
+                            resident_category: null,
+                            training_year: null
+                        },
+                        {
+                            id: '2',
+                            full_name: 'Dr. Michael Rodriguez',
+                            staff_type: 'medical_resident',
+                            staff_id: 'RES-001',
+                            employment_status: 'active',
+                            can_supervise_residents: false,
+                            primary_clinic: 'ICU',
+                            professional_email: 'm.rodriguez@hospital.org',
+                            resident_category: 'pgy3',
+                            training_year: 2024
+                        }
+                    ];
+                }
+            };
+
+            const loadTrainingUnits = async () => {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('training_units')
+                        .select('*')
+                        .order('unit_name');
+                    
+                    if (error) throw error;
+                    trainingUnits.value = data || [];
+                } catch (error) {
+                    console.error('Error loading training units:', error);
+                    // Mock data
+                    trainingUnits.value = [
+                        {
+                            id: '1',
+                            unit_name: 'Pulmonary Unit',
+                            unit_description: 'Specializes in pulmonary diseases and critical care',
+                            unit_status: 'active',
+                            maximum_residents: 8,
+                            current_residents: 6,
+                            specialty: 'Pulmonology'
+                        },
+                        {
+                            id: '2',
+                            unit_name: 'ICU',
+                            unit_description: 'Intensive Care Unit for critical patients',
+                            unit_status: 'active',
+                            maximum_residents: 12,
+                            current_residents: 9,
+                            specialty: 'Critical Care'
+                        }
+                    ];
+                }
+            };
+
+            const loadResidentRotations = async () => {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('resident_rotations')
+                        .select('*')
+                        .order('rotation_start_date', { ascending: false });
+                    
+                    if (error) throw error;
+                    residentRotations.value = data || [];
+                } catch (error) {
+                    console.error('Error loading resident rotations:', error);
+                    residentRotations.value = [];
+                }
+            };
+
+            const loadLeaveRequests = async () => {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('leave_requests')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    leaveRequests.value = data || [];
+                } catch (error) {
+                    console.error('Error loading leave requests:', error);
+                    leaveRequests.value = [];
+                }
+            };
+
+            const loadDailyAssignments = async () => {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('daily_assignments')
+                        .select('*')
+                        .order('assignment_date', { ascending: false });
+                    
+                    if (error) throw error;
+                    dailyAssignments.value = data || [];
+                } catch (error) {
+                    console.error('Error loading daily assignments:', error);
+                    dailyAssignments.value = [];
+                }
+            };
+
+            const loadOnCallSchedule = async () => {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('oncall_schedule')
+                        .select('*')
+                        .order('duty_date', { ascending: true });
+                    
+                    if (error) throw error;
+                    onCallSchedule.value = data || [];
+                } catch (error) {
+                    console.error('Error loading on-call schedule:', error);
+                    onCallSchedule.value = [];
+                }
+            };
+
+            const loadAnnouncements = async () => {
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const { data, error } = await supabaseClient
+                        .from('department_announcements')
+                        .select('*')
+                        .lte('publish_start_date', today)
+                        .or(`publish_end_date.is.null,publish_end_date.gte.${today}`)
+                        .order('priority_level', { ascending: false })
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    announcements.value = data || [];
+                } catch (error) {
+                    console.error('Error loading announcements:', error);
+                    announcements.value = [];
+                }
+            };
+
+            const loadAuditLogs = async () => {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('audit_logs')
+                        .select('*')
+                        .order('timestamp', { ascending: false })
+                        .limit(50);
+                    
+                    if (error) throw error;
+                    auditLogs.value = data || [];
+                } catch (error) {
+                    console.error('Error loading audit logs:', error);
+                    auditLogs.value = [];
+                }
+            };
+
+            const loadSystemStats = async () => {
+                systemStats.value = {
+                    active_users: 42,
+                    total_staff: medicalStaff.value.length,
+                    today_assignments: todaysAssignments.value.length,
+                    pending_approvals: leaveRequests.value.filter(r => r.status === 'pending').length
+                };
+            };
+
+            const loadSystemRoles = () => {
+                systemRoles.value = Object.entries(PermissionSystem.roles).map(([id, role]) => ({
+                    id,
+                    ...role
+                }));
+            };
+
+            // ============ MEDICAL STAFF CRUD ============
+            const showAddMedicalStaffModal = () => {
+                if (!hasPermission('medical_staff', 'create')) {
+                    showAdvancedToast(
+                        'Permission Denied',
+                        'You need create permission to add medical staff',
+                        'permission'
+                    );
+                    return;
+                }
+                
+                medicalStaffModal.value = {
+                    show: true,
+                    mode: 'add',
+                    staff: null,
+                    form: {
+                        full_name: '',
+                        staff_type: 'medical_resident',
+                        staff_id: `MD-${Date.now().toString().slice(-6)}`,
+                        employment_status: 'active',
+                        can_supervise_residents: false,
+                        primary_clinic: '',
+                        professional_email: '',
+                        resident_category: '',
+                        training_year: new Date().getFullYear()
+                    }
+                };
+                
+                logAudit('STAFF_MODAL_OPEN', 'Opened add medical staff modal', 'medical_staff');
+            };
+
+            const editMedicalStaff = (staff) => {
+                if (!hasPermission('medical_staff', 'update')) {
+                    showAdvancedToast(
+                        'Permission Denied',
+                        'You need update permission to edit medical staff',
+                        'permission'
+                    );
+                    return;
+                }
+                
+                medicalStaffModal.value = {
+                    show: true,
+                    mode: 'edit',
+                    staff: staff,
+                    form: { ...staff }
+                };
+                
+                logAudit('STAFF_EDIT', `Editing staff member: ${staff.full_name}`, 'medical_staff', staff.id);
+            };
+
+            const saveMedicalStaff = async () => {
+                if (!hasPermission('medical_staff', medicalStaffModal.value.mode === 'add' ? 'create' : 'update')) {
+                    showAdvancedToast('Permission Denied', 'Insufficient permissions', 'permission');
+                    return;
+                }
+                
+                saving.value = true;
+                try {
+                    // Validate form
+                    if (!medicalStaffModal.value.form.full_name.trim()) {
+                        throw new Error('Full name is required');
+                    }
+                    
+                    if (medicalStaffModal.value.mode === 'add') {
+                        // Add new staff
+                        const { data, error } = await supabaseClient
+                            .from('medical_staff')
+                            .insert([{
+                                ...medicalStaffModal.value.form,
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                            }])
+                            .select()
+                            .single();
+                        
+                        if (error) throw error;
+                        
+                        medicalStaff.value.unshift(data);
+                        showAdvancedToast('Success', 'Medical staff added successfully', 'success');
+                        logAudit('STAFF_CREATE', `Added: ${data.full_name}`, 'medical_staff', data.id);
+                    } else {
+                        // Update existing staff
+                        const { data, error } = await supabaseClient
+                            .from('medical_staff')
+                            .update({
+                                ...medicalStaffModal.value.form,
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('id', medicalStaffModal.value.staff.id)
+                            .select()
+                            .single();
+                        
+                        if (error) throw error;
+                        
+                        // Update in local array
+                        const index = medicalStaff.value.findIndex(s => s.id === data.id);
+                        if (index !== -1) {
+                            medicalStaff.value[index] = data;
+                        }
+                        
+                        showAdvancedToast('Success', 'Medical staff updated successfully', 'success');
+                        logAudit('STAFF_UPDATE', `Updated: ${data.full_name}`, 'medical_staff', data.id);
+                    }
+                    
+                    medicalStaffModal.value.show = false;
+                } catch (error) {
+                    console.error('Error saving medical staff:', error);
+                    showAdvancedToast('Save Failed', error.message, 'error');
+                } finally {
+                    saving.value = false;
+                }
+            };
+
+            const deleteMedicalStaff = async (staff) => {
+                if (!hasPermission('medical_staff', 'delete')) {
+                    showAdvancedToast(
+                        'Permission Denied',
+                        'You need delete permission to remove medical staff',
+                        'permission'
+                    );
+                    return;
+                }
+                
+                if (!confirm(`Are you sure you want to delete ${staff.full_name}? This action cannot be undone.`)) {
+                    return;
+                }
+                
+                try {
+                    const { error } = await supabaseClient
+                        .from('medical_staff')
+                        .delete()
+                        .eq('id', staff.id);
+                    
+                    if (error) throw error;
+                    
+                    // Remove from local array
+                    const index = medicalStaff.value.findIndex(s => s.id === staff.id);
+                    if (index !== -1) {
+                        medicalStaff.value.splice(index, 1);
+                    }
+                    
+                    showAdvancedToast('Deleted', `${staff.full_name} has been removed`, 'success');
+                    logAudit('STAFF_DELETE', `Deleted: ${staff.full_name}`, 'medical_staff', staff.id);
+                } catch (error) {
+                    console.error('Error deleting medical staff:', error);
+                    showAdvancedToast('Delete Failed', error.message, 'error');
+                }
+            };
+
+            // ============ PERMISSION MANAGEMENT ============
+            const togglePermission = (resource, action) => {
+                if (!hasPermission('system', 'admin')) {
+                    showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                    return;
+                }
+                
+                showAdvancedToast(
+                    'Permission Updated',
+                    `${action} permission for ${resource} toggled`,
+                    'permission'
+                );
+            };
+
+            const savePermissionChanges = async () => {
+                savingPermissions.value = true;
+                try {
+                    showAdvancedToast(
+                        'Permissions Saved',
+                        'All permission changes have been saved',
+                        'success'
+                    );
+                    logAudit('PERMISSIONS_SAVED', 'Updated system permissions', 'system');
+                } catch (error) {
+                    console.error('Error saving permissions:', error);
+                    showAdvancedToast('Save Failed', 'Failed to save permission changes', 'error');
+                } finally {
+                    savingPermissions.value = false;
+                    showPermissionManager.value = false;
+                }
+            };
+
+            const getResourcePermissionLevel = (resource) => {
+                return PermissionSystem.getPermissionLevel(currentUser.value?.user_role, resource);
+            };
+
+            const getPermissionDescription = (resource, action) => {
+                const descriptions = {
+                    create: 'Create new records',
+                    read: 'View records',
+                    update: 'Edit existing records',
+                    delete: 'Remove records',
+                    export: 'Export data',
+                    approve: 'Approve requests',
+                    override: 'Override restrictions'
+                };
+                return descriptions[action] || action;
+            };
+
+            const formatActionName = (action) => {
+                return action.charAt(0).toUpperCase() + action.slice(1);
+            };
+
+            const formatResourceName = (resource) => {
+                return resource.split('_').map(word => 
+                    word.charAt(0).toUpperCase() + word.slice(1)
+                ).join(' ');
+            };
+
+            // ============ ROLE MANAGEMENT ============
+            const showAddRoleModal = () => {
+                if (!hasPermission('system', 'admin')) {
+                    showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                    return;
+                }
+                
+                addRoleModal.value = {
+                    show: true,
+                    mode: 'add',
+                    role: null,
+                    form: {
+                        name: '',
+                        description: '',
+                        level: 'read'
+                    }
+                };
+            };
+
+            const editRole = (role) => {
+                if (!hasPermission('system', 'admin')) {
+                    showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                    return;
+                }
+                
+                addRoleModal.value = {
+                    show: true,
+                    mode: 'edit',
+                    role: role,
+                    form: {
+                        name: role.name,
+                        description: role.description,
+                        level: role.level
+                    }
+                };
+            };
+
+            const cloneRole = (role) => {
+                if (!hasPermission('system', 'admin')) {
+                    showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                    return;
+                }
+                
+                addRoleModal.value = {
+                    show: true,
+                    mode: 'add',
+                    role: null,
+                    form: {
+                        name: `${role.name} (Copy)`,
+                        description: role.description,
+                        level: role.level
+                    }
+                };
+            };
+
+            const deleteRole = (role) => {
+                if (!hasPermission('system', 'admin')) {
+                    showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                    return;
+                }
+                
+                if (role.id === 'system_admin') {
+                    showAdvancedToast('Cannot Delete', 'System Admin role cannot be deleted', 'error');
+                    return;
+                }
+                
+                if (confirm(`Are you sure you want to delete the "${role.name}" role?`)) {
+                    systemRoles.value = systemRoles.value.filter(r => r.id !== role.id);
+                    showAdvancedToast('Role Deleted', `${role.name} has been removed`, 'success');
+                    logAudit('ROLE_DELETE', `Deleted role: ${role.name}`, 'system');
+                }
+            };
+
+            const saveRole = async () => {
+                if (!hasPermission('system', 'admin')) {
+                    showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                    return;
+                }
+                
+                saving.value = true;
+                try {
+                    const newRole = {
+                        id: addRoleModal.value.mode === 'add' ? 
+                            addRoleModal.value.form.name.toLowerCase().replace(/\s+/g, '_') : 
+                            addRoleModal.value.role.id,
+                        name: addRoleModal.value.form.name,
+                        description: addRoleModal.value.form.description,
+                        level: addRoleModal.value.form.level,
+                        permissions: {}
+                    };
+                    
+                    // Copy permissions from a similar role
+                    const templateRole = PermissionSystem.roles[addRoleModal.value.form.level === 'full' ? 'system_admin' : 'resident_manager'];
+                    if (templateRole) {
+                        newRole.permissions = { ...templateRole.permissions };
+                    }
+                    
+                    if (addRoleModal.value.mode === 'add') {
+                        systemRoles.value.push(newRole);
+                        showAdvancedToast('Success', 'New role created successfully', 'success');
+                        logAudit('ROLE_CREATE', `Created role: ${newRole.name}`, 'system');
+                    } else {
+                        const index = systemRoles.value.findIndex(r => r.id === newRole.id);
+                        if (index !== -1) {
+                            systemRoles.value[index] = newRole;
+                        }
+                        showAdvancedToast('Success', 'Role updated successfully', 'success');
+                        logAudit('ROLE_UPDATE', `Updated role: ${newRole.name}`, 'system');
+                    }
+                    
+                    addRoleModal.value.show = false;
+                } catch (error) {
+                    console.error('Error saving role:', error);
+                    showAdvancedToast('Save Failed', error.message, 'error');
+                } finally {
+                    saving.value = false;
+                }
+            };
+
+            // ============ ACTION HANDLERS ============
+            const viewStaffSchedule = (staff) => {
+                showAdvancedToast('Info', `Viewing schedule for ${staff.full_name}`, 'info');
+                logAudit('SCHEDULE_VIEW', `Viewed schedule for ${staff.full_name}`, 'schedules', staff.id);
+            };
+
+            const quickAssignToUnit = (alert) => {
+                if (!hasPermission('placements', 'create')) {
+                    showAdvancedToast(
+                        'Permission Denied',
+                        'You need create permission to assign residents',
+                        'permission'
+                    );
+                    return;
+                }
+                
+                showAdvancedToast('Assign', `Assigning residents to ${alert.unit_name}`, 'info');
+                logAudit('QUICK_ASSIGN', `Quick assigning to unit: ${alert.unit_name}`, 'placements', alert.id);
+            };
+
+            const exportAuditLogs = () => {
+                if (!hasPermission('audit', 'export')) {
+                    showAdvancedToast(
+                        'Permission Denied',
+                        'You need export permission to download audit logs',
+                        'permission'
+                    );
+                    return;
+                }
+                
+                showAdvancedToast('Export', 'Audit logs exported successfully', 'success');
+                logAudit('AUDIT_EXPORT', 'Exported audit logs', 'audit');
+            };
+
+            const handleAdvancedSearch = () => {
+                logAudit('SEARCH', `Searched for: ${searchQuery.value}`, 'system');
+            };
+
+            const togglePermissionFilter = (level) => {
+                const index = permissionFilter.value.indexOf(level);
+                if (index > -1) {
+                    permissionFilter.value.splice(index, 1);
+                } else {
+                    permissionFilter.value.push(level);
+                }
+            };
+
+            const showUserProfile = () => {
+                userMenuOpen.value = false;
+                showAdvancedToast('Profile', 'User profile would open here', 'info');
+            };
+
+            const showAddTrainingUnitModal = () => {
+                showAdvancedToast('Info', 'Add training unit modal would open here', 'info');
+            };
+
+            const editTrainingUnit = (unit) => {
+                showAdvancedToast('Info', `Editing ${unit.unit_name}`, 'info');
+            };
+
+            const assignResidentsToUnit = (unit) => {
+                showAdvancedToast('Info', `Assigning residents to ${unit.unit_name}`, 'info');
+            };
+
+            const showAddOnCallModal = () => {
+                showAdvancedToast('Info', 'Add on-call schedule modal would open here', 'info');
+            };
+
+            const editOnCallSchedule = (day) => {
+                showAdvancedToast('Info', `Editing on-call for ${formatDate(day.date)}`, 'info');
+            };
+
+            const overrideOnCall = (day) => {
+                showAdvancedToast('Info', `Overriding on-call for ${formatDate(day.date)}`, 'info');
+            };
+
+            const showAddLeaveRequestModal = () => {
+                showAdvancedToast('Info', 'Add leave request modal would open here', 'info');
+            };
+
+            const approveLeaveRequest = (request) => {
+                showAdvancedToast('Approved', `Leave request for ${request.staff_name} approved`, 'success');
+            };
+
+            const rejectLeaveRequest = (request) => {
+                showAdvancedToast('Rejected', `Leave request for ${request.staff_name} rejected`, 'error');
+            };
+
+            const viewLeaveRequestDetails = (request) => {
+                showAdvancedToast('Details', `Viewing details for ${request.staff_name}'s leave request`, 'info');
+            };
+
+            const showAddStaffModal = () => {
+                showAdvancedToast('Info', 'Add staff modal would open here', 'info');
+            };
+
+            // ============ INITIALIZATION ============
+            onMounted(() => {
+                // Check for existing session
+                supabaseClient.auth.getSession().then(({ data: { session } }) => {
+                    if (session) {
+                        console.log('Existing session found');
+                    }
+                }).catch(error => {
+                    console.error('Error getting session:', error);
+                });
+                
+                // Load system roles
+                loadSystemRoles();
+            });
+
+            // ============ RETURN ============
+            return {
+                // State
+                currentUser,
+                loginForm,
+                loading,
+                saving,
+                permissionLoading,
+                savingPermissions,
+                currentView,
+                sidebarCollapsed,
+                mobileMenuOpen,
+                showPermissionManager,
+                searchQuery,
+                permissionFilter,
+                userMenuOpen,
+                
+                // Data
+                medicalStaff,
+                trainingUnits,
+                dailyAssignments,
+                onCallSchedule,
+                announcements,
+                auditLogs,
+                systemRoles,
+                systemStats,
+                
+                // UI
+                toasts,
+                permissionResources,
+                medicalStaffModal,
+                addRoleModal,
+                
+                // Computed
+                stats,
+                filteredMedicalStaff,
+                todaysAssignments,
+                todaysOnCall,
+                recentAnnouncements,
+                coverageAlerts,
+                emergencyAlerts,
+                departmentStats,
+                nextSevenDays,
+                
+                // Permission System
+                hasPermission,
+                hasAnyPermission,
+                getViewPermission,
+                getUserPermissionLevel,
+                getResourcePermissionLevel,
+                getPermissionDescription,
+                formatActionName,
+                formatResourceName,
+                
+                // Navigation
+                switchView,
+                getCurrentTitle,
+                getCurrentSubtitle,
+                getSearchPlaceholder,
+                toggleMobileMenu,
+                closeMobileMenu,
+                togglePermissionManager,
+                toggleUserMenu,
+                getDayStatus,
+                
+                // Authentication
+                handleAdvancedLogin,
+                handleLogout,
+                
+                // Utilities
+                getInitials,
+                formatDate,
+                formatDateTime,
+                formatTimeRange,
+                getUserRoleDisplay,
+                formatStaffType,
+                getStaffTypeClass,
+                getAuditIcon,
+                formatResidentCategory,
+                formatEmploymentStatus,
+                
+                // Medical Staff
+                showAddMedicalStaffModal,
+                editMedicalStaff,
+                saveMedicalStaff,
+                deleteMedicalStaff,
+                viewStaffSchedule,
+                
+                // Role Management
+                showAddRoleModal,
+                editRole,
+                cloneRole,
+                deleteRole,
+                saveRole,
+                
+                // Actions
+                quickAssignToUnit,
+                exportAuditLogs,
+                handleAdvancedSearch,
+                togglePermissionFilter,
+                showUserProfile,
+                
+                // Training Units
+                showAddTrainingUnitModal,
+                editTrainingUnit,
+                assignResidentsToUnit,
+                
+                // On-call Schedule
+                showAddOnCallModal,
+                editOnCallSchedule,
+                overrideOnCall,
+                
+                // Leave Requests
+                showAddLeaveRequestModal,
+                approveLeaveRequest,
+                rejectLeaveRequest,
+                viewLeaveRequestDetails,
+                
+                // Staff Management
+                showAddStaffModal,
+                
+                // Permission Management
+                togglePermission,
+                savePermissionChanges,
+                
+                // Toast
+                removeToast
+            };
+        }
+    }).mount('#app');
+};
+
+// Initialize the app
+initializeApp();
+</script>
 </body>
 </html>
