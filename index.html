@@ -5990,23 +5990,6 @@ const editAnnouncement = (announcement) => {
     };
 };
 
-const saveAnnouncement = async () => {
-    if (!hasPermission('announcements', announcementModal.value.mode === 'add' ? 'create' : 'update')) {
-        showAdvancedToast('Permission Denied', 'Insufficient permissions', 'permission');
-        return;
-    }
-    
-    saving.value = true;
-    try {
-        if (!announcementModal.value.form.announcement_title.trim()) {
-            throw new Error('Title is required');
-        }
-        if (!announcementModal.value.form.announcement_content.trim()) {
-            throw new Error('Content is required');
-        }
-        if (!announcementModal.value.form.publish_start_date) {
-            throw new Error('Publish date is required');
-        }
         
         const announcementData = {
             announcement_title: announcementModal.value.form.announcement_title,
