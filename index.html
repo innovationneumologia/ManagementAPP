@@ -2457,12 +2457,13 @@
                         <!-- Permission-based Navigation Sections -->
                         <div class="nav-section" v-if="hasAnyPermission(['medical_staff', 'training_units', 'resident_rotations', 'placements'])">
                             <div class="nav-section-title">Resident Management</div>
-                            
                             <button class="nav-item" 
         :class="{ active: currentView === 'medical_staff' }" 
-        @click="() => { switchView('medical_staff'); closeMobileMenu(); }"
+        @click="testClick('medical_staff')"
         :disabled="!hasPermission('medical_staff', 'read')"
         :data-permission="getViewPermission('medical_staff')">
+                            
+                   
                                 <i class="fas fa-user-graduate"></i>
                                 <span>Medical Staff</span>
                                 <span class="nav-permission" :class="`permission-${getViewPermission('medical_staff')}`">
