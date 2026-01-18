@@ -4095,24 +4095,37 @@ const staffFilter = ref({
                     }
                 };
 
-                const loadAnnouncements = async () => {
-                    try {
-                        const today = new Date().toISOString().split('T')[0];
-                        const { data, error } = await supabase
-                            .from('department_announcements')
-                            .select('*')
-                            .lte('publish_start_date', today)
-                            .or(`publish_end_date.is.null,publish_end_date.gte.${today}`)
-                            .order('priority_level', { ascending: false })
-                            .order('created_at', { ascending: false });
-                        
-                        if (error) throw error;
-                        announcements.value = data || [];
-                    } catch (error) {
-                        console.error('Error loading announcements:', error);
-                        throw error;
-                    }
-                };
+               const loadAnnouncements = async () => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase
+            .from('department_announcements')
+            .select('*')
+            .lte('publish_start_date', today)
+            .or(`publish_end_date.is.null,publish_end_date.gte.${today}`)
+            .order('priority_level', { ascending: false })
+            .order('created_at', { ascending: false });
+        
+        if (error) {
+            console.error('Supabase error:', error);
+            announcements.value = [];
+            return;
+        }
+        
+        // Just use the data as-is - Supabase will handle the column names
+        announcements.value = data || [];
+        
+        // Debug log
+        if (announcements.value.length > 0) {
+            console.log('First announcement:', announcements.value[0]);
+            console.log('Available keys:', Object.keys(announcements.value[0]));
+        }
+        
+    } catch (error) {
+        console.error('Error loading announcements:', error);
+        announcements.value = [];
+    }
+};
 
                 const loadAuditLogs = async () => {
                     try {
