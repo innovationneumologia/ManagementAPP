@@ -5842,7 +5842,6 @@ const availableResidents = computed(() => {
                     target_audience: announcement.target_audience || 'all'
                 }
             };
-        };
 
         const saveAnnouncement = async () => {
             if (!hasPermission('announcements', announcementModal.value.mode === 'add' ? 'create' : 'update')) {
