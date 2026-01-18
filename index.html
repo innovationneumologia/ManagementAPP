@@ -4297,7 +4297,26 @@ onMounted(() => {
     // Load system roles
     loadSystemRoles();
 });
+// Add this AFTER your other function definitions, BEFORE return statement
+const deleteRole = (role) => {
+    console.log('Delete role clicked:', role.name);
+    showAdvancedToast('Delete Role', `Would delete ${role.name}`, 'warning');
+};
 
+const editRole = (role) => {
+    console.log('Edit role clicked:', role.name);
+    // Your edit logic here
+};
+
+const cloneRole = (role) => {
+    console.log('Clone role clicked:', role.name);
+    // Your clone logic here
+};
+
+const showAddRoleModal = () => {
+    console.log('Show add role modal clicked');
+    // Your modal logic here
+};
                 // ============ RETURN ============
                 return {
                     // State
@@ -4315,7 +4334,10 @@ onMounted(() => {
                     showPermissionManager,
                     searchQuery,
                     permissionFilter,
-                    
+                    deleteRole,
+    editRole, 
+    cloneRole,
+    showAddRoleModal,
                     // Data
                     medicalStaff,
                     trainingUnits,
