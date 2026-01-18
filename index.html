@@ -3774,27 +3774,36 @@ const staffFilter = ref({
                 });
 
                 const filteredMedicalStaff = computed(() => {
-                    let filtered = medicalStaff.value;
-                    
-                    if (staffSearch.value) {
-                        const search = staffSearch.value.toLowerCase();
-                        filtered = filtered.filter(s => 
-                            s.full_name.toLowerCase().includes(search) ||
-                            (s.staff_id && s.staff_id.toLowerCase().includes(search))
-                        );
-                    }
-                    
-                    if (staffFilter.value.staff_type) {
-                        filtered = filtered.filter(s => s.staff_type === staffFilter.value.staff_type);
-                    }
-                    
-                    if (staffFilter.value.employment_status) {
-                        filtered = filtered.filter(s => s.employment_status === staffFilter.value.employment_status);
-                    }
-                    
-                    return filtered;
-                });
-
+    let filtered = medicalStaff.value || [];
+    
+    // Filter by search
+    if (staffSearch.value) {
+        const search = staffSearch.value.toLowerCase();
+        filtered = filtered.filter(s => {
+            if (!s) return false; // Safety check
+            return (s.full_name && s.full_name.toLowerCase().includes(search)) ||
+                   (s.staff_id && s.staff_id.toLowerCase().includes(search));
+        });
+    }
+    
+    // Filter by staff type
+    if (staffFilter.value.staff_type) {
+        filtered = filtered.filter(s => {
+            if (!s) return false; // Safety check
+            return s.staff_type === staffFilter.value.staff_type;
+        });
+    }
+    
+    // Filter by employment status
+    if (staffFilter.value.employment_status) {
+        filtered = filtered.filter(s => {
+            if (!s) return false; // Safety check
+            return s.employment_status === staffFilter.value.employment_status;
+        });
+    }
+    
+    return filtered;
+});
                 const todaysAssignments = computed(() => {
                     const today = new Date().toISOString().split('T')[0];
                     return dailyAssignments.value
