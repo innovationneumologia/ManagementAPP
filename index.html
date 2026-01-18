@@ -4272,6 +4272,7 @@ const logAudit = async (action, details, resource, resourceId = null) => {
                        type === 'attending_physician' ? 'badge-attending-advanced' : 
                        'badge-admin-advanced';
             };
+            
 
             const getAuditIcon = (action) => {
                 const icons = {
@@ -4287,15 +4288,18 @@ const logAudit = async (action, details, resource, resourceId = null) => {
             };
 
             const formatResidentCategory = (category) => {
-                const categories = {
-                    pgy1: 'PGY-1',
-                    pgy2: 'PGY-2',
-                    pgy3: 'PGY-3',
-                    pgy4: 'PGY-4',
-                    pgy5: 'PGY-5'
-                };
-                return categories[category] || category;
-            };
+    if (!category || category === 'null' || category === null) return 'N/A';
+    const categories = {
+        department_internal: 'Department Internal',
+        rotating_other_dept: 'Rotating Other Dept',
+        pgy1: 'PGY-1',
+        pgy2: 'PGY-2',
+        pgy3: 'PGY-3',
+        pgy4: 'PGY-4',
+        pgy5: 'PGY-5'
+    };
+    return categories[category] || category;
+};
 
             const formatEmploymentStatus = (status) => {
                 const statuses = {
