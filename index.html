@@ -3591,13 +3591,55 @@ const staffFilter = ref({
                 };
 
                 const saveAuditLog = async (logEntry) => {
-                    try {
-                        await supabase.from('audit_logs').insert([logEntry]);
-                    } catch (error) {
-                        console.error('Failed to save audit log:', error);
-                    }
-                };
-
+    try {
+        // Don't pass id - let database generate it
+        // Don't pass created_at - let database handle it
+        const mappedEntry = {
+            timestamp: logEntry.timestamp || new Date().toISOString(),
+            user_id: logEntry.user_id,
+            user_name: logEntry.user_name,
+            user_role: logEntry.user_role,
+            action: logEntry.action,
+            details: logEntry.details,
+            resource: logEntry.resource,
+            resource_id: logEntry.resource_id,
+            permission_level: logEntry.permission_level,
+            ip_address: logEntry.ip_address || 'system',
+            user_agent: logEntry.user_agent || navigator.userAgent
+            // Don't include: id, created_at
+        };
+        
+        console.log('📝 Saving audit log:', mappedEntry.action);
+        
+        const { error } = await supabase
+            .from('audit_logs')
+            .insert([mappedEntry]);
+        
+        if (error) {
+            console.error('Failed to save audit log:', error);
+            
+            // Try without optional fields
+            const minimalEntry = {
+                timestamp: mappedEntry.timestamp,
+                user_name: mappedEntry.user_name,
+                action: mappedEntry.action,
+                details: mappedEntry.details
+            };
+            
+            const { error: minimalError } = await supabase
+                .from('audit_logs')
+                .insert([minimalEntry]);
+            
+            if (minimalError) {
+                console.error('Minimal audit log also failed:', minimalError);
+                // Don't throw - just log and continue
+            }
+        }
+    } catch (error) {
+        console.error('Error in saveAuditLog:', error);
+        // Don't throw - we don't want audit logs to break the app
+    }
+};
                 // ============ ADVANCED UTILITIES ============
                 const showAdvancedToast = (title, message, type = 'info', duration = 5000) => {
                     const icons = {
