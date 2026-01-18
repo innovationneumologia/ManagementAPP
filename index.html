@@ -3212,17 +3212,24 @@
     <script>
 const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 
-// Supabase configuration - RENAMED TO supabaseClient
+// Supabase configuration - FIXED VERSION
 const supabaseUrl = 'https://vssmguzuvekkecbmwcjw.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
 
-const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey, {
+// Initialize Supabase client PROPERLY
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey, {
     auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false
+        detectSessionInUrl: false,
+        storage: window.localStorage
     }
 });
+
+// Test if Supabase client is working
+console.log('Supabase initialized:', supabase);
+console.log('Supabase auth available:', supabase.auth);
+
 
         // Advanced DRBA Permission System
         const PermissionSystem = {
