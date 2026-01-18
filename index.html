@@ -3766,18 +3766,25 @@ const staffFilter = ref({
                 // ============ COMPUTED PROPERTIES ============
                 // ============ COMPUTED PROPERTIES ============
 const stats = computed(() => {
-    const residents = medicalStaff.value.filter(s => 
-        s.staff_type === 'medical_resident' && s.employment_status === 'active'
-    );
-    const attendings = medicalStaff.value.filter(s => 
-        s.staff_type === 'attending_physician' && s.employment_status === 'active'
-    );
-    const supervisors = medicalStaff.value.filter(s => 
-        s.can_supervise_residents && s.employment_status === 'active'
-    );
+    const staff = medicalStaff.value || [];
+    
+    const residents = staff.filter(s => {
+        if (!s || !s.staff_type || !s.employment_status) return false;
+        return s.staff_type === 'medical_resident' && s.employment_status === 'active';
+    });
+    
+    const attendings = staff.filter(s => {
+        if (!s || !s.staff_type || !s.employment_status) return false;
+        return s.staff_type === 'attending_physician' && s.employment_status === 'active';
+    });
+    
+    const supervisors = staff.filter(s => {
+        if (!s || !s.employment_status) return false;
+        return s.can_supervise_residents && s.employment_status === 'active';
+    });
     
     return {
-        totalStaff: medicalStaff.value.length,
+        totalStaff: staff.length,
         activeResidents: residents.length,
         attendings: attendings.length,
         availableSupervisors: supervisors.length
@@ -3785,29 +3792,45 @@ const stats = computed(() => {
 });
 
 const filteredMedicalStaff = computed(() => {
+    // Start with medical staff data or empty array
     let filtered = medicalStaff.value || [];
     
-    if (!filtered || filtered.length === 0) return [];
+    // If no data, return empty
+    if (!filtered || filtered.length === 0) {
+        return [];
+    }
     
+    // Apply search filter WITH SAFETY
     if (staffSearch.value) {
         const search = staffSearch.value.toLowerCase();
         filtered = filtered.filter(s => {
+            // SAFETY CHECK: skip undefined items
             if (!s) return false;
-            return (s.full_name && s.full_name.toLowerCase().includes(search)) ||
-                   (s.staff_id && s.staff_id.toLowerCase().includes(search));
+            
+            // Check if staff has name and matches search
+            const hasName = s.full_name && s.full_name.toLowerCase().includes(search);
+            const hasId = s.staff_id && s.staff_id.toLowerCase().includes(search);
+            
+            return hasName || hasId;
         });
     }
     
+    // Apply staff type filter WITH SAFETY
     if (staffFilter.value.staff_type) {
         filtered = filtered.filter(s => {
-            if (!s) return false;
+            // SAFETY CHECK
+            if (!s || !s.staff_type) return false;
+            
             return s.staff_type === staffFilter.value.staff_type;
         });
     }
     
+    // Apply employment status filter WITH SAFETY
     if (staffFilter.value.employment_status) {
         filtered = filtered.filter(s => {
-            if (!s) return false;
+            // SAFETY CHECK
+            if (!s || !s.employment_status) return false;
+            
             return s.employment_status === staffFilter.value.employment_status;
         });
     }
