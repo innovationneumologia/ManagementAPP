@@ -3775,7 +3775,64 @@
         </form>
     </div>
 </div>
-
+<!-- Training Units Modal -->
+<div v-if="trainingUnitModal.show" class="modal-overlay-advanced">
+    <div class="modal-advanced" style="max-width: 600px;">
+        <div class="modal-header-advanced">
+            <div class="modal-title-advanced">
+                <div class="modal-title-icon">
+                    <i class="fas fa-hospital-alt"></i>
+                </div>
+                {{ trainingUnitModal.mode === 'add' ? 'Add Training Unit' : 'Edit Training Unit' }}
+            </div>
+            <button class="modal-close-advanced" @click="trainingUnitModal.show = false">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form @submit.prevent="saveTrainingUnit">
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Unit Name *</label>
+                <input type="text" class="form-input-advanced" v-model="trainingUnitModal.form.unit_name" required>
+            </div>
+            
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Description</label>
+                <textarea class="form-textarea-advanced" v-model="trainingUnitModal.form.unit_description"></textarea>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Status *</label>
+                    <select class="form-select-advanced" v-model="trainingUnitModal.form.unit_status" required>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Max Residents *</label>
+                    <input type="number" class="form-input-advanced" v-model="trainingUnitModal.form.maximum_residents" min="1" max="50" required>
+                </div>
+            </div>
+            
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Specialty</label>
+                <input type="text" class="form-input-advanced" v-model="trainingUnitModal.form.specialty">
+            </div>
+            
+            <div class="form-actions-advanced">
+                <button type="button" class="btn-advanced btn-outline-advanced" @click="trainingUnitModal.show = false">
+                    Cancel
+                </button>
+                <button type="submit" class="btn-advanced" :disabled="saving">
+                    <i class="fas fa-save"></i>
+                    {{ saving ? 'Saving...' : (trainingUnitModal.mode === 'add' ? 'Add Unit' : 'Update Unit') }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
         <!-- User Menu Dropdown -->
         <div v-if="userMenuOpen" style="position: fixed; top: 70px; right: 30px; z-index: var(--z-popover);">
             <div style="background: white; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-xl); min-width: 200px;">
@@ -4989,7 +5046,108 @@ const onCallModal = ref({
         coverage_notes: ''
     }
 });
+// ============ TRAINING UNITS MODAL ============
+const trainingUnitModal = ref({
+    show: false,
+    mode: 'add',
+    unit: null,
+    form: {
+        unit_name: '',
+        unit_description: '',
+        unit_status: 'active',
+        maximum_residents: 10,
+        specialty: '',
+        current_residents: 0
+    }
+});
 
+const showAddTrainingUnitModal = () => {
+    if (!hasPermission('training_units', 'create')) {
+        showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
+        return;
+    }
+    trainingUnitModal.value = {
+        show: true,
+        mode: 'add',
+        unit: null,
+        form: {
+            unit_name: '',
+            unit_description: '',
+            unit_status: 'active',
+            maximum_residents: 10,
+            specialty: '',
+            current_residents: 0
+        }
+    };
+};
+
+const editTrainingUnit = (unit) => {
+    if (!hasPermission('training_units', 'update')) {
+        showAdvancedToast('Permission Denied', 'Need update permission', 'permission');
+        return;
+    }
+    trainingUnitModal.value = {
+        show: true,
+        mode: 'edit',
+        unit: unit,
+        form: { ...unit }
+    };
+};
+
+const saveTrainingUnit = async () => {
+    if (!hasPermission('training_units', trainingUnitModal.value.mode === 'add' ? 'create' : 'update')) {
+        showAdvancedToast('Permission Denied', 'Insufficient permissions', 'permission');
+        return;
+    }
+    
+    saving.value = true;
+    try {
+        if (!trainingUnitModal.value.form.unit_name.trim()) {
+            throw new Error('Unit name required');
+        }
+        
+        const unitData = {
+            ...trainingUnitModal.value.form,
+            updated_at: new Date().toISOString()
+        };
+        
+        if (trainingUnitModal.value.mode === 'add') {
+            const { data, error } = await supabaseClient
+                .from('training_units')
+                .insert([{
+                    ...unitData,
+                    created_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+            
+            if (error) throw error;
+            trainingUnits.value.unshift(data);
+            showAdvancedToast('Success', 'Training unit added', 'success');
+            logAudit('TRAINING_UNIT_CREATE', `Added unit: ${unitData.unit_name}`, 'training_units', data.id);
+        } else {
+            const { data, error } = await supabaseClient
+                .from('training_units')
+                .update(unitData)
+                .eq('id', trainingUnitModal.value.unit.id)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            const index = trainingUnits.value.findIndex(u => u.id === data.id);
+            if (index !== -1) trainingUnits.value[index] = data;
+            showAdvancedToast('Success', 'Training unit updated', 'success');
+            logAudit('TRAINING_UNIT_UPDATE', `Updated unit: ${unitData.unit_name}`, 'training_units', data.id);
+        }
+        
+        trainingUnitModal.value.show = false;
+    } catch (error) {
+        console.error('Error saving training unit:', error);
+        showAdvancedToast('Save Failed', error.message, 'error');
+    } finally {
+        saving.value = false;
+    }
+};
 const showAddOnCallModal = () => {
     if (!hasPermission('oncall_schedule', 'create')) {
         showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
@@ -5488,6 +5646,10 @@ const overrideOnCall = (day) => {
                 overrideOnCall,
                     staffFilter,
                 staffSearch,
+                trainingUnitModal, 
+                showAddTrainingUnitModal, 
+                editTrainingUnit, 
+                saveTrainingUnit
 
                 // Data
                 medicalStaff,
