@@ -4139,21 +4139,7 @@ const emergencyAlerts = computed(() => {
                 };
 
                 // ============ API FUNCTIONS ============
-                const loadMedicalStaff = async () => {
-                    try {
-                        const { data, error } = await supabase
-                            .from('medical_staff')
-                            .select('*')
-                            .order('full_name');
-                        
-                        if (error) throw error;
-                        medicalStaff.value = data || [];
-                    } catch (error) {
-                        console.error('Error loading medical staff:', error);
-                        throw error;
-                    }
-                };
-                const loadMedicalStaff = async () => {
+                       const loadMedicalStaff = async () => {
     try {
         const { data, error } = await supabase
             .from('medical_staff')
@@ -4175,6 +4161,8 @@ const emergencyAlerts = computed(() => {
     }
 };
 
+
+         
                 const loadDailyAssignments = async () => {
                     try {
                         const { data, error } = await supabase
