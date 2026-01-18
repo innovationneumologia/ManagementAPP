@@ -5586,20 +5586,6 @@ const saveLeaveRequest = async () => {
     }
 };
          
-// ============ TRAINING UNITS MODAL ============
-const trainingUnitModal = ref({
-    show: false,
-    mode: 'add',
-    unit: null,
-    form: {
-        unit_name: '',
-        unit_description: '',
-        unit_status: 'active',
-        maximum_residents: 10,
-        specialty: '',
-        current_residents: 0
-    }
-});
 
 const showAddTrainingUnitModal = () => {
     if (!hasPermission('training_units', 'create')) {
