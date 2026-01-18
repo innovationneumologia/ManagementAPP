@@ -6128,146 +6128,154 @@ const overrideOnCall = (day) => {
             });
 
             // ============ RETURN ============
-            return {
-                // State
-                currentUser,
-                loginForm,
-                loading,
-                saving,
-                permissionLoading,
-                savingPermissions,
-                currentView,
-                sidebarCollapsed,
-                mobileMenuOpen,
-                showPermissionManager,
-                searchQuery,
-                permissionFilter,
-                userMenuOpen,
-                onCallModal,
-                showAddOnCallModal,
-                editOnCallSchedule,
-                saveOnCallSchedule,
-                overrideOnCall,
-                staffFilter,
-                staffSearch,
-                trainingUnitModal, 
-                showAddTrainingUnitModal, 
-                editTrainingUnit, 
-                saveTrainingUnit,
-                showAddAnnouncementModal,
-                // Data
-                medicalStaff,
-                trainingUnits,
-                dailyAssignments,
-                onCallSchedule,
-                announcements,
-                auditLogs,
-                systemRoles,
-                systemStats,
-                announcementModal,
+            // ============ RETURN ============
+return {
+    // State
+    currentUser,
+    loginForm,
+    loading,
+    saving,
+    permissionLoading,
+    savingPermissions,
+    currentView,
+    sidebarCollapsed,
+    mobileMenuOpen,
+    showPermissionManager,
+    searchQuery,
+    permissionFilter,
+    userMenuOpen,
+    
+    // Data
+    medicalStaff,
+    trainingUnits,
+    dailyAssignments,
+    onCallSchedule,
+    announcements,
+    auditLogs,
+    systemRoles,
+    systemStats,
+    
+    // Modal States (ALL MODALS MUST BE HERE)
+    medicalStaffModal,
+    addRoleModal,
+    announcementModal,
+    onCallModal,
+    leaveRequestModal,        // <-- WAS MISSING
+    trainingUnitModal,
+    
+    // Filter states
+    staffSearch,
+    staffFilter,
+    
+    // UI
+    toasts,
+    permissionResources,
+    
+    // Computed
+    stats,
+    filteredMedicalStaff,
+    todaysAssignments,
+    todaysOnCall,
+    recentAnnouncements,
+    coverageAlerts,
+    emergencyAlerts,
+    departmentStats,
+    nextSevenDays,
+    
+    // Permission System
+    hasPermission,
+    hasAnyPermission,
+    getViewPermission,
+    getUserPermissionLevel,
+    getResourcePermissionLevel,
+    getPermissionDescription,
+    formatActionName,
+    formatResourceName,
+    
+    // Navigation
+    switchView,
+    getCurrentTitle,
+    getCurrentSubtitle,
+    getSearchPlaceholder,
+    toggleMobileMenu,
+    closeMobileMenu,
+    togglePermissionManager,
+    toggleUserMenu,
+    getDayStatus,
+    
+    // Authentication
+    handleAdvancedLogin,
+    handleLogout,
+    
+    // Utilities
+    getInitials,
+    formatDate,
+    formatDateTime,
+    formatTimeRange,
+    getUserRoleDisplay,
+    formatStaffType,
+    getStaffTypeClass,
+    getAuditIcon,
+    formatResidentCategory,
+    formatEmploymentStatus,
+    
+    // Medical Staff Functions
+    showAddMedicalStaffModal,
+    editMedicalStaff,
+    saveMedicalStaff,
+    deleteMedicalStaff,
+    viewStaffSchedule,
+    
+    // Role Management
+    showAddRoleModal,
+    editRole,
+    cloneRole,
+    deleteRole,
+    saveRole,
+    
+    // Announcements Functions
+    showAddAnnouncementModal,
+    editAnnouncement,         // <-- WAS MISSING
+    saveAnnouncement,         // <-- WAS MISSING
+    deleteAnnouncement,       // <-- WAS MISSING
+    
+    // On-call Schedule Functions
+    showAddOnCallModal,
+    editOnCallSchedule,
+    saveOnCallSchedule,
+    overrideOnCall,
+    
+    // Leave Requests Functions
+    showAddLeaveRequestModal,
+    viewLeaveRequestDetails,
+    approveLeaveRequest,
+    rejectLeaveRequest,
+    saveLeaveRequest,         // <-- WAS MISSING
+    
+    // Training Units Functions
+    showAddTrainingUnitModal,
+    editTrainingUnit,
+    saveTrainingUnit,
+    assignResidentsToUnit,
+    
+    // Actions
+    quickAssignToUnit,
+    exportAuditLogs,
+    handleAdvancedSearch,
+    togglePermissionFilter,
+    showUserProfile,
+    
+    // Staff Management
+    showAddStaffModal,
+    
+    // Permission Management
+    togglePermission,
+    savePermissionChanges,
+    
+    // Toast
+    removeToast
+};
 
-                
-                // UI
-                toasts,
-                permissionResources,
-                medicalStaffModal,
-                addRoleModal,
-                
-                // Computed
-                stats,
-                filteredMedicalStaff,
-                todaysAssignments,
-                todaysOnCall,
-                recentAnnouncements,
-                coverageAlerts,
-                emergencyAlerts,
-                departmentStats,
-                nextSevenDays,
-                
-                // Permission System
-                hasPermission,
-                hasAnyPermission,
-                getViewPermission,
-                getUserPermissionLevel,
-                getResourcePermissionLevel,
-                getPermissionDescription,
-                formatActionName,
-                formatResourceName,
-                
-                // Navigation
-                switchView,
-                getCurrentTitle,
-                getCurrentSubtitle,
-                getSearchPlaceholder,
-                toggleMobileMenu,
-                closeMobileMenu,
-                togglePermissionManager,
-                toggleUserMenu,
-                getDayStatus,
-                
-                // Authentication
-                handleAdvancedLogin,
-                handleLogout,
-                
-                // Utilities
-                getInitials,
-                formatDate,
-                formatDateTime,
-                formatTimeRange,
-                getUserRoleDisplay,
-                formatStaffType,
-                getStaffTypeClass,
-                getAuditIcon,
-                formatResidentCategory,
-                formatEmploymentStatus,
-                
-                // Medical Staff
-                showAddMedicalStaffModal,
-                editMedicalStaff,
-                saveMedicalStaff,
-                deleteMedicalStaff,
-                viewStaffSchedule,
-                
-                // Role Management
-                showAddRoleModal,
-                editRole,
-                cloneRole,
-                deleteRole,
-                saveRole,
-                
-                // Actions
-                quickAssignToUnit,
-                exportAuditLogs,
-                handleAdvancedSearch,
-                togglePermissionFilter,
-                showUserProfile,
-                
-                // Training Units
-                showAddTrainingUnitModal,
-                editTrainingUnit,
-                assignResidentsToUnit,
-                
-                // On-call Schedule
-                showAddOnCallModal,
-                editOnCallSchedule,
-                overrideOnCall,
-                
-                // Leave Requests
-                showAddLeaveRequestModal,
-                approveLeaveRequest,
-                rejectLeaveRequest,
-                viewLeaveRequestDetails,
-                
-                // Staff Management
-                showAddStaffModal,
-                
-                // Permission Management
-                togglePermission,
-                savePermissionChanges,
-                
-                // Toast
-                removeToast
-            };
         }
     }).mount('#app');
 };
