@@ -4218,175 +4218,218 @@ const initializeApp = () => {
     createApp({
         setup() {
             // ============ ADVANCED STATE MANAGEMENT ============
-            const currentUser = ref(null);
-            const loginForm = ref({
-                email: '',
-                password: '',
-                user_role: 'resident_manager',
-                require_mfa: false,
-                mfa_code: ''
-            });
-         const announcementModal = ref({
-        show: false,
-        mode: 'add',
-        announcement: null,
-        form: {
-            announcement_title: '',
-            announcement_content: '',
-            publish_start_date: '',
-            publish_end_date: '',
-            priority_level: 'medium',
-            target_audience: 'all'
-        }
-    });
-    
-            const loading = ref(false);
-            const saving = ref(false);
-            const permissionLoading = ref(false);
-            const savingPermissions = ref(false);
-            
-            // Navigation
-            const currentView = ref('login');
-            const sidebarCollapsed = ref(false);
-            const mobileMenuOpen = ref(false);
-            const showPermissionManager = ref(false);
-            const searchQuery = ref('');
-            const permissionFilter = ref([]);
-            const userMenuOpen = ref(false);
-            
-            // Data Stores
-            const medicalStaff = ref([]);
-            const trainingUnits = ref([]);
-            const residentRotations = ref([]);
-            const dailyAssignments = ref([]);
-            const leaveRequests = ref([]);
-            const onCallSchedule = ref([]);
-            const announcements = ref([]);
-            const auditLogs = ref([]);
-            const systemRoles = ref([]);
-            const systemStats = ref({
-                active_users: 0,
-                total_staff: 0,
-                today_assignments: 0,
-                pending_approvals: 0
-            });
-            
-            // Toast System
-            const toasts = ref([]);
-            let toastId = 0;
+const currentUser = ref(null);
+const loginForm = ref({
+    email: '',
+    password: '',
+    user_role: 'resident_manager',
+    require_mfa: false,
+    mfa_code: ''
+});
 
-            // ============ MODAL STATES ============
-            const medicalStaffModal = ref({
-                show: false,
-                mode: 'add',
-                staff: null,
-                form: {
-                    full_name: '',
-                    staff_type: 'medical_resident',
-                    staff_id: '',
-                    employment_status: 'active',
-                    can_supervise_residents: false,
-                    primary_clinic: '',
-                    professional_email: '',
-                    resident_category: '',
-                    training_year: null
-                }
-            });
-            
-            const addRoleModal = ref({
-                show: false,
-                mode: 'add',
-                role: null,
-                form: {
-                    name: '',
-                    description: '',
-                    level: 'read'
-                }
-            });
-            // Filter states
+const loading = ref(false);
+const saving = ref(false);
+const permissionLoading = ref(false);
+const savingPermissions = ref(false);
+
+// Navigation
+const currentView = ref('login');
+const sidebarCollapsed = ref(false);
+const mobileMenuOpen = ref(false);
+const showPermissionManager = ref(false);
+const searchQuery = ref('');
+const permissionFilter = ref([]);
+const userMenuOpen = ref(false);
+
+// Data Stores
+const medicalStaff = ref([]);
+const trainingUnits = ref([]);
+const residentRotations = ref([]);
+const dailyAssignments = ref([]);
+const leaveRequests = ref([]);
+const onCallSchedule = ref([]);
+const announcements = ref([]);
+const auditLogs = ref([]);
+const systemRoles = ref([]);
+const systemStats = ref({
+    active_users: 0,
+    total_staff: 0,
+    today_assignments: 0,
+    pending_approvals: 0
+});
+
+// Toast System
+const toasts = ref([]);
+let toastId = 0;
+
+// ============ MODAL STATES ============
+const medicalStaffModal = ref({
+    show: false,
+    mode: 'add',
+    staff: null,
+    form: {
+        full_name: '',
+        staff_type: 'medical_resident',
+        staff_id: '',
+        employment_status: 'active',
+        can_supervise_residents: false,
+        primary_clinic: '',
+        professional_email: '',
+        resident_category: '',
+        training_year: null
+    }
+});
+
+const addRoleModal = ref({
+    show: false,
+    mode: 'add',
+    role: null,
+    form: {
+        name: '',
+        description: '',
+        level: 'read'
+    }
+});
+
+const announcementModal = ref({
+    show: false,
+    mode: 'add',
+    announcement: null,
+    form: {
+        announcement_title: '',
+        announcement_content: '',
+        publish_start_date: '',
+        publish_end_date: '',
+        priority_level: 'medium',
+        target_audience: 'all'
+    }
+});
+
+const onCallModal = ref({
+    show: false,
+    mode: 'add',
+    schedule: null,
+    form: {
+        duty_date: '',
+        schedule_id: '',
+        shift_type: 'backup_call',
+        primary_physician_id: '',
+        backup_physician_id: '',
+        start_time: '08:00',
+        end_time: '20:00',
+        coverage_notes: ''
+    }
+});
+
+const leaveRequestModal = ref({
+    show: false,
+    mode: 'add',
+    request: null,
+    form: {
+        start_date: '',
+        end_date: '',
+        leave_type: 'vacation',
+        reason: '',
+        status: 'pending',
+        approver_notes: ''
+    }
+});
+
+const trainingUnitModal = ref({
+    show: false,
+    mode: 'add',
+    unit: null,
+    form: {
+        unit_name: '',
+        unit_description: '',
+        unit_status: 'active',
+        maximum_residents: 10,
+        specialty: '',
+        current_residents: 0
+    }
+});
+
+// Filter states
 const staffSearch = ref('');
 const staffFilter = ref({
     staff_type: '',
     employment_status: ''
 });
-            
 
-            // ============ PERMISSION SYSTEM ============
-            const userPermissions = ref({});
-            const permissionResources = ref(PermissionSystem.resources);
-            
-            // Initialize user permissions based on role
-            const initializePermissions = (userRole) => {
-                const role = PermissionSystem.roles[userRole];
-                if (role) {
-                    userPermissions.value = role.permissions;
-                }
-                logAudit('PERMISSION_INIT', `Permissions initialized for ${userRole}`, 'system');
-            };
+// ============ PERMISSION SYSTEM ============
+const userPermissions = ref({});
+const permissionResources = ref(PermissionSystem.resources);
 
-            // Fixed hasPermission function
-            const hasPermission = (resource, action) => {
-                if (!currentUser.value) return false;
-                
-                // System admin always has permission
-                if (currentUser.value.user_role === 'system_admin') {
-                    return true;
-                }
-                
-                const role = PermissionSystem.roles[currentUser.value.user_role];
-                if (!role || !role.permissions[resource]) {
-                    return false;
-                }
-                
-                return role.permissions[resource][action] === true;
-            };
+// Initialize user permissions based on role
+const initializePermissions = (userRole) => {
+    const role = PermissionSystem.roles[userRole];
+    if (role) {
+        userPermissions.value = role.permissions;
+    }
+    logAudit('PERMISSION_INIT', `Permissions initialized for ${userRole}`, 'system');
+};
 
-            const hasAnyPermission = (resources) => {
-                if (!currentUser.value) return false;
-                return resources.some(resource => 
-                    Object.keys(userPermissions.value[resource] || {}).some(
-                        action => userPermissions.value[resource][action]
-                    )
-                );
-            };
+// Fixed hasPermission function
+const hasPermission = (resource, action) => {
+    if (!currentUser.value) return false;
+    
+    // System admin always has permission
+    if (currentUser.value.user_role === 'system_admin') {
+        return true;
+    }
+    
+    const role = PermissionSystem.roles[currentUser.value.user_role];
+    if (!role || !role.permissions[resource]) {
+        return false;
+    }
+    
+    return role.permissions[resource][action] === true;
+};
 
-            const getViewPermission = (view) => {
-                if (!currentUser.value) return 'none';
-                
-                const viewMap = {
-                    medical_staff: 'medical_staff',
-                    training_units: 'training_units',
-                    resident_rotations: 'resident_rotations',
-                    placements: 'placements',
-                    daily_operations: 'daily_operations',
-                    oncall_schedule: 'oncall_schedule',
-                    leave_requests: 'leave_requests',
-                    announcements: 'announcements',
-                    audit_logs: 'audit',
-                    department_overview: 'medical_staff',
-                    staff_management: 'medical_staff',
-                    schedule_approval: 'leave_requests',
-                    permission_management: 'system',
-                    system_settings: 'system'
-                };
-                
-                const resource = viewMap[view];
-                if (!resource) return 'none';
-                
-                return PermissionSystem.getPermissionLevel(currentUser.value.user_role, resource);
-            };
+const hasAnyPermission = (resources) => {
+    if (!currentUser.value) return false;
+    return resources.some(resource => 
+        Object.keys(userPermissions.value[resource] || {}).some(
+            action => userPermissions.value[resource][action]
+        )
+    );
+};
 
-            const getUserPermissionLevel = () => {
-                if (!currentUser.value) return 'none';
-                const role = PermissionSystem.roles[currentUser.value.user_role];
-                return role ? role.level : 'none';
-            };
+const getViewPermission = (view) => {
+    if (!currentUser.value) return 'none';
+    
+    const viewMap = {
+        medical_staff: 'medical_staff',
+        training_units: 'training_units',
+        resident_rotations: 'resident_rotations',
+        placements: 'placements',
+        daily_operations: 'daily_operations',
+        oncall_schedule: 'oncall_schedule',
+        leave_requests: 'leave_requests',
+        announcements: 'announcements',
+        audit_logs: 'audit',
+        department_overview: 'medical_staff',
+        staff_management: 'medical_staff',
+        schedule_approval: 'leave_requests',
+        permission_management: 'system',
+        system_settings: 'system'
+    };
+    
+    const resource = viewMap[view];
+    if (!resource) return 'none';
+    
+    return PermissionSystem.getPermissionLevel(currentUser.value.user_role, resource);
+};
 
-            // ============ AUDIT LOGGING SYSTEM ============
-     // Add this BEFORE the logAudit function:
+const getUserPermissionLevel = () => {
+    if (!currentUser.value) return 'none';
+    const role = PermissionSystem.roles[currentUser.value.user_role];
+    return role ? role.level : 'none';
+};
+
+// ============ AUDIT LOGGING SYSTEM ============
 const generateAuditId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-// Then the logAudit function:
 const logAudit = async (action, details, resource, resourceId = null) => {
     const logEntry = {
         id: generateAuditId(),
