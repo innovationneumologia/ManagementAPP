@@ -2239,6 +2239,141 @@
                 <div class="login-header">
                     <div class="login-logo">
                         <i class="fas fa-lungs"></i>
+                        and this <!-- Role Management Modals -->
+<div v-if="roleManagement.showAddRoleModal || roleManagement.showEditRoleModal || roleManagement.showCloneRoleModal" 
+     class="modal-overlay-advanced">
+    <div class="modal-advanced" style="max-width: 900px;">
+        <div class="modal-header-advanced">
+            <div class="modal-title-advanced">
+                <div class="modal-title-icon">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                {{ roleManagement.showEditRoleModal ? 'Edit Role' : 
+                   roleManagement.showCloneRoleModal ? 'Clone Role' : 'Create New Role' }}
+            </div>
+            <button class="modal-close-advanced" @click="closeRoleModal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-permission-banner">
+            <i class="fas fa-info-circle"></i>
+            Define role permissions for the DRBA Hospital Management System
+        </div>
+        
+        <div class="card-content-advanced">
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">
+                    Role ID
+                    <span class="form-permission-required">
+                        <i class="fas fa-key"></i> Required
+                    </span>
+                </label>
+                <input type="text" 
+                       class="form-input-advanced" 
+                       v-model="roleManagement.newRoleForm.id"
+                       placeholder="e.g., senior_supervisor"
+                       :readonly="roleManagement.showEditRoleModal">
+                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                    Unique identifier for the role (lowercase with underscores)
+                </div>
+            </div>
+            
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">
+                    Role Name
+                    <span class="form-permission-required">
+                        <i class="fas fa-user-tag"></i> Required
+                    </span>
+                </label>
+                <input type="text" 
+                       class="form-input-advanced" 
+                       v-model="roleManagement.newRoleForm.name"
+                       placeholder="e.g., Senior Supervisor">
+            </div>
+            
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Description</label>
+                <textarea class="form-textarea-advanced" 
+                          v-model="roleManagement.newRoleForm.description"
+                          placeholder="Describe the role's responsibilities and permissions..."
+                          rows="3"></textarea>
+            </div>
+            
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Permission Level</label>
+                <select class="form-select-advanced" v-model="roleManagement.newRoleForm.level">
+                    <option value="read">Read Only</option>
+                    <option value="limited">Limited Access</option>
+                    <option value="write">Write Access</option>
+                    <option value="full">Full Control</option>
+                </select>
+            </div>
+            
+            <div class="card-advanced" style="margin-top: 2rem;">
+                <div class="card-header-advanced">
+                    <div class="card-title-advanced">
+                        <div class="card-title-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        Detailed Permissions
+                    </div>
+                </div>
+                <div class="card-content-advanced">
+                    <div class="permission-grid">
+                        <div v-for="(resource, resourceKey) in permissionResources" 
+                             :key="resourceKey" 
+                             class="permission-card">
+                            <div class="permission-card-header">
+                                <div class="permission-card-title">{{ resource.name }}</div>
+                                <div class="permission-badge" 
+                                     :class="`permission-${getRolePermissionLevel(resourceKey)}`">
+                                    {{ getRolePermissionLevel(resourceKey) }}
+                                </div>
+                            </div>
+                            <div class="permission-card-content">
+                                <div style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
+                                    {{ resource.description }}
+                                </div>
+                                <div class="resource-permissions">
+                                    <div v-for="action in resource.actions" 
+                                         :key="action"
+                                         class="resource-row">
+                                        <div class="resource-name">{{ formatActionName(action) }}</div>
+                                        <div class="permission-toggle" 
+                                             :class="{ active: roleManagement.newRoleForm.permissions[resourceKey]?.[action] }"
+                                             @click="toggleRolePermission(resourceKey, action)"></div>
+                                        <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                                            {{ getPermissionDescription(resourceKey, action) }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions-advanced" style="margin-top: 2rem;">
+                <div class="form-permission-summary">
+                    <i class="fas fa-info-circle"></i>
+                    {{ roleManagement.showEditRoleModal ? 'Editing' : 
+                       roleManagement.showCloneRoleModal ? 'Cloning' : 'Creating' }} 
+                    role: <strong>{{ roleManagement.newRoleForm.name }}</strong>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn-outline-advanced" @click="closeRoleModal">
+                        Cancel
+                    </button>
+                    <button class="btn-advanced btn-success-advanced" @click="saveRole">
+                        <i class="fas fa-save"></i> 
+                        {{ roleManagement.showEditRoleModal ? 'Update Role' : 'Save Role' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
                     </div>
                     <h1 class="login-title">PneumoCare Pro</h1>
                     <div class="login-subtitle">Advanced DRBA Hospital Management System v5.0</div>
