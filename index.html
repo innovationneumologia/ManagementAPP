@@ -112,17 +112,16 @@
             box-sizing: border-box;
         }
 
-       
         body {
-    font-family: 'Inter', sans-serif;
-    background: var(--background-primary, #f8fafc);
-    color: var(--text-primary, #020617);
-    line-height: 1.6;
-    font-weight: 400;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
-}
+            font-family: 'Inter', sans-serif;
+            background: var(--background-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+        }
 
         /* Advanced Login System */
         .login-container {
@@ -2457,13 +2456,11 @@
                         <!-- Permission-based Navigation Sections -->
                         <div class="nav-section" v-if="hasAnyPermission(['medical_staff', 'training_units', 'resident_rotations', 'placements'])">
                             <div class="nav-section-title">Resident Management</div>
-                            <button class="nav-item" 
-        :class="{ active: currentView === 'medical_staff' }" 
-        @click="testClick('medical_staff')"
-        :disabled="!hasPermission('medical_staff', 'read')"
-        :data-permission="getViewPermission('medical_staff')">
                             
-                   
+                            <button class="nav-item" 
+                                    :class="{ active: currentView === 'medical_staff' }" 
+                                    @click="switchView('medical_staff'); closeMobileMenu()"
+                                    :data-permission="getViewPermission('medical_staff')">
                                 <i class="fas fa-user-graduate"></i>
                                 <span>Medical Staff</span>
                                 <span class="nav-permission" :class="`permission-${getViewPermission('medical_staff')}`">
@@ -2720,8 +2717,7 @@
                         </div>
 
                         <!-- Permission Management View -->
-                        <div v-if="currentView === 'permission_management'">
-
+                        <div v-if="currentView === 'permission_management' && hasPermission('system', 'admin')">
                             <div class="card-advanced">
                                 <div class="card-header-advanced">
                                     <div class="card-title-advanced">
@@ -2792,9 +2788,6 @@
                         <!-- Medical Staff Management with Permission Context -->
                         <div v-if="currentView === 'medical_staff'">
                             <div class="card-advanced">
-                                <div style="background: yellow; padding: 10px; margin: 10px; font-size: 12px;">
-            DEBUG: View = {{ currentView }} | Data = {{ medicalStaff.length }}
-        </div>
                                 <div class="card-header-advanced">
                                     <div class="card-title-advanced">
                                         <div class="card-title-icon">
@@ -2985,6 +2978,94 @@
                             </div>
                         </div>
 
+                        <!-- Training Units Management -->
+                        <div v-if="currentView === 'training_units'">
+                            <div class="card-advanced">
+                                <div class="card-header-advanced">
+                                    <div class="card-title-advanced">
+                                        <div class="card-title-icon">
+                                            <i class="fas fa-hospital-alt"></i>
+                                        </div>
+                                        Training Units Management
+                                        <span class="permission-badge" :class="`permission-${getViewPermission('training_units')}`"
+                                              style="margin-left: 1rem;">
+                                            {{ getViewPermission('training_units') }}
+                                        </span>
+                                    </div>
+                                    <div class="card-actions">
+                                        <button class="btn-advanced" 
+                                                @click="showAddTrainingUnitModal"
+                                                :disabled="!hasPermission('training_units', 'create')">
+                                            <i class="fas fa-plus"></i> Add Training Unit
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-content-advanced">
+                                    <div class="units-grid-advanced">
+                                        <div v-for="unit in trainingUnits" 
+                                             :key="unit.id" 
+                                             class="unit-card-advanced">
+                                            <div class="unit-header-advanced">
+                                                <div class="unit-name-advanced">{{ unit.unit_name }}</div>
+                                                <div class="unit-capacity-advanced">
+                                                    <i class="fas fa-users"></i>
+                                                    {{ unit.current_residents || 0 }}/{{ unit.maximum_residents }}
+                                                </div>
+                                                <div class="unit-permission-tag">
+                                                    {{ getViewPermission('training_units') }}
+                                                </div>
+                                            </div>
+                                            <div style="margin-bottom: 1rem;">
+                                                <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                                    {{ unit.unit_description }}
+                                                </div>
+                                                <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                                    <span class="status-chip" :class="`status-${unit.unit_status}`">
+                                                        {{ unit.unit_status }}
+                                                    </span>
+                                                    <span v-if="unit.specialty" class="badge-system badge-attending-advanced">
+                                                        {{ unit.specialty }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="unit-residents-advanced">
+                                                <h4 style="margin-bottom: 0.75rem; font-size: 0.9rem; color: var(--text-secondary);">
+                                                    Assigned Residents
+                                                </h4>
+                                                <div v-if="unit.assigned_residents && unit.assigned_residents.length > 0">
+                                                    <div v-for="resident in unit.assigned_residents.slice(0, 3)" 
+                                                         :key="resident.id"
+                                                         class="unit-resident-advanced">
+                                                        <div style="font-weight: 600; color: var(--text-primary);">
+                                                            {{ resident.full_name }}
+                                                        </div>
+                                                    </div>
+                                                    <div v-if="unit.assigned_residents.length > 3" 
+                                                         style="text-align: center; font-size: 0.8rem; color: var(--text-secondary); padding: 0.5rem;">
+                                                        +{{ unit.assigned_residents.length - 3 }} more residents
+                                                    </div>
+                                                </div>
+                                                <div v-else style="text-align: center; color: var(--text-secondary); padding: 1rem; font-size: 0.9rem;">
+                                                    No residents assigned
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                                <button class="action-button"
+                                                        @click="editTrainingUnit(unit)"
+                                                        :disabled="!hasPermission('training_units', 'update')">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </button>
+                                                <button class="action-button"
+                                                        @click="assignResidentsToUnit(unit)">
+                                                    <i class="fas fa-user-plus"></i> Assign
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Daily Operations Board -->
                         <div v-if="currentView === 'daily_operations'">
                             <div class="card-advanced">
@@ -3142,6 +3223,138 @@
                             </div>
                         </div>
 
+                        <!-- On-call Schedule -->
+                        <div v-if="currentView === 'oncall_schedule'">
+                            <div class="card-advanced">
+                                <div class="card-header-advanced">
+                                    <div class="card-title-advanced">
+                                        <div class="card-title-icon">
+                                            <i class="fas fa-phone-alt"></i>
+                                        </div>
+                                        On-call Schedule
+                                        <span class="permission-badge" :class="`permission-${getViewPermission('oncall_schedule')}`"
+                                              style="margin-left: 1rem;">
+                                            {{ getViewPermission('oncall_schedule') }}
+                                        </span>
+                                    </div>
+                                    <div class="card-actions">
+                                        <button class="btn-advanced" 
+                                                @click="showAddOnCallModal"
+                                                :disabled="!hasPermission('oncall_schedule', 'create')">
+                                            <i class="fas fa-plus"></i> Schedule On-call
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-content-advanced">
+                                    <div class="call-schedule-advanced">
+                                        <div v-for="day in nextSevenDays" :key="day.date" class="call-day-advanced">
+                                            <div class="call-date-advanced">
+                                                <span>{{ formatDate(day.date) }}</span>
+                                                <span class="status-chip" :class="getDayStatus(day)">
+                                                    {{ day.status }}
+                                                </span>
+                                            </div>
+                                            <div v-if="day.schedule" style="display: grid; gap: 0.75rem;">
+                                                <div class="unit-resident-advanced">
+                                                    <div style="font-weight: 600; color: var(--text-primary);">
+                                                        {{ day.schedule.primary_name }}
+                                                    </div>
+                                                    <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                                                        Primary • {{ day.schedule.shift_type }}
+                                                    </div>
+                                                </div>
+                                                <div v-if="day.schedule.backup_name" class="unit-resident-advanced">
+                                                    <div style="font-weight: 600; color: var(--text-primary);">
+                                                        {{ day.schedule.backup_name }}
+                                                    </div>
+                                                    <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                                                        Backup • On standby
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-else style="text-align: center; color: var(--text-secondary); padding: 1rem;">
+                                                No on-call scheduled
+                                            </div>
+                                            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                                <button class="action-button"
+                                                        @click="editOnCallSchedule(day)"
+                                                        :disabled="!hasPermission('oncall_schedule', 'update')">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </button>
+                                                <button class="action-button"
+                                                        v-if="hasPermission('oncall_schedule', 'override')"
+                                                        @click="overrideOnCall(day)">
+                                                    <i class="fas fa-exchange-alt"></i> Override
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Leave Requests -->
+                        <div v-if="currentView === 'leave_requests'">
+                            <div class="card-advanced">
+                                <div class="card-header-advanced">
+                                    <div class="card-title-advanced">
+                                        <div class="card-title-icon">
+                                            <i class="fas fa-calendar-times"></i>
+                                        </div>
+                                        Leave Requests
+                                        <span class="permission-badge" :class="`permission-${getViewPermission('leave_requests')}`"
+                                              style="margin-left: 1rem;">
+                                            {{ getViewPermission('leave_requests') }}
+                                        </span>
+                                    </div>
+                                    <div class="card-actions">
+                                        <button class="btn-advanced" 
+                                                @click="showAddLeaveRequestModal"
+                                                :disabled="!hasPermission('leave_requests', 'create')">
+                                            <i class="fas fa-plus"></i> Request Leave
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-content-advanced">
+                                    <div style="display: grid; gap: 1rem;">
+                                        <div v-for="request in leaveRequests" :key="request.id" class="person-card-advanced">
+                                            <div class="person-info-advanced">
+                                                <div class="person-name-advanced">
+                                                    {{ request.staff_name }}
+                                                    <span class="status-chip" :class="`status-${request.status}`">
+                                                        {{ request.status }}
+                                                    </span>
+                                                </div>
+                                                <div class="person-meta-advanced">
+                                                    <strong>Dates:</strong> {{ formatDate(request.start_date) }} - {{ formatDate(request.end_date) }}
+                                                    <br>
+                                                    <strong>Type:</strong> {{ request.leave_type }}
+                                                    <br>
+                                                    <strong>Reason:</strong> {{ request.reason }}
+                                                </div>
+                                            </div>
+                                            <div class="action-buttons">
+                                                <button v-if="hasPermission('leave_requests', 'approve') && request.status === 'pending'"
+                                                        class="action-button btn-success-advanced"
+                                                        @click="approveLeaveRequest(request)">
+                                                    <i class="fas fa-check"></i> Approve
+                                                </button>
+                                                <button v-if="hasPermission('leave_requests', 'reject') && request.status === 'pending'"
+                                                        class="action-button btn-danger-advanced"
+                                                        @click="rejectLeaveRequest(request)">
+                                                    <i class="fas fa-times"></i> Reject
+                                                </button>
+                                                <button class="action-button"
+                                                        @click="viewLeaveRequestDetails(request)">
+                                                    <i class="fas fa-eye"></i> Details
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Audit Logs View -->
                         <div v-if="currentView === 'audit_logs' && hasPermission('audit', 'read')">
                             <div class="card-advanced">
@@ -3156,7 +3369,9 @@
                                         </span>
                                     </div>
                                     <div class="card-actions">
-                                        <button class="btn-advanced" @click="exportAuditLogs">
+                                        <button class="btn-advanced" 
+                                                @click="exportAuditLogs"
+                                                :disabled="!hasPermission('audit', 'export')">
                                             <i class="fas fa-download"></i> Export Logs
                                         </button>
                                     </div>
@@ -3191,7 +3406,80 @@
                             </div>
                         </div>
 
-                        <!-- Additional Views would continue here... -->
+                        <!-- Department Overview -->
+                        <div v-if="currentView === 'department_overview'">
+                            <div class="card-advanced">
+                                <div class="card-header-advanced">
+                                    <div class="card-title-advanced">
+                                        <div class="card-title-icon">
+                                            <i class="fas fa-chart-line"></i>
+                                        </div>
+                                        Department Overview
+                                    </div>
+                                </div>
+                                <div class="card-content-advanced">
+                                    <div class="metrics-grid-advanced">
+                                        <div class="metric-card-advanced">
+                                            <div class="metric-value">{{ departmentStats.totalStaff }}</div>
+                                            <div class="metric-label">Total Department Staff</div>
+                                        </div>
+                                        <div class="metric-card-advanced">
+                                            <div class="metric-value">{{ departmentStats.activeUnits }}</div>
+                                            <div class="metric-label">Active Training Units</div>
+                                        </div>
+                                        <div class="metric-card-advanced">
+                                            <div class="metric-value">{{ departmentStats.coverageRate }}%</div>
+                                            <div class="metric-label">Today's Coverage Rate</div>
+                                        </div>
+                                        <div class="metric-card-advanced">
+                                            <div class="metric-value">{{ departmentStats.pendingApprovals }}</div>
+                                            <div class="metric-label">Pending Approvals</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Staff Management -->
+                        <div v-if="currentView === 'staff_management'">
+                            <div class="card-advanced">
+                                <div class="card-header-advanced">
+                                    <div class="card-title-advanced">
+                                        <div class="card-title-icon">
+                                            <i class="fas fa-users"></i>
+                                        </div>
+                                        Staff Management
+                                    </div>
+                                    <div class="card-actions">
+                                        <button class="btn-advanced" @click="showAddStaffModal">
+                                            <i class="fas fa-user-plus"></i> Add Staff
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-content-advanced">
+                                    <div style="display: grid; gap: 1rem;">
+                                        <!-- Staff list will go here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Schedule Approval -->
+                        <div v-if="currentView === 'schedule_approval'">
+                            <div class="card-advanced">
+                                <div class="card-header-advanced">
+                                    <div class="card-title-advanced">
+                                        <div class="card-title-icon">
+                                            <i class="fas fa-calendar-check"></i>
+                                        </div>
+                                        Schedule Approval
+                                    </div>
+                                </div>
+                                <div class="card-content-advanced">
+                                    <!-- Schedule approval interface -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3214,1355 +3502,1835 @@
                 </button>
             </div>
         </div>
+
+        <!-- Medical Staff Modal -->
+        <div v-if="medicalStaffModal.show" class="modal-overlay-advanced">
+            <div class="modal-advanced">
+                <div class="modal-header-advanced">
+                    <div class="modal-title-advanced">
+                        <div class="modal-title-icon">
+                            <i class="fas fa-user-md"></i>
+                        </div>
+                        {{ medicalStaffModal.mode === 'add' ? 'Add Medical Staff' : 'Edit Medical Staff' }}
+                    </div>
+                    <button class="modal-close-advanced" @click="medicalStaffModal.show = false">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="modal-permission-banner">
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                        <strong>Permission Level:</strong> 
+                        <span class="permission-badge" :class="`permission-${getViewPermission('medical_staff')}`">
+                            {{ getViewPermission('medical_staff') }}
+                        </span>
+                    </div>
+                </div>
+                
+                <form @submit.prevent="saveMedicalStaff">
+                    <div class="form-group-advanced">
+                        <label class="form-label-advanced">
+                            <span>Full Name *</span>
+                        </label>
+                        <input type="text" 
+                               class="form-input-advanced" 
+                               v-model="medicalStaffModal.form.full_name" 
+                               required
+                               placeholder="Dr. John Doe">
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group-advanced">
+                            <label class="form-label-advanced">Staff Type *</label>
+                            <select class="form-select-advanced" 
+                                    v-model="medicalStaffModal.form.staff_type" 
+                                    required>
+                                <option value="medical_resident">Medical Resident</option>
+                                <option value="attending_physician">Attending Physician</option>
+                                <option value="fellow">Fellow</option>
+                                <option value="nurse_practitioner">Nurse Practitioner</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group-advanced">
+                            <label class="form-label-advanced">Employment Status *</label>
+                            <select class="form-select-advanced" 
+                                    v-model="medicalStaffModal.form.employment_status" 
+                                    required>
+                                <option value="active">Active</option>
+                                <option value="on_leave">On Leave</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group-advanced">
+                            <label class="form-label-advanced">Staff ID</label>
+                            <input type="text" 
+                                   class="form-input-advanced" 
+                                   v-model="medicalStaffModal.form.staff_id"
+                                   placeholder="Auto-generated">
+                        </div>
+                        
+                        <div class="form-group-advanced">
+                            <label class="form-label-advanced">Professional Email</label>
+                            <input type="email" 
+                                   class="form-input-advanced" 
+                                   v-model="medicalStaffModal.form.professional_email"
+                                   placeholder="doctor@hospital.org">
+                        </div>
+                    </div>
+                    
+                    <div v-if="medicalStaffModal.form.staff_type === 'medical_resident'" 
+                         style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group-advanced">
+                            <label class="form-label-advanced">Resident Category</label>
+                            <select class="form-select-advanced" 
+                                    v-model="medicalStaffModal.form.resident_category">
+                                <option value="">Select Category</option>
+                                <option value="pgy1">PGY-1</option>
+                                <option value="pgy2">PGY-2</option>
+                                <option value="pgy3">PGY-3</option>
+                                <option value="pgy4">PGY-4</option>
+                                <option value="pgy5">PGY-5</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group-advanced">
+                            <label class="form-label-advanced">Training Year</label>
+                            <input type="number" 
+                                   class="form-input-advanced" 
+                                   v-model="medicalStaffModal.form.training_year"
+                                   min="2020" 
+                                   max="2030">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group-advanced">
+                        <label class="form-label-advanced">
+                            <span>Can Supervise Residents</span>
+                            <input type="checkbox" 
+                                   v-model="medicalStaffModal.form.can_supervise_residents"
+                                   style="margin-left: 0.5rem;">
+                        </label>
+                    </div>
+                    
+                    <div class="form-group-advanced">
+                        <label class="form-label-advanced">Primary Clinic/Unit</label>
+                        <input type="text" 
+                               class="form-input-advanced" 
+                               v-model="medicalStaffModal.form.primary_clinic"
+                               placeholder="e.g., ICU, Pulmonary Unit">
+                    </div>
+                    
+                    <div class="form-actions-advanced">
+                        <button type="button" 
+                                class="btn-advanced btn-outline-advanced" 
+                                @click="medicalStaffModal.show = false">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="btn-advanced" 
+                                :disabled="saving">
+                            <i class="fas fa-save"></i>
+                            {{ saving ? 'Saving...' : (medicalStaffModal.mode === 'add' ? 'Add Staff' : 'Update Staff') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Role Modal -->
+        <div v-if="addRoleModal.show" class="modal-overlay-advanced">
+            <div class="modal-advanced">
+                <div class="modal-header-advanced">
+                    <div class="modal-title-advanced">
+                        <div class="modal-title-icon">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        {{ addRoleModal.mode === 'add' ? 'Add New Role' : 'Edit Role' }}
+                    </div>
+                    <button class="modal-close-advanced" @click="addRoleModal.show = false">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <form @submit.prevent="saveRole">
+                    <div class="form-group-advanced">
+                        <label class="form-label-advanced">Role Name *</label>
+                        <input type="text" 
+                               class="form-input-advanced" 
+                               v-model="addRoleModal.form.name" 
+                               required
+                               placeholder="e.g., Senior Resident Manager">
+                    </div>
+                    
+                    <div class="form-group-advanced">
+                        <label class="form-label-advanced">Description</label>
+                        <textarea class="form-textarea-advanced" 
+                                  v-model="addRoleModal.form.description"
+                                  placeholder="Describe the role's responsibilities..."></textarea>
+                    </div>
+                    
+                    <div class="form-group-advanced">
+                        <label class="form-label-advanced">Permission Level *</label>
+                        <select class="form-select-advanced" 
+                                v-model="addRoleModal.form.level" 
+                                required>
+                            <option value="full">Full Control</option>
+                            <option value="write">Read & Write</option>
+                            <option value="read">Read Only</option>
+                            <option value="limited">Limited Access</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-actions-advanced">
+                        <button type="button" 
+                                class="btn-advanced btn-outline-advanced" 
+                                @click="addRoleModal.show = false">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="btn-advanced" 
+                                :disabled="saving">
+                            <i class="fas fa-save"></i>
+                            {{ saving ? 'Saving...' : 'Save Role' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- User Menu Dropdown -->
+        <div v-if="userMenuOpen" style="position: fixed; top: 70px; right: 30px; z-index: var(--z-popover);">
+            <div style="background: white; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-xl); min-width: 200px;">
+                <div style="padding: 1rem; border-bottom: 1px solid var(--border-light);">
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">{{ currentUser.full_name }}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ getUserRoleDisplay(currentUser.user_role) }}</div>
+                </div>
+                <div style="padding: 0.5rem;">
+                    <button style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; cursor: pointer; color: var(--text-primary);"
+                            @click="showUserProfile">
+                        <i class="fas fa-user" style="margin-right: 0.5rem;"></i> My Profile
+                    </button>
+                    <button style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; cursor: pointer; color: var(--text-primary);"
+                            @click="togglePermissionManager">
+                        <i class="fas fa-shield-alt" style="margin-right: 0.5rem;"></i> Permissions
+                    </button>
+                    <button style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; cursor: pointer; color: var(--medical-red);"
+                            @click="handleLogout">
+                        <i class="fas fa-sign-out-alt" style="margin-right: 0.5rem;"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
 const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 
-// ADD THE MISSING URL - THIS IS WHAT'S BREAKING YOUR CODE
+// Supabase Configuration
 const SUPABASE_URL = 'https://vssmguzuvekkecbmwcjw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
 
-// Use a DIFFERENT variable name to avoid duplicate error
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,
         storage: window.localStorage
+    }
+});
+
+// Advanced DRBA Permission System
+const PermissionSystem = {
+    resources: {
+        medical_staff: {
+            name: 'Medical Staff',
+            actions: ['create', 'read', 'update', 'delete', 'export'],
+            description: 'Manage medical staff records'
+        },
+        training_units: {
+            name: 'Training Units',
+            actions: ['create', 'read', 'update', 'delete', 'assign'],
+            description: 'Manage training units and capacities'
+        },
+        resident_rotations: {
+            name: 'Resident Rotations',
+            actions: ['create', 'read', 'update', 'delete', 'extend'],
+            description: 'Manage resident rotation schedules'
+        },
+        placements: {
+            name: 'Placements',
+            actions: ['create', 'read', 'update', 'delete', 'drag_drop'],
+            description: 'Assign residents to training units'
+        },
+        daily_operations: {
+            name: 'Daily Operations',
+            actions: ['read', 'update', 'alert'],
+            description: 'View and manage daily operations'
+        },
+        oncall_schedule: {
+            name: 'On-call Schedule',
+            actions: ['create', 'read', 'update', 'delete', 'override'],
+            description: 'Manage on-call schedules'
+        },
+        leave_requests: {
+            name: 'Leave Requests',
+            actions: ['create', 'read', 'update', 'approve', 'reject'],
+            description: 'Manage leave requests and approvals'
+        },
+        announcements: {
+            name: 'Announcements',
+            actions: ['create', 'read', 'update', 'delete', 'publish'],
+            description: 'Create and manage announcements'
+        },
+        audit: {
+            name: 'Audit Logs',
+            actions: ['read', 'export', 'clear'],
+            description: 'View system audit logs'
+        },
+        system: {
+            name: 'System Settings',
+            actions: ['read', 'update', 'admin'],
+            description: 'Manage system settings and permissions'
+        }
     },
-    global: {
-        headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-        }
-    }
-});
 
-// Test if it works
-console.log('Supabase Client:', supabaseClient);
-console.log('Auth available:', supabaseClient.auth);
-        // Advanced DRBA Permission System
-        const PermissionSystem = {
-            resources: {
-                medical_staff: {
-                    name: 'Medical Staff',
-                    actions: ['create', 'read', 'update', 'delete', 'export'],
-                    description: 'Manage medical staff records'
-                },
-                training_units: {
-                    name: 'Training Units',
-                    actions: ['create', 'read', 'update', 'delete', 'assign'],
-                    description: 'Manage training units and capacities'
-                },
-                resident_rotations: {
-                    name: 'Resident Rotations',
-                    actions: ['create', 'read', 'update', 'delete', 'extend'],
-                    description: 'Manage resident rotation schedules'
-                },
-                placements: {
-                    name: 'Placements',
-                    actions: ['create', 'read', 'update', 'delete', 'drag_drop'],
-                    description: 'Assign residents to training units'
-                },
-                daily_operations: {
-                    name: 'Daily Operations',
-                    actions: ['read', 'update', 'alert'],
-                    description: 'View and manage daily operations'
-                },
-                oncall_schedule: {
-                    name: 'On-call Schedule',
-                    actions: ['create', 'read', 'update', 'delete', 'override'],
-                    description: 'Manage on-call schedules'
-                },
-                leave_requests: {
-                    name: 'Leave Requests',
-                    actions: ['create', 'read', 'update', 'approve', 'reject'],
-                    description: 'Manage leave requests and approvals'
-                },
-                announcements: {
-                    name: 'Announcements',
-                    actions: ['create', 'read', 'update', 'delete', 'publish'],
-                    description: 'Create and manage announcements'
-                },
-                audit: {
-                    name: 'Audit Logs',
-                    actions: ['read', 'export', 'clear'],
-                    description: 'View system audit logs'
-                },
-                system: {
-                    name: 'System Settings',
-                    actions: ['read', 'update', 'admin'],
-                    description: 'Manage system settings and permissions'
-                }
-            },
-
-            roles: {
-                system_admin: {
-                    name: 'System Administrator',
-                    level: 'full',
-                    description: 'Full system access and permission management',
-                    permissions: {
-                        medical_staff: { create: true, read: true, update: true, delete: true, export: true },
-                        training_units: { create: true, read: true, update: true, delete: true, assign: true },
-                        resident_rotations: { create: true, read: true, update: true, delete: true, extend: true },
-                        placements: { create: true, read: true, update: true, delete: true, drag_drop: true },
-                        daily_operations: { read: true, update: true, alert: true },
-                        oncall_schedule: { create: true, read: true, update: true, delete: true, override: true },
-                        leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
-                        announcements: { create: true, read: true, update: true, delete: true, publish: true },
-                        audit: { read: true, export: true, clear: true },
-                        system: { read: true, update: true, admin: true }
-                    }
-                },
-                department_head: {
-                    name: 'Head of Department',
-                    level: 'full',
-                    description: 'Department-wide oversight and management',
-                    permissions: {
-                        medical_staff: { create: true, read: true, update: true, delete: false, export: true },
-                        training_units: { create: true, read: true, update: true, delete: false, assign: true },
-                        resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
-                        placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
-                        daily_operations: { read: true, update: true, alert: true },
-                        oncall_schedule: { create: true, read: true, update: true, delete: false, override: true },
-                        leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
-                        announcements: { create: true, read: true, update: true, delete: true, publish: true },
-                        audit: { read: true, export: true, clear: false },
-                        system: { read: true, update: false, admin: false }
-                    }
-                },
-                resident_manager: {
-                    name: 'Resident Manager',
-                    level: 'write',
-                    description: 'Manage residents and training units',
-                    permissions: {
-                        medical_staff: { create: true, read: true, update: true, delete: false, export: false },
-                        training_units: { create: true, read: true, update: true, delete: false, assign: true },
-                        resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
-                        placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
-                        daily_operations: { read: true, update: true, alert: false },
-                        oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
-                        leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
-                        announcements: { create: false, read: true, update: false, delete: false, publish: false },
-                        audit: { read: false, export: false, clear: false },
-                        system: { read: false, update: false, admin: false }
-                    }
-                },
-                attending_physician: {
-                    name: 'Attending Physician',
-                    level: 'limited',
-                    description: 'Supervise residents and view schedules',
-                    permissions: {
-                        medical_staff: { create: false, read: true, update: false, delete: false, export: false },
-                        training_units: { create: false, read: true, update: false, delete: false, assign: false },
-                        resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
-                        placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
-                        daily_operations: { read: true, update: false, alert: false },
-                        oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
-                        leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
-                        announcements: { create: false, read: true, update: false, delete: false, publish: false },
-                        audit: { read: false, export: false, clear: false },
-                        system: { read: false, update: false, admin: false }
-                    }
-                },
-                viewing_doctor: {
-                    name: 'Viewing Doctor',
-                    level: 'read',
-                    description: 'Read-only access to schedules and assignments',
-                    permissions: {
-                        medical_staff: { create: false, read: true, update: false, delete: false, export: false },
-                        training_units: { create: false, read: true, update: false, delete: false, assign: false },
-                        resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
-                        placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
-                        daily_operations: { read: true, update: false, alert: false },
-                        oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
-                        leave_requests: { create: false, read: true, update: false, approve: false, reject: false },
-                        announcements: { create: false, read: true, update: false, delete: false, publish: false },
-                        audit: { read: false, export: false, clear: false },
-                        system: { read: false, update: false, admin: false }
-                    }
-                }
-            },
-
-            // Check if user has permission for a resource action
-            hasPermission(userRole, resource, action) {
-                const role = this.roles[userRole];
-                if (!role || !role.permissions[resource]) return false;
-                return role.permissions[resource][action] === true;
-            },
-
-            // Get permission level for a resource
-            getPermissionLevel(userRole, resource) {
-                const role = this.roles[userRole];
-                if (!role || !role.permissions[resource]) return 'none';
-                
-                const permissions = role.permissions[resource];
-                if (permissions.create && permissions.update && permissions.delete) return 'full';
-                if (permissions.create || permissions.update) return 'write';
-                if (permissions.read) return 'read';
-                return 'none';
-            },
-
-            // Get all resources user has access to
-            getAccessibleResources(userRole) {
-                const role = this.roles[userRole];
-                if (!role) return [];
-                
-                return Object.keys(this.resources).filter(resource => 
-                    Object.values(role.permissions[resource] || {}).some(v => v === true)
-                );
+    roles: {
+        system_admin: {
+            name: 'System Administrator',
+            level: 'full',
+            description: 'Full system access and permission management',
+            permissions: {
+                medical_staff: { create: true, read: true, update: true, delete: true, export: true },
+                training_units: { create: true, read: true, update: true, delete: true, assign: true },
+                resident_rotations: { create: true, read: true, update: true, delete: true, extend: true },
+                placements: { create: true, read: true, update: true, delete: true, drag_drop: true },
+                daily_operations: { read: true, update: true, alert: true },
+                oncall_schedule: { create: true, read: true, update: true, delete: true, override: true },
+                leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
+                announcements: { create: true, read: true, update: true, delete: true, publish: true },
+                audit: { read: true, export: true, clear: true },
+                system: { read: true, update: true, admin: true }
             }
-        };
-        function loadSystemRoles() {
-    console.log('Loading roles...');
-    // Your role loading code here
-}
+        },
+        department_head: {
+            name: 'Head of Department',
+            level: 'full',
+            description: 'Department-wide oversight and management',
+            permissions: {
+                medical_staff: { create: true, read: true, update: true, delete: false, export: true },
+                training_units: { create: true, read: true, update: true, delete: false, assign: true },
+                resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
+                placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
+                daily_operations: { read: true, update: true, alert: true },
+                oncall_schedule: { create: true, read: true, update: true, delete: false, override: true },
+                leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
+                announcements: { create: true, read: true, update: true, delete: true, publish: true },
+                audit: { read: true, export: true, clear: false },
+                system: { read: true, update: false, admin: false }
+            }
+        },
+        resident_manager: {
+            name: 'Resident Manager',
+            level: 'write',
+            description: 'Manage residents and training units',
+            permissions: {
+                medical_staff: { create: true, read: true, update: true, delete: false, export: false },
+                training_units: { create: true, read: true, update: true, delete: false, assign: true },
+                resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
+                placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
+                daily_operations: { read: true, update: true, alert: false },
+                oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
+                leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
+                announcements: { create: false, read: true, update: false, delete: false, publish: false },
+                audit: { read: false, export: false, clear: false },
+                system: { read: false, update: false, admin: false }
+            }
+        },
+        attending_physician: {
+            name: 'Attending Physician',
+            level: 'limited',
+            description: 'Supervise residents and view schedules',
+            permissions: {
+                medical_staff: { create: false, read: true, update: false, delete: false, export: false },
+                training_units: { create: false, read: true, update: false, delete: false, assign: false },
+                resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
+                placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
+                daily_operations: { read: true, update: false, alert: false },
+                oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
+                leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
+                announcements: { create: false, read: true, update: false, delete: false, publish: false },
+                audit: { read: false, export: false, clear: false },
+                system: { read: false, update: false, admin: false }
+            }
+        },
+        viewing_doctor: {
+            name: 'Viewing Doctor',
+            level: 'read',
+            description: 'Read-only access to schedules and assignments',
+            permissions: {
+                medical_staff: { create: false, read: true, update: false, delete: false, export: false },
+                training_units: { create: false, read: true, update: false, delete: false, assign: false },
+                resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
+                placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
+                daily_operations: { read: true, update: false, alert: false },
+                oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
+                leave_requests: { create: false, read: true, update: false, approve: false, reject: false },
+                announcements: { create: false, read: true, update: false, delete: false, publish: false },
+                audit: { read: false, export: false, clear: false },
+                system: { read: false, update: false, admin: false }
+            }
+        }
+    },
 
-        createApp({
-            setup() {
-                // ============ ADVANCED STATE MANAGEMENT ============
-             const supabase = supabaseClient;
+    // Check if user has permission for a resource action
+    hasPermission(userRole, resource, action) {
+        const role = this.roles[userRole];
+        if (!role || !role.permissions[resource]) return false;
+        return role.permissions[resource][action] === true;
+    },
 
-                const currentUser = ref(null);
-                const loginForm = ref({
-                    email: '',
-                    password: '',
-                    user_role: 'resident_manager',
-                    require_mfa: false,
-                    mfa_code: ''
-                });
-                const toggleUserMenu = () => {
-    console.log('User menu toggled');
-};
-                const loading = ref(false);
-                const saving = ref(false);
-                const permissionLoading = ref(false);
-                const savingPermissions = ref(false);
-                
-                // Navigation
-                const currentView = ref('login');
-                const sidebarCollapsed = ref(false);
-                const mobileMenuOpen = ref(false);
-                const showPermissionManager = ref(false);
-                const searchQuery = ref('');
-                const permissionFilter = ref([]);
-                // Add these with your other reactive variables
-const staffSearch = ref('');
-const staffFilter = ref({
-    staff_type: '',
-    employment_status: ''
-});
-                
-                // Data Stores
-                const medicalStaff = ref([]);
-                const trainingUnits = ref([]);
-                const residentRotations = ref([]);
-                const dailyAssignments = ref([]);
-                const leaveRequests = ref([]);
-                const onCallSchedule = ref([]);
-                const announcements = ref([]);
-                const auditLogs = ref([]);
-                const systemRoles = ref([]);
-                const systemStats = ref({
-                    active_users: 0,
-                    total_staff: 0,
-                    today_assignments: 0,
-                    pending_approvals: 0
-                });
-                
-                // Toast System
-                const toasts = ref([]);
-                let toastId = 0;
-
-                // ============ ADVANCED PERMISSION SYSTEM ============
-                const userPermissions = ref({});
-                const permissionResources = ref(PermissionSystem.resources);
-                
-                // Initialize user permissions based on role
-                const initializePermissions = (userRole) => {
-                    const role = PermissionSystem.roles[userRole];
-                    if (role) {
-                        userPermissions.value = role.permissions;
-                    }
-                    // Log permission initialization
-                    logAudit('PERMISSION_INIT', `Permissions initialized for ${userRole}`, 'system');
-                };
-
-            const hasPermission = (resource, action, context = {}) => {
-    console.log(`🔐 PERMISSION CHECK: ${resource}.${action}`, {
-        user: currentUser.value?.email,
-        role: currentUser.value?.user_role,
-        isSystemAdmin: currentUser.value?.user_role === 'system_admin'
-    });
-    
-    if (!currentUser.value) {
-        console.log('❌ No current user');
-        return false;
-    }
-    
-    // System admin always has permission
-    if (currentUser.value.user_role === 'system_admin') {
-        console.log('✅ System admin - automatic approval');
-        return true;
-    }
-    
-    console.log('📋 Checking PermissionSystem for:', {
-        role: currentUser.value.user_role,
-        resource: resource,
-        action: action
-    });
-    
-    // Check role-based permission
-    const hasRolePermission = PermissionSystem.hasPermission(
-        currentUser.value.user_role, 
-        resource, 
-        action
-    );
-    
-    console.log(`📊 PermissionSystem result: ${hasRolePermission}`);
-    
-    // Apply context-based restrictions
-    if (hasRolePermission && context.resourceId) {
-        // Add resource-specific checks here
-        console.log('🔧 Context check for resource:', context.resourceId);
-    }
-    
-    return hasRolePermission;
-};
-
-                const hasAnyPermission = (resources) => {
-                    return resources.some(resource => 
-                        Object.keys(userPermissions.value[resource] || {}).some(
-                            action => userPermissions.value[resource][action]
-                        )
-                    );
-                };
-                const getViewPermission = (view) => {
-                    const viewMap = {
-                        medical_staff: 'medical_staff',
-                        training_units: 'training_units',
-                        resident_rotations: 'resident_rotations',
-                        placements: 'placements',
-                        daily_operations: 'daily_operations',
-                        oncall_schedule: 'oncall_schedule',
-                        leave_requests: 'leave_requests',
-                        announcements: 'announcements',
-                        audit_logs: 'audit',
-                        permission_management: 'system',
-                        system_settings: 'system'
-                    };
-                    
-                    const resource = viewMap[view];
-                    if (!resource) return 'none';
-                    
-                    return PermissionSystem.getPermissionLevel(currentUser.value?.user_role, resource);
-                };
-
-               const getUserPermissionLevel = () => {
-    if (!currentUser.value) {
-        console.log('❌ No current user');
+    // Get permission level for a resource
+    getPermissionLevel(userRole, resource) {
+        const role = this.roles[userRole];
+        if (!role || !role.permissions[resource]) return 'none';
+        
+        const permissions = role.permissions[resource];
+        if (permissions.create && permissions.update && permissions.delete) return 'full';
+        if (permissions.create || permissions.update) return 'write';
+        if (permissions.read) return 'read';
         return 'none';
-    }
-    
-    console.log('🔍 Checking permission level for:', {
-        user: currentUser.value.email,
-        role_from_user: currentUser.value.user_role,
-        role_exists: PermissionSystem.roles[currentUser.value.user_role] ? 'YES' : 'NO',
-        role_data: PermissionSystem.roles[currentUser.value.user_role]
-    });
-    
-    const role = PermissionSystem.roles[currentUser.value.user_role];
-    const level = role ? role.level : 'none';
-    
-    console.log('✅ Permission level:', level);
-    return level;
-};
-                // ============ AUDIT LOGGING SYSTEM ============
-                const logAudit = (action, details, resource, resourceId = null) => {
-                    const logEntry = {
-                        id: generateUUID(),
-                        timestamp: new Date().toISOString(),
-                        user_id: currentUser.value?.id,
-                        user_name: currentUser.value?.full_name,
-                        user_role: currentUser.value?.user_role,
-                        action,
-                        details,
-                        resource,
-                        resource_id: resourceId,
-                        permission_level: getUserPermissionLevel(),
-                        ip_address: 'system', // In real app, get from request
-                        user_agent: navigator.userAgent
-                    };
-                    
-                    auditLogs.value.unshift(logEntry);
-                    
-                    // Save to backend
-                    saveAuditLog(logEntry);
-                };
+    },
 
-                const saveAuditLog = async (logEntry) => {
-    try {
-        // Don't pass id - let database generate it
-        // Don't pass created_at - let database handle it
-        const mappedEntry = {
-            timestamp: logEntry.timestamp || new Date().toISOString(),
-            user_id: logEntry.user_id,
-            user_name: logEntry.user_name,
-            user_role: logEntry.user_role,
-            action: logEntry.action,
-            details: logEntry.details,
-            resource: logEntry.resource,
-            resource_id: logEntry.resource_id,
-            permission_level: logEntry.permission_level,
-            ip_address: logEntry.ip_address || 'system',
-            user_agent: logEntry.user_agent || navigator.userAgent
-            // Don't include: id, created_at
-        };
+    // Get all resources user has access to
+    getAccessibleResources(userRole) {
+        const role = this.roles[userRole];
+        if (!role) return [];
         
-        console.log('📝 Saving audit log:', mappedEntry.action);
-        
-        const { error } = await supabase
-            .from('audit_logs')
-            .insert([mappedEntry]);
-        
-        if (error) {
-            console.error('Failed to save audit log:', error);
-            
-            // Try without optional fields
-            const minimalEntry = {
-                timestamp: mappedEntry.timestamp,
-                user_name: mappedEntry.user_name,
-                action: mappedEntry.action,
-                details: mappedEntry.details
-            };
-            
-            const { error: minimalError } = await supabase
-                .from('audit_logs')
-                .insert([minimalEntry]);
-            
-            if (minimalError) {
-                console.error('Minimal audit log also failed:', minimalError);
-                // Don't throw - just log and continue
-            }
-        }
-    } catch (error) {
-        console.error('Error in saveAuditLog:', error);
-        // Don't throw - we don't want audit logs to break the app
-    }
-};
-                // ============ ADVANCED UTILITIES ============
-                const showAdvancedToast = (title, message, type = 'info', duration = 5000) => {
-                    const icons = {
-                        info: 'fas fa-info-circle',
-                        success: 'fas fa-check-circle',
-                        error: 'fas fa-exclamation-circle',
-                        warning: 'fas fa-exclamation-triangle',
-                        permission: 'fas fa-shield-alt'
-                    };
-                    
-                    const toast = {
-                        id: ++toastId,
-                        title,
-                        message,
-                        type,
-                        icon: icons[type] || icons.info,
-                        duration
-                    };
-                    
-                    toasts.value.push(toast);
-                    
-                    setTimeout(() => {
-                        removeToast(toast.id);
-                    }, duration);
-                };
-
-                const removeToast = (id) => {
-                    const index = toasts.value.findIndex(t => t.id === id);
-                    if (index > -1) {
-                        toasts.value.splice(index, 1);
-                    }
-                };
-
-                // All previous utility functions remain but enhanced...
-                const getInitials = (name) => {
-                    if (!name) return '??';
-                    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-                };
-
-                const formatDate = (dateString) => {
-                    if (!dateString) return '';
-                    return new Date(dateString).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                    });
-                };
-
-                const formatDateTime = (dateString) => {
-                    if (!dateString) return '';
-                    return new Date(dateString).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-                };
-
-                const formatTimeRange = (start, end) => {
-                    const formatTime = (time) => {
-                        if (!time) return '';
-                        const [hours, minutes] = time.split(':');
-                        const hour = parseInt(hours);
-                        return `${hour % 12 || 12}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
-                    };
-                    return `${formatTime(start)} - ${formatTime(end)}`;
-                };
-
-                const generateUUID = () => {
-                    return crypto.randomUUID();
-                };
-
-                const getUserRoleDisplay = (role) => {
-                    const roles = {
-                        resident_manager: 'Resident Manager',
-                        department_head: 'Head of Department',
-                        system_admin: 'System Administrator',
-                        viewing_doctor: 'Viewing Doctor',
-                        attending_physician: 'Attending Physician'
-                    };
-                    return roles[role] || role;
-                };
-
-                const formatStaffType = (type) => {
-                    const types = {
-                        medical_resident: 'Medical Resident',
-                        attending_physician: 'Attending Physician',
-                        fellow: 'Fellow',
-                        nurse_practitioner: 'Nurse Practitioner'
-                    };
-                    return types[type] || type;
-                };
-
-                const getStaffTypeClass = (type) => {
-                    return type === 'medical_resident' ? 'badge-resident-advanced' : 
-                           type === 'attending_physician' ? 'badge-attending-advanced' : 
-                           'badge-admin-advanced';
-                };
-
-                const getAuditIcon = (action) => {
-                    const icons = {
-                        CREATE: 'fas fa-plus-circle',
-                        UPDATE: 'fas fa-edit',
-                        DELETE: 'fas fa-trash',
-                        READ: 'fas fa-eye',
-                        LOGIN: 'fas fa-sign-in-alt',
-                        LOGOUT: 'fas fa-sign-out-alt',
-                        PERMISSION_CHANGE: 'fas fa-user-shield'
-                    };
-                    return icons[action] || 'fas fa-info-circle';
-                };
-
-                // ============ COMPUTED PROPERTIES ============
-                // ============ COMPUTED PROPERTIES ============
-const stats = computed(() => {
-    const staff = medicalStaff.value || [];
-    
-    const residents = staff.filter(s => {
-        if (!s || !s.staff_type || !s.employment_status) return false;
-        return s.staff_type === 'medical_resident' && s.employment_status === 'active';
-    });
-    
-    const attendings = staff.filter(s => {
-        if (!s || !s.staff_type || !s.employment_status) return false;
-        return s.staff_type === 'attending_physician' && s.employment_status === 'active';
-    });
-    
-    const supervisors = staff.filter(s => {
-        if (!s || !s.employment_status) return false;
-        return s.can_supervise_residents && s.employment_status === 'active';
-    });
-    
-    return {
-        totalStaff: staff.length,
-        activeResidents: residents.length,
-        attendings: attendings.length,
-        availableSupervisors: supervisors.length
-    };
-});
-
-const filteredMedicalStaff = computed(() => {
-    // Start with medical staff data or empty array
-    let filtered = medicalStaff.value || [];
-    
-    // If no data, return empty
-    if (!filtered || filtered.length === 0) {
-        return [];
-    }
-    
-    // Apply search filter WITH SAFETY
-    if (staffSearch.value) {
-        const search = staffSearch.value.toLowerCase();
-        filtered = filtered.filter(s => {
-            // SAFETY CHECK: skip undefined items
-            if (!s) return false;
-            
-            // Check if staff has name and matches search
-            const hasName = s.full_name && s.full_name.toLowerCase().includes(search);
-            const hasId = s.staff_id && s.staff_id.toLowerCase().includes(search);
-            
-            return hasName || hasId;
-        });
-    }
-    
-    // Apply staff type filter WITH SAFETY
-    if (staffFilter.value.staff_type) {
-        filtered = filtered.filter(s => {
-            // SAFETY CHECK
-            if (!s || !s.staff_type) return false;
-            
-            return s.staff_type === staffFilter.value.staff_type;
-        });
-    }
-    
-    // Apply employment status filter WITH SAFETY
-    if (staffFilter.value.employment_status) {
-        filtered = filtered.filter(s => {
-            // SAFETY CHECK
-            if (!s || !s.employment_status) return false;
-            
-            return s.employment_status === staffFilter.value.employment_status;
-        });
-    }
-    
-    return filtered;
-});
-
-const todaysAssignments = computed(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return dailyAssignments.value
-        .filter(a => a.assignment_date === today)
-        .slice(0, 5);
-});
-
-const todaysOnCall = computed(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return onCallSchedule.value
-        .filter(o => o.duty_date === today)
-        .slice(0, 3);
-});
-
-const recentAnnouncements = computed(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return announcements.value
-        .filter(a => a.publish_start_date <= today && (!a.publish_end_date || a.publish_end_date >= today))
-        .slice(0, 3);
-});
-
-const coverageAlerts = computed(() => {
-    return trainingUnits.value
-        .filter(u => u.unit_status === 'active' && (u.current_residents || 0) < u.maximum_residents * 0.5)
-        .map(u => ({
-            id: u.id,
-            unit_name: u.unit_name,
-            current: u.current_residents || 0,
-            capacity: u.maximum_residents,
-            priority: 'high'
-        }));
-});
-
-const emergencyAlerts = computed(() => {
-    return [
-        {
-            id: 1,
-            title: 'ICU Capacity Warning',
-            message: 'ICU at 95% capacity - Consider diverting non-critical cases',
-            priority: 'high'
-        }
-    ];
-});
-
-
-                // ============ NAVIGATION & UI ============
-                const switchView = async (view) => {
-    console.log('🔄 Switching to view:', view);
-    
-    // Check permission first
-    const viewMap = {
-        medical_staff: 'medical_staff',
-        training_units: 'training_units',
-        resident_rotations: 'resident_rotations',
-        placements: 'placements',
-        daily_operations: 'daily_operations',
-        oncall_schedule: 'oncall_schedule',
-        leave_requests: 'leave_requests',
-        announcements: 'announcements',
-        audit_logs: 'audit',
-        permission_management: 'system',
-        system_settings: 'system'
-    };
-    
-    const resource = viewMap[view];
-    
-    if (!resource) {
-        console.error('Unknown view:', view);
-        return;
-    }
-    
-    // Check permission
-    if (!hasPermission(resource, 'read')) {
-        showAdvancedToast(
-            'Permission Denied',
-            `You don't have permission to access ${view}`,
-            'permission'
+        return Object.keys(this.resources).filter(resource => 
+            Object.values(role.permissions[resource] || {}).some(v => v === true)
         );
-        return;
     }
-    
-    // Set current view
-    currentView.value = view;
-    console.log('✅ View set to:', view, 'Current view value:', currentView.value);
-    
-    // Close mobile menu
-    closeMobileMenu();
-    
-    // Load data for this view
-    try {
-        await loadViewData(view);
-    } catch (error) {
-        console.error(`Error loading ${view} data:`, error);
-    }
-    
-    logAudit('VIEW_CHANGE', `Switched to ${view} view`, 'navigation');
 };
 
-
-                const getCurrentTitle = () => {
-                    const titles = {
-                        medical_staff: 'Medical Staff Management',
-                        training_units: 'Training Units',
-                        daily_operations: 'Daily Operations Board',
-                        permission_management: 'Permission Management',
-                        audit_logs: 'Audit Logs'
-                    };
-                    return titles[currentView.value] || 'PneumoCare Pro';
-                };
-
-                const getCurrentSubtitle = () => {
-                    const subtitles = {
-                        medical_staff: 'Manage medical staff with advanced permissions',
-                        daily_operations: 'Real-time department operations dashboard',
-                        permission_management: 'Configure system permissions and roles',
-                        audit_logs: 'Track all system activities and changes'
-                    };
-                    return subtitles[currentView.value] || 'Advanced DRBA Hospital Management System';
-                };
-
-                const getSearchPlaceholder = () => {
-                    const placeholders = {
-                        medical_staff: 'Search medical staff by name, ID, or department...',
-                        daily_operations: 'Search assignments, alerts, or announcements...',
-                        audit_logs: 'Search audit logs by user, action, or resource...'
-                    };
-                    return placeholders[currentView.value] || 'Search...';
-                };
-
-                const toggleMobileMenu = () => {
-                    mobileMenuOpen.value = !mobileMenuOpen.value;
-                };
-
-                const closeMobileMenu = () => {
-                    mobileMenuOpen.value = false;
-                };
-
-                const togglePermissionManager = () => {
-                    showPermissionManager.value = !showPermissionManager.value;
-                    if (showPermissionManager.value) {
-                        logAudit('PERMISSION_MANAGER_OPEN', 'Opened permission manager', 'system');
-                    }
-                };
-                const handleAdvancedLogin = async () => {
-    loading.value = true;
-    
-    try {
-        const email = loginForm.value.email.trim().toLowerCase();
-        const password = loginForm.value.password;
-        const selectedRole = loginForm.value.user_role;
-        
-        if (!email || !password || !selectedRole) {
-            throw new Error('Please fill in all fields');
-        }
-        
-        console.log('🔐 Attempting login:', { email, selectedRole });
-        
-        // 1. Authenticate with Supabase
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: password
+createApp({
+    setup() {
+        // ============ ADVANCED STATE MANAGEMENT ============
+        const currentUser = ref(null);
+        const loginForm = ref({
+            email: '',
+            password: '',
+            user_role: 'resident_manager',
+            require_mfa: false,
+            mfa_code: ''
         });
         
-        if (authError) {
-            console.error('Auth error:', authError);
-            
-            // Check if user exists in app_users table (for users created via SQL)
-            const { data: existingUser } = await supabase
-                .from('app_users')
-                .select('*')
-                .eq('email', email)
-                .maybeSingle();
-            
-            if (existingUser) {
-                // Use existing user from app_users (password verification skipped)
-                console.log('Using existing app_user:', existingUser);
-                currentUser.value = {
-                    ...existingUser,
-                    permissions: PermissionSystem.roles[existingUser.user_role]?.permissions || {}
-                };
-                
-                initializePermissions(existingUser.user_role);
-                showAdvancedToast(`Welcome back, ${existingUser.full_name}!`, 'success');
-            } else {
-                throw new Error('Invalid credentials. Please check your email and password.');
+        const loading = ref(false);
+        const saving = ref(false);
+        const permissionLoading = ref(false);
+        const savingPermissions = ref(false);
+        
+        // Navigation
+        const currentView = ref('login');
+        const sidebarCollapsed = ref(false);
+        const mobileMenuOpen = ref(false);
+        const showPermissionManager = ref(false);
+        const searchQuery = ref('');
+        const permissionFilter = ref([]);
+        const userMenuOpen = ref(false);
+        
+        // Data Stores
+        const medicalStaff = ref([]);
+        const trainingUnits = ref([]);
+        const residentRotations = ref([]);
+        const dailyAssignments = ref([]);
+        const leaveRequests = ref([]);
+        const onCallSchedule = ref([]);
+        const announcements = ref([]);
+        const auditLogs = ref([]);
+        const systemRoles = ref([]);
+        const systemStats = ref({
+            active_users: 0,
+            total_staff: 0,
+            today_assignments: 0,
+            pending_approvals: 0
+        });
+        
+        // Toast System
+        const toasts = ref([]);
+        let toastId = 0;
+
+        // ============ MODAL STATES ============
+        const medicalStaffModal = ref({
+            show: false,
+            mode: 'add',
+            staff: null,
+            form: {
+                full_name: '',
+                staff_type: 'medical_resident',
+                staff_id: '',
+                employment_status: 'active',
+                can_supervise_residents: false,
+                primary_clinic: '',
+                professional_email: '',
+                resident_category: '',
+                training_year: null
             }
-        } else if (authData.user) {
-            console.log('✅ Auth successful:', authData.user.email);
+        });
+        
+        const addRoleModal = ref({
+            show: false,
+            mode: 'add',
+            role: null,
+            form: {
+                name: '',
+                description: '',
+                level: 'read'
+            }
+        });
+        
+        // Filter states
+        const staffSearch = ref('');
+        const staffFilter = ref({
+            staff_type: '',
+            employment_status: ''
+        });
+
+        // ============ PERMISSION SYSTEM ============
+        const userPermissions = ref({});
+        const permissionResources = ref(PermissionSystem.resources);
+        
+        // Initialize user permissions based on role
+        const initializePermissions = (userRole) => {
+            const role = PermissionSystem.roles[userRole];
+            if (role) {
+                userPermissions.value = role.permissions;
+            }
+            logAudit('PERMISSION_INIT', `Permissions initialized for ${userRole}`, 'system');
+        };
+
+        // Fixed hasPermission function
+        const hasPermission = (resource, action) => {
+            if (!currentUser.value) return false;
             
-            // 2. Get/Create user in app_users table
-            let userData;
-            
-            // Try to get existing user
-            const { data: existingUser } = await supabase
-                .from('app_users')
-                .select('*')
-                .eq('email', authData.user.email)
-                .maybeSingle();
-            
-            if (existingUser) {
-                userData = existingUser;
-                console.log('Found existing user:', userData);
-            } else {
-                // Create new user record
-                console.log('Creating new app_user for:', authData.user.email);
-                const { data: newUser, error: createError } = await supabase
-                    .from('app_users')
-                    .insert([{
-                        id: authData.user.id,
-                        email: authData.user.email,
-                        full_name: authData.user.user_metadata?.full_name || 
-                                  email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                        user_role: selectedRole,
-                        account_status: 'active',
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }])
-                    .select()
-                    .single();
-                
-                if (createError) {
-                    console.error('Error creating app_user:', createError);
-                    // Use temporary user data
-                    userData = {
-                        id: authData.user.id,
-                        email: authData.user.email,
-                        full_name: authData.user.user_metadata?.full_name || 'User',
-                        user_role: selectedRole
-                    };
-                } else {
-                    userData = newUser;
-                }
+            // System admin always has permission
+            if (currentUser.value.user_role === 'system_admin') {
+                return true;
             }
             
-            // 3. Set current user with permissions
-            currentUser.value = {
-                ...userData,
-                permissions: PermissionSystem.roles[userData.user_role]?.permissions || {}
+            const role = PermissionSystem.roles[currentUser.value.user_role];
+            if (!role || !role.permissions[resource]) {
+                return false;
+            }
+            
+            return role.permissions[resource][action] === true;
+        };
+
+        const hasAnyPermission = (resources) => {
+            if (!currentUser.value) return false;
+            return resources.some(resource => 
+                Object.keys(userPermissions.value[resource] || {}).some(
+                    action => userPermissions.value[resource][action]
+                )
+            );
+        };
+
+        const getViewPermission = (view) => {
+            if (!currentUser.value) return 'none';
+            
+            const viewMap = {
+                medical_staff: 'medical_staff',
+                training_units: 'training_units',
+                resident_rotations: 'resident_rotations',
+                placements: 'placements',
+                daily_operations: 'daily_operations',
+                oncall_schedule: 'oncall_schedule',
+                leave_requests: 'leave_requests',
+                announcements: 'announcements',
+                audit_logs: 'audit',
+                department_overview: 'medical_staff',
+                staff_management: 'medical_staff',
+                schedule_approval: 'leave_requests',
+                permission_management: 'system',
+                system_settings: 'system'
             };
             
-            initializePermissions(userData.user_role);
+            const resource = viewMap[view];
+            if (!resource) return 'none';
             
-            showAdvancedToast(
-                'Login Successful',
-                `Welcome ${userData.full_name}!`,
-                'success'
+            return PermissionSystem.getPermissionLevel(currentUser.value.user_role, resource);
+        };
+
+        const getUserPermissionLevel = () => {
+            if (!currentUser.value) return 'none';
+            const role = PermissionSystem.roles[currentUser.value.user_role];
+            return role ? role.level : 'none';
+        };
+
+        // ============ AUDIT LOGGING SYSTEM ============
+        const logAudit = async (action, details, resource, resourceId = null) => {
+            const logEntry = {
+                id: generateUUID(),
+                timestamp: new Date().toISOString(),
+                user_id: currentUser.value?.id,
+                user_name: currentUser.value?.full_name,
+                user_role: currentUser.value?.user_role,
+                action,
+                details,
+                resource,
+                resource_id: resourceId,
+                permission_level: getUserPermissionLevel(),
+                ip_address: 'system',
+                user_agent: navigator.userAgent
+            };
+            
+            auditLogs.value.unshift(logEntry);
+            
+            try {
+                await supabase.from('audit_logs').insert([logEntry]);
+            } catch (error) {
+                console.error('Failed to save audit log:', error);
+            }
+        };
+
+        // ============ ADVANCED UTILITIES ============
+        const showAdvancedToast = (title, message, type = 'info', duration = 5000) => {
+            const icons = {
+                info: 'fas fa-info-circle',
+                success: 'fas fa-check-circle',
+                error: 'fas fa-exclamation-circle',
+                warning: 'fas fa-exclamation-triangle',
+                permission: 'fas fa-shield-alt'
+            };
+            
+            const toast = {
+                id: ++toastId,
+                title,
+                message,
+                type,
+                icon: icons[type] || icons.info,
+                duration
+            };
+            
+            toasts.value.push(toast);
+            
+            setTimeout(() => {
+                removeToast(toast.id);
+            }, duration);
+        };
+
+        const removeToast = (id) => {
+            const index = toasts.value.findIndex(t => t.id === id);
+            if (index > -1) {
+                toasts.value.splice(index, 1);
+            }
+        };
+
+        const getInitials = (name) => {
+            if (!name) return '??';
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+        };
+
+        const formatDate = (dateString) => {
+            if (!dateString) return '';
+            return new Date(dateString).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        };
+
+        const formatDateTime = (dateString) => {
+            if (!dateString) return '';
+            return new Date(dateString).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        };
+
+        const formatTimeRange = (start, end) => {
+            const formatTime = (time) => {
+                if (!time) return '';
+                const [hours, minutes] = time.split(':');
+                const hour = parseInt(hours);
+                return `${hour % 12 || 12}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
+            };
+            return `${formatTime(start)} - ${formatTime(end)}`;
+        };
+
+        const generateUUID = () => {
+            return crypto.randomUUID();
+        };
+
+        const getUserRoleDisplay = (role) => {
+            const roles = {
+                resident_manager: 'Resident Manager',
+                department_head: 'Head of Department',
+                system_admin: 'System Administrator',
+                viewing_doctor: 'Viewing Doctor',
+                attending_physician: 'Attending Physician'
+            };
+            return roles[role] || role;
+        };
+
+        const formatStaffType = (type) => {
+            const types = {
+                medical_resident: 'Medical Resident',
+                attending_physician: 'Attending Physician',
+                fellow: 'Fellow',
+                nurse_practitioner: 'Nurse Practitioner'
+            };
+            return types[type] || type;
+        };
+
+        const getStaffTypeClass = (type) => {
+            return type === 'medical_resident' ? 'badge-resident-advanced' : 
+                   type === 'attending_physician' ? 'badge-attending-advanced' : 
+                   'badge-admin-advanced';
+        };
+
+        const getAuditIcon = (action) => {
+            const icons = {
+                CREATE: 'fas fa-plus-circle',
+                UPDATE: 'fas fa-edit',
+                DELETE: 'fas fa-trash',
+                READ: 'fas fa-eye',
+                LOGIN: 'fas fa-sign-in-alt',
+                LOGOUT: 'fas fa-sign-out-alt',
+                PERMISSION_CHANGE: 'fas fa-user-shield'
+            };
+            return icons[action] || 'fas fa-info-circle';
+        };
+
+        const formatResidentCategory = (category) => {
+            const categories = {
+                pgy1: 'PGY-1',
+                pgy2: 'PGY-2',
+                pgy3: 'PGY-3',
+                pgy4: 'PGY-4',
+                pgy5: 'PGY-5'
+            };
+            return categories[category] || category;
+        };
+
+        const formatEmploymentStatus = (status) => {
+            const statuses = {
+                active: 'Active',
+                on_leave: 'On Leave',
+                inactive: 'Inactive'
+            };
+            return statuses[status] || status;
+        };
+
+        // ============ COMPUTED PROPERTIES ============
+        const stats = computed(() => {
+            const residents = medicalStaff.value.filter(s => 
+                s.staff_type === 'medical_resident' && s.employment_status === 'active'
+            );
+            const attendings = medicalStaff.value.filter(s => 
+                s.staff_type === 'attending_physician' && s.employment_status === 'active'
+            );
+            const supervisors = medicalStaff.value.filter(s => 
+                s.can_supervise_residents && s.employment_status === 'active'
             );
             
-            logAudit('LOGIN_SUCCESS', `User logged in as ${userData.user_role}`, 'auth', userData.id);
+            return {
+                totalStaff: medicalStaff.value.length,
+                activeResidents: residents.length,
+                attendings: attendings.length,
+                availableSupervisors: supervisors.length
+            };
+        });
+
+        const filteredMedicalStaff = computed(() => {
+            let filtered = medicalStaff.value;
             
-            // 4. Load application data
-            await loadInitialData();
-            
-            // 5. Set initial view based on permissions
-            if (hasPermission('daily_operations', 'read')) {
-                currentView.value = 'daily_operations';
-            } else if (hasPermission('medical_staff', 'read')) {
-                currentView.value = 'medical_staff';
-            } else {
-                currentView.value = 'daily_operations';
+            if (staffSearch.value) {
+                const search = staffSearch.value.toLowerCase();
+                filtered = filtered.filter(s => 
+                    s.full_name.toLowerCase().includes(search) ||
+                    (s.staff_id && s.staff_id.toLowerCase().includes(search))
+                );
             }
-        }
-        
-    } catch (error) {
-        console.error('Login error:', error);
-        showAdvancedToast(
-            'Login Failed',
-            error.message || 'Invalid credentials',
-            'error'
-        );
-        logAudit('LOGIN_FAILED', `Failed login attempt: ${error.message}`, 'auth');
-    } finally {
-        loading.value = false;
-    }
-};
+            
+            if (staffFilter.value.staff_type) {
+                filtered = filtered.filter(s => s.staff_type === staffFilter.value.staff_type);
+            }
+            
+            if (staffFilter.value.employment_status) {
+                filtered = filtered.filter(s => s.employment_status === staffFilter.value.employment_status);
+            }
+            
+            return filtered;
+        });
 
-    const handleLogout = async () => {
-                    try {
-                        logAudit('LOGOUT', 'User logged out', 'auth');
-                        await supabase.auth.signOut();
-                        currentUser.value = null;
-                        currentView.value = 'login';
-                        showAdvancedToast('Logged Out', 'You have been successfully logged out', 'info');
-                    } catch (error) {
-                        console.error('Logout error:', error);
-                    }
+        const todaysAssignments = computed(() => {
+            const today = new Date().toISOString().split('T')[0];
+            return dailyAssignments.value
+                .filter(a => a.assignment_date === today)
+                .slice(0, 5);
+        });
+
+        const todaysOnCall = computed(() => {
+            const today = new Date().toISOString().split('T')[0];
+            return onCallSchedule.value
+                .filter(o => o.duty_date === today)
+                .slice(0, 3);
+        });
+
+        const recentAnnouncements = computed(() => {
+            const today = new Date().toISOString().split('T')[0];
+            return announcements.value
+                .filter(a => a.publish_start_date <= today && (!a.publish_end_date || a.publish_end_date >= today))
+                .slice(0, 3);
+        });
+
+        const coverageAlerts = computed(() => {
+            return trainingUnits.value
+                .filter(u => u.unit_status === 'active' && (u.current_residents || 0) < u.maximum_residents * 0.5)
+                .map(u => ({
+                    id: u.id,
+                    unit_name: u.unit_name,
+                    current: u.current_residents || 0,
+                    capacity: u.maximum_residents,
+                    priority: 'high'
+                }));
+        });
+
+        const emergencyAlerts = computed(() => {
+            return [
+                {
+                    id: 1,
+                    title: 'ICU Capacity Warning',
+                    message: 'ICU at 95% capacity - Consider diverting non-critical cases',
+                    priority: 'high'
+                }
+            ];
+        });
+
+        const departmentStats = computed(() => {
+            return {
+                totalStaff: medicalStaff.value.length,
+                activeUnits: trainingUnits.value.filter(u => u.unit_status === 'active').length,
+                coverageRate: Math.round((medicalStaff.value.filter(s => s.employment_status === 'active').length / medicalStaff.value.length) * 100),
+                pendingApprovals: leaveRequests.value.filter(r => r.status === 'pending').length
+            };
+        });
+
+        const nextSevenDays = computed(() => {
+            const days = [];
+            const today = new Date();
+            
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                const dateString = date.toISOString().split('T')[0];
+                
+                const schedule = onCallSchedule.value.find(o => o.duty_date === dateString);
+                
+                days.push({
+                    date: dateString,
+                    schedule: schedule,
+                    status: schedule ? 'covered' : 'uncovered'
+                });
+            }
+            
+            return days;
+        });
+
+        // ============ NAVIGATION & UI ============
+        const switchView = async (view) => {
+            currentView.value = view;
+            closeMobileMenu();
+            logAudit('VIEW_CHANGE', `Switched to ${view} view`, 'navigation');
+            
+            await loadViewData(view);
+        };
+
+        const getCurrentTitle = () => {
+            const titles = {
+                medical_staff: 'Medical Staff Management',
+                training_units: 'Training Units',
+                daily_operations: 'Daily Operations Board',
+                permission_management: 'Permission Management',
+                audit_logs: 'Audit Logs',
+                oncall_schedule: 'On-call Schedule',
+                leave_requests: 'Leave Requests',
+                department_overview: 'Department Overview',
+                staff_management: 'Staff Management',
+                schedule_approval: 'Schedule Approval'
+            };
+            return titles[currentView.value] || 'PneumoCare Pro';
+        };
+
+        const getCurrentSubtitle = () => {
+            const subtitles = {
+                medical_staff: 'Manage medical staff with advanced permissions',
+                daily_operations: 'Real-time department operations dashboard',
+                permission_management: 'Configure system permissions and roles',
+                audit_logs: 'Track all system activities and changes',
+                oncall_schedule: 'Manage on-call duties and coverage',
+                leave_requests: 'Review and approve leave requests'
+            };
+            return subtitles[currentView.value] || 'Advanced DRBA Hospital Management System';
+        };
+
+        const getSearchPlaceholder = () => {
+            const placeholders = {
+                medical_staff: 'Search medical staff by name, ID, or department...',
+                daily_operations: 'Search assignments, alerts, or announcements...',
+                audit_logs: 'Search audit logs by user, action, or resource...'
+            };
+            return placeholders[currentView.value] || 'Search...';
+        };
+
+        const toggleMobileMenu = () => {
+            mobileMenuOpen.value = !mobileMenuOpen.value;
+        };
+
+        const closeMobileMenu = () => {
+            mobileMenuOpen.value = false;
+        };
+
+        const togglePermissionManager = () => {
+            showPermissionManager.value = !showPermissionManager.value;
+            userMenuOpen.value = false;
+            if (showPermissionManager.value) {
+                logAudit('PERMISSION_MANAGER_OPEN', 'Opened permission manager', 'system');
+            }
+        };
+
+        const toggleUserMenu = () => {
+            userMenuOpen.value = !userMenuOpen.value;
+        };
+
+        const getDayStatus = (day) => {
+            return day.status === 'covered' ? 'status-available' : 'status-critical';
+        };
+
+        // ============ AUTHENTICATION ============
+        const handleAdvancedLogin = async () => {
+            loading.value = true;
+            
+            try {
+                const email = loginForm.value.email.trim().toLowerCase();
+                const password = loginForm.value.password;
+                const selectedRole = loginForm.value.user_role;
+                
+                if (!email || !password || !selectedRole) {
+                    throw new Error('Please fill in all fields');
+                }
+                
+                // For demo purposes, we'll use mock authentication
+                // In production, you would verify against Supabase
+                const mockUsers = {
+                    'admin@hospital.org': { role: 'system_admin', name: 'System Administrator' },
+                    'head@hospital.org': { role: 'department_head', name: 'Department Head' },
+                    'manager@hospital.org': { role: 'resident_manager', name: 'Resident Manager' },
+                    'doctor@hospital.org': { role: 'viewing_doctor', name: 'Viewing Doctor' }
                 };
+                
+                let userData;
+                
+                if (email in mockUsers && password === 'password123') {
+                    userData = {
+                        id: generateUUID(),
+                        email: email,
+                        full_name: mockUsers[email].name,
+                        user_role: mockUsers[email].role,
+                        account_status: 'active'
+                    };
+                } else {
+                    // Try to get from app_users table
+                    const { data: existingUser } = await supabase
+                        .from('app_users')
+                        .select('*')
+                        .eq('email', email)
+                        .maybeSingle();
+                    
+                    if (existingUser) {
+                        userData = existingUser;
+                    } else {
+                        // Create new user for demo
+                        userData = {
+                            id: generateUUID(),
+                            email: email,
+                            full_name: email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                            user_role: selectedRole,
+                            account_status: 'active'
+                        };
+                        
+                        // Save to database
+                        await supabase.from('app_users').insert([userData]);
+                    }
+                }
+                
+                currentUser.value = userData;
+                initializePermissions(userData.user_role);
+                
+                showAdvancedToast(
+                    'Login Successful',
+                    `Welcome ${userData.full_name}!`,
+                    'success'
+                );
+                
+                logAudit('LOGIN_SUCCESS', `User logged in as ${userData.user_role}`, 'auth', userData.id);
+                
+                await loadInitialData();
+                
+                // Set initial view based on permissions
+                if (hasPermission('daily_operations', 'read')) {
+                    currentView.value = 'daily_operations';
+                } else if (hasPermission('medical_staff', 'read')) {
+                    currentView.value = 'medical_staff';
+                } else {
+                    currentView.value = 'daily_operations';
+                }
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                showAdvancedToast(
+                    'Login Failed',
+                    error.message || 'Invalid credentials',
+                    'error'
+                );
+                logAudit('LOGIN_FAILED', `Failed login attempt: ${error.message}`, 'auth');
+            } finally {
+                loading.value = false;
+            }
+        };
 
-                // ============ DATA LOADING ============
-                const loadInitialData = async () => {
-                    loading.value = true;
-                    try {
+        const handleLogout = async () => {
+            try {
+                logAudit('LOGOUT', 'User logged out', 'auth');
+                currentUser.value = null;
+                currentView.value = 'login';
+                userMenuOpen.value = false;
+                showAdvancedToast('Logged Out', 'You have been successfully logged out', 'info');
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        };
+
+        // ============ DATA LOADING ============
+        const loadInitialData = async () => {
+            loading.value = true;
+            try {
+                await Promise.all([
+                    loadMedicalStaff(),
+                    loadTrainingUnits(),
+                    loadResidentRotations(),
+                    loadLeaveRequests(),
+                    loadDailyAssignments(),
+                    loadOnCallSchedule(),
+                    loadAnnouncements(),
+                    loadAuditLogs(),
+                    loadSystemStats()
+                ]);
+                
+                showAdvancedToast('System Ready', 'All data loaded successfully', 'success');
+            } catch (error) {
+                console.error('Error loading initial data:', error);
+                showAdvancedToast('Data Load Error', 'Failed to load system data', 'error');
+            } finally {
+                loading.value = false;
+            }
+        };
+
+        const loadViewData = async (view) => {
+            try {
+                switch (view) {
+                    case 'medical_staff':
+                        await loadMedicalStaff();
+                        break;
+                    case 'training_units':
+                        await loadTrainingUnits();
+                        break;
+                    case 'daily_operations':
                         await Promise.all([
-                            loadMedicalStaff(),
-                            loadTrainingUnits(),
                             loadDailyAssignments(),
                             loadOnCallSchedule(),
-                            loadAnnouncements(),
-                            loadAuditLogs(),
-                            loadSystemStats()
+                            loadAnnouncements()
                         ]);
-                        
-                        showAdvancedToast('System Ready', 'All data loaded successfully', 'success');
-                    } catch (error) {
-                        console.error('Error loading initial data:', error);
-                        showAdvancedToast('Data Load Error', 'Failed to load system data', 'error');
-                    } finally {
-                        loading.value = false;
-                    }
-                };
-
-                const loadViewData = async (view) => {
-                    try {
-                        switch (view) {
-                            case 'medical_staff':
-                                await loadMedicalStaff();
-                                break;
-                            case 'daily_operations':
-                                await Promise.all([
-                                    loadDailyAssignments(),
-                                    loadOnCallSchedule(),
-                                    loadAnnouncements()
-                                ]);
-                                break;
-                            case 'audit_logs':
-                                await loadAuditLogs();
-                                break;
-                        }
-                    } catch (error) {
-                        console.error(`Error loading ${view} data:`, error);
-                    }
-                };
-
-                // ============ API FUNCTIONS ============
-                       const loadMedicalStaff = async () => {
-    try {
-        const { data, error } = await supabase
-            .from('medical_staff')
-            .select('*')
-            .order('full_name');
-        
-        if (error) throw error;
-        medicalStaff.value = data || [];
-        
-        // DEBUG: Log what was loaded
-        console.log('✅ Medical staff loaded:', medicalStaff.value.length, 'records');
-        if (medicalStaff.value.length > 0) {
-            console.log('First staff member:', medicalStaff.value[0]);
-        }
-        
-    } catch (error) {
-        console.error('Error loading medical staff:', error);
-        throw error;
-    }
-};
-
-
-         
-                const loadDailyAssignments = async () => {
-                    try {
-                        const { data, error } = await supabase
-                            .from('daily_assignments')
-                            .select('*')
-                            .order('assignment_date', { ascending: false });
-                        
-                        if (error) throw error;
-                        dailyAssignments.value = data || [];
-                    } catch (error) {
-                        console.error('Error loading daily assignments:', error);
-                        throw error;
-                    }
-                };
-
-                const loadOnCallSchedule = async () => {
-                    try {
-                        const { data, error } = await supabase
-                            .from('oncall_schedule')
-                            .select('*')
-                            .order('duty_date', { ascending: true });
-                        
-                        if (error) throw error;
-                        onCallSchedule.value = data || [];
-                    } catch (error) {
-                        console.error('Error loading on-call schedule:', error);
-                        throw error;
-                    }
-                };
-
-               const loadAnnouncements = async () => {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        const { data, error } = await supabase
-            .from('department_announcements')
-            .select('*')
-            .lte('publish_start_date', today)
-            .or(`publish_end_date.is.null,publish_end_date.gte.${today}`)
-            .order('priority_level', { ascending: false })
-            .order('created_at', { ascending: false });
-        
-        if (error) {
-            console.error('Supabase error:', error);
-            announcements.value = [];
-            return;
-        }
-        
-        // Just use the data as-is - Supabase will handle the column names
-        announcements.value = data || [];
-        
-        // Debug log
-        if (announcements.value.length > 0) {
-            console.log('First announcement:', announcements.value[0]);
-            console.log('Available keys:', Object.keys(announcements.value[0]));
-        }
-        
-    } catch (error) {
-        console.error('Error loading announcements:', error);
-        announcements.value = [];
-    }
-};
-
-                const loadAuditLogs = async () => {
-                    try {
-                        const { data, error } = await supabase
-                            .from('audit_logs')
-                            .select('*')
-                            .order('timestamp', { ascending: false })
-                            .limit(50);
-                        
-                        if (error) throw error;
-                        auditLogs.value = data || [];
-                    } catch (error) {
-                        console.error('Error loading audit logs:', error);
-                        throw error;
-                    }
-                };
-
-                const loadSystemStats = async () => {
-                    // Mock system stats
-                    systemStats.value = {
-                        active_users: 42,
-                        total_staff: medicalStaff.value.length,
-                        today_assignments: todaysAssignments.value.length,
-                        pending_approvals: 5
-                    };
-                };
-
-                const loadSystemRoles = () => {
-                    systemRoles.value = Object.entries(PermissionSystem.roles).map(([id, role]) => ({
-                        id,
-                        ...role
-                    }));
-                };
-
-                // ============ PERMISSION MANAGEMENT ============
-                const togglePermission = (resource, action) => {
-                    if (!hasPermission('system', 'admin')) {
-                        showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                        return;
-                    }
-                    
-                    // Toggle permission in UI (in real app, this would save to backend)
-                    showAdvancedToast(
-                        'Permission Updated',
-                        `${action} permission for ${resource} toggled`,
-                        'permission'
-                    );
-                };
-
-                const savePermissionChanges = async () => {
-                    savingPermissions.value = true;
-                    try {
-                        // In real app, save to backend
-                        showAdvancedToast(
-                            'Permissions Saved',
-                            'All permission changes have been saved',
-                            'success'
-                        );
-                        logAudit('PERMISSIONS_SAVED', 'Updated system permissions', 'system');
-                    } catch (error) {
-                        console.error('Error saving permissions:', error);
-                        showAdvancedToast('Save Failed', 'Failed to save permission changes', 'error');
-                    } finally {
-                        savingPermissions.value = false;
-                        showPermissionManager.value = false;
-                    }
-                };
-
-                const getResourcePermissionLevel = (resource) => {
-                    return PermissionSystem.getPermissionLevel(currentUser.value?.user_role, resource);
-                };
-
-                const getPermissionDescription = (resource, action) => {
-                    const descriptions = {
-                        create: 'Create new records',
-                        read: 'View records',
-                        update: 'Edit existing records',
-                        delete: 'Remove records',
-                        export: 'Export data',
-                        approve: 'Approve requests',
-                        override: 'Override restrictions'
-                    };
-                    return descriptions[action] || action;
-                };
-
-                const formatActionName = (action) => {
-                    return action.charAt(0).toUpperCase() + action.slice(1);
-                };
-
-                const formatResourceName = (resource) => {
-                    return resource.split('_').map(word => 
-                        word.charAt(0).toUpperCase() + word.slice(1)
-                    ).join(' ');
-                };
-
-                // ============ ACTION HANDLERS ============
-                const showAddMedicalStaffModal = () => {
-                    if (!hasPermission('medical_staff', 'create')) {
-                        showAdvancedToast(
-                            'Permission Denied',
-                            'You need create permission to add medical staff',
-                            'permission'
-                        );
-                        return;
-                    }
-                    // Show modal implementation
-                    showAdvancedToast('Info', 'Add medical staff modal would open here', 'info');
-                };
-
-                const editMedicalStaff = (staff) => {
-                    if (!hasPermission('medical_staff', 'update')) {
-                        showAdvancedToast(
-                            'Permission Denied',
-                            'You need update permission to edit medical staff',
-                            'permission'
-                        );
-                        return;
-                    }
-                    // Edit implementation
-                    logAudit('STAFF_EDIT', `Editing staff member: ${staff.full_name}`, 'medical_staff', staff.id);
-                };
-
-                const deleteMedicalStaff = (staff) => {
-                    if (!hasPermission('medical_staff', 'delete')) {
-                        showAdvancedToast(
-                            'Permission Denied',
-                            'You need delete permission to remove medical staff',
-                            'permission'
-                        );
-                        return;
-                    }
-                    // Delete implementation
-                    logAudit('STAFF_DELETE', `Deleting staff member: ${staff.full_name}`, 'medical_staff', staff.id);
-                };
-
-                const quickAssignToUnit = (alert) => {
-                    if (!hasPermission('placements', 'create')) {
-                        showAdvancedToast(
-                            'Permission Denied',
-                            'You need create permission to assign residents',
-                            'permission'
-                        );
-                        return;
-                    }
-                    // Quick assign implementation
-                    logAudit('QUICK_ASSIGN', `Quick assigning to unit: ${alert.unit_name}`, 'placements', alert.id);
-                };
-
-                const exportAuditLogs = () => {
-                    if (!hasPermission('audit', 'export')) {
-                        showAdvancedToast(
-                            'Permission Denied',
-                            'You need export permission to download audit logs',
-                            'permission'
-                        );
-                        return;
-                    }
-                    // Export implementation
-                    logAudit('AUDIT_EXPORT', 'Exported audit logs', 'audit');
-                };
-
-                const handleAdvancedSearch = () => {
-                    logAudit('SEARCH', `Searched for: ${searchQuery.value}`, 'system');
-                };
-
-                const togglePermissionFilter = (level) => {
-                    const index = permissionFilter.value.indexOf(level);
-                    if (index > -1) {
-                        permissionFilter.value.splice(index, 1);
-                    } else {
-                        permissionFilter.value.push(level);
-                    }
-                };
-
-                // ============ INITIALIZATION ============
- // ============ INITIALIZATION ============
-onMounted(() => {
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-        console.log('Session:', session);
-        if (session) {
-            console.log('Existing session found:', session.user.email);
-            // Load user and permissions here
-        }
-    }).catch(error => {
-        console.error('Error getting session:', error);
-    });
-    
-    // Load system roles
-    loadSystemRoles();
-});
-// Add this AFTER your other function definitions, BEFORE return statement
-const deleteRole = (role) => {
-    console.log('Delete role clicked:', role.name);
-    showAdvancedToast('Delete Role', `Would delete ${role.name}`, 'warning');
-};
-
-const editRole = (role) => {
-    console.log('Edit role clicked:', role.name);
-    // Your edit logic here
-};
-
-const cloneRole = (role) => {
-    console.log('Clone role clicked:', role.name);
-    // Your clone logic here
-};
-
-const showAddRoleModal = () => {
-    console.log('Show add role modal clicked');
-    // Your modal logic here
-};
-                // ============ RETURN ============
-                return {
-                    // State
-                     toggleUserMenu,
-                    hasPermission,
-                    currentUser,
-                    loginForm,
-                    loading,
-                    saving,
-                    permissionLoading,
-                    savingPermissions,
-                    currentView,
-                    sidebarCollapsed,
-                    mobileMenuOpen,
-                    showPermissionManager,
-                    searchQuery,
-                    permissionFilter,
-                    deleteRole,
-    editRole, 
-    cloneRole,
-    showAddRoleModal,
-                    // Data
-                    medicalStaff,
-                    trainingUnits,
-                    dailyAssignments,
-                    onCallSchedule,
-                    announcements,
-                    auditLogs,
-                    systemRoles,
-                    systemStats,
-                    
-                    // UI
-                    toasts,
-                    permissionResources,
-                    
-                    // Computed
-                    stats,
-                    filteredMedicalStaff,
-                    todaysAssignments,
-                    todaysOnCall,
-                    recentAnnouncements,
-                    coverageAlerts,
-                    emergencyAlerts,
-                    
-                    // Permission System
-                    hasPermission,
-                    hasAnyPermission,
-                    getViewPermission,
-                    getUserPermissionLevel,
-                    getResourcePermissionLevel,
-                    getPermissionDescription,
-                    formatActionName,
-                    formatResourceName,
-                    
-                    // Navigation
-                    switchView,
-                    getCurrentTitle,
-                    getCurrentSubtitle,
-                    getSearchPlaceholder,
-                    toggleMobileMenu,
-                    closeMobileMenu,
-                    togglePermissionManager,
-                    
-                    // Authentication
-                    handleAdvancedLogin,
-                    handleLogout,
-                    
-                    // Utilities
-                    getInitials,
-                    formatDate,
-                    formatDateTime,
-                    formatTimeRange,
-                    getUserRoleDisplay,
-                    formatStaffType,
-                    getStaffTypeClass,
-                    getAuditIcon,
-                    
-                    // Actions
-                    showAddMedicalStaffModal,
-                    editMedicalStaff,
-                    deleteMedicalStaff,
-                    quickAssignToUnit,
-                    exportAuditLogs,
-                    handleAdvancedSearch,
-                    togglePermissionFilter,
-                    
-                    // Permission Management
-                    togglePermission,
-                    savePermissionChanges,
-                    
-                    // Toast
-                    removeToast
-                };
+                        break;
+                    case 'audit_logs':
+                        await loadAuditLogs();
+                        break;
+                    case 'leave_requests':
+                        await loadLeaveRequests();
+                        break;
+                    case 'oncall_schedule':
+                        await loadOnCallSchedule();
+                        break;
+                }
+            } catch (error) {
+                console.error(`Error loading ${view} data:`, error);
             }
-        }).mount('#app');
+        };
+
+        // ============ API FUNCTIONS ============
+        const loadMedicalStaff = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('medical_staff')
+                    .select('*')
+                    .order('full_name');
+                
+                if (error) throw error;
+                medicalStaff.value = data || [];
+            } catch (error) {
+                console.error('Error loading medical staff:', error);
+                // For demo, create mock data
+                medicalStaff.value = [
+                    {
+                        id: '1',
+                        full_name: 'Dr. Sarah Chen',
+                        staff_type: 'attending_physician',
+                        staff_id: 'ATT-001',
+                        employment_status: 'active',
+                        can_supervise_residents: true,
+                        primary_clinic: 'Pulmonary Unit',
+                        professional_email: 's.chen@hospital.org',
+                        resident_category: null,
+                        training_year: null
+                    },
+                    {
+                        id: '2',
+                        full_name: 'Dr. Michael Rodriguez',
+                        staff_type: 'medical_resident',
+                        staff_id: 'RES-001',
+                        employment_status: 'active',
+                        can_supervise_residents: false,
+                        primary_clinic: 'ICU',
+                        professional_email: 'm.rodriguez@hospital.org',
+                        resident_category: 'pgy3',
+                        training_year: 2024
+                    }
+                ];
+            }
+        };
+
+        const loadTrainingUnits = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('training_units')
+                    .select('*')
+                    .order('unit_name');
+                
+                if (error) throw error;
+                trainingUnits.value = data || [];
+            } catch (error) {
+                console.error('Error loading training units:', error);
+                // Mock data
+                trainingUnits.value = [
+                    {
+                        id: '1',
+                        unit_name: 'Pulmonary Unit',
+                        unit_description: 'Specializes in pulmonary diseases and critical care',
+                        unit_status: 'active',
+                        maximum_residents: 8,
+                        current_residents: 6,
+                        specialty: 'Pulmonology'
+                    },
+                    {
+                        id: '2',
+                        unit_name: 'ICU',
+                        unit_description: 'Intensive Care Unit for critical patients',
+                        unit_status: 'active',
+                        maximum_residents: 12,
+                        current_residents: 9,
+                        specialty: 'Critical Care'
+                    }
+                ];
+            }
+        };
+
+        const loadResidentRotations = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('resident_rotations')
+                    .select('*')
+                    .order('rotation_start_date', { ascending: false });
+                
+                if (error) throw error;
+                residentRotations.value = data || [];
+            } catch (error) {
+                console.error('Error loading resident rotations:', error);
+                residentRotations.value = [];
+            }
+        };
+
+        const loadLeaveRequests = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('leave_requests')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                leaveRequests.value = data || [];
+            } catch (error) {
+                console.error('Error loading leave requests:', error);
+                leaveRequests.value = [];
+            }
+        };
+
+        const loadDailyAssignments = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('daily_assignments')
+                    .select('*')
+                    .order('assignment_date', { ascending: false });
+                
+                if (error) throw error;
+                dailyAssignments.value = data || [];
+            } catch (error) {
+                console.error('Error loading daily assignments:', error);
+                dailyAssignments.value = [];
+            }
+        };
+
+        const loadOnCallSchedule = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('oncall_schedule')
+                    .select('*')
+                    .order('duty_date', { ascending: true });
+                
+                if (error) throw error;
+                onCallSchedule.value = data || [];
+            } catch (error) {
+                console.error('Error loading on-call schedule:', error);
+                onCallSchedule.value = [];
+            }
+        };
+
+        const loadAnnouncements = async () => {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const { data, error } = await supabase
+                    .from('department_announcements')
+                    .select('*')
+                    .lte('publish_start_date', today)
+                    .or(`publish_end_date.is.null,publish_end_date.gte.${today}`)
+                    .order('priority_level', { ascending: false })
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                announcements.value = data || [];
+            } catch (error) {
+                console.error('Error loading announcements:', error);
+                announcements.value = [];
+            }
+        };
+
+        const loadAuditLogs = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('audit_logs')
+                    .select('*')
+                    .order('timestamp', { ascending: false })
+                    .limit(50);
+                
+                if (error) throw error;
+                auditLogs.value = data || [];
+            } catch (error) {
+                console.error('Error loading audit logs:', error);
+                auditLogs.value = [];
+            }
+        };
+
+        const loadSystemStats = async () => {
+            systemStats.value = {
+                active_users: 42,
+                total_staff: medicalStaff.value.length,
+                today_assignments: todaysAssignments.value.length,
+                pending_approvals: leaveRequests.value.filter(r => r.status === 'pending').length
+            };
+        };
+
+        const loadSystemRoles = () => {
+            systemRoles.value = Object.entries(PermissionSystem.roles).map(([id, role]) => ({
+                id,
+                ...role
+            }));
+        };
+
+        // ============ MEDICAL STAFF CRUD ============
+        const showAddMedicalStaffModal = () => {
+            if (!hasPermission('medical_staff', 'create')) {
+                showAdvancedToast(
+                    'Permission Denied',
+                    'You need create permission to add medical staff',
+                    'permission'
+                );
+                return;
+            }
+            
+            medicalStaffModal.value = {
+                show: true,
+                mode: 'add',
+                staff: null,
+                form: {
+                    full_name: '',
+                    staff_type: 'medical_resident',
+                    staff_id: `MD-${Date.now().toString().slice(-6)}`,
+                    employment_status: 'active',
+                    can_supervise_residents: false,
+                    primary_clinic: '',
+                    professional_email: '',
+                    resident_category: '',
+                    training_year: new Date().getFullYear()
+                }
+            };
+            
+            logAudit('STAFF_MODAL_OPEN', 'Opened add medical staff modal', 'medical_staff');
+        };
+
+        const editMedicalStaff = (staff) => {
+            if (!hasPermission('medical_staff', 'update')) {
+                showAdvancedToast(
+                    'Permission Denied',
+                    'You need update permission to edit medical staff',
+                    'permission'
+                );
+                return;
+            }
+            
+            medicalStaffModal.value = {
+                show: true,
+                mode: 'edit',
+                staff: staff,
+                form: { ...staff }
+            };
+            
+            logAudit('STAFF_EDIT', `Editing staff member: ${staff.full_name}`, 'medical_staff', staff.id);
+        };
+
+        const saveMedicalStaff = async () => {
+            if (!hasPermission('medical_staff', medicalStaffModal.value.mode === 'add' ? 'create' : 'update')) {
+                showAdvancedToast('Permission Denied', 'Insufficient permissions', 'permission');
+                return;
+            }
+            
+            saving.value = true;
+            try {
+                // Validate form
+                if (!medicalStaffModal.value.form.full_name.trim()) {
+                    throw new Error('Full name is required');
+                }
+                
+                if (medicalStaffModal.value.mode === 'add') {
+                    // Add new staff
+                    const { data, error } = await supabase
+                        .from('medical_staff')
+                        .insert([{
+                            ...medicalStaffModal.value.form,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        }])
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    
+                    medicalStaff.value.unshift(data);
+                    showAdvancedToast('Success', 'Medical staff added successfully', 'success');
+                    logAudit('STAFF_CREATE', `Added: ${data.full_name}`, 'medical_staff', data.id);
+                } else {
+                    // Update existing staff
+                    const { data, error } = await supabase
+                        .from('medical_staff')
+                        .update({
+                            ...medicalStaffModal.value.form,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', medicalStaffModal.value.staff.id)
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    
+                    // Update in local array
+                    const index = medicalStaff.value.findIndex(s => s.id === data.id);
+                    if (index !== -1) {
+                        medicalStaff.value[index] = data;
+                    }
+                    
+                    showAdvancedToast('Success', 'Medical staff updated successfully', 'success');
+                    logAudit('STAFF_UPDATE', `Updated: ${data.full_name}`, 'medical_staff', data.id);
+                }
+                
+                medicalStaffModal.value.show = false;
+            } catch (error) {
+                console.error('Error saving medical staff:', error);
+                showAdvancedToast('Save Failed', error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+
+        const deleteMedicalStaff = async (staff) => {
+            if (!hasPermission('medical_staff', 'delete')) {
+                showAdvancedToast(
+                    'Permission Denied',
+                    'You need delete permission to remove medical staff',
+                    'permission'
+                );
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete ${staff.full_name}? This action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('medical_staff')
+                    .delete()
+                    .eq('id', staff.id);
+                
+                if (error) throw error;
+                
+                // Remove from local array
+                const index = medicalStaff.value.findIndex(s => s.id === staff.id);
+                if (index !== -1) {
+                    medicalStaff.value.splice(index, 1);
+                }
+                
+                showAdvancedToast('Deleted', `${staff.full_name} has been removed`, 'success');
+                logAudit('STAFF_DELETE', `Deleted: ${staff.full_name}`, 'medical_staff', staff.id);
+            } catch (error) {
+                console.error('Error deleting medical staff:', error);
+                showAdvancedToast('Delete Failed', error.message, 'error');
+            }
+        };
+
+        // ============ PERMISSION MANAGEMENT ============
+        const togglePermission = (resource, action) => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            showAdvancedToast(
+                'Permission Updated',
+                `${action} permission for ${resource} toggled`,
+                'permission'
+            );
+        };
+
+        const savePermissionChanges = async () => {
+            savingPermissions.value = true;
+            try {
+                showAdvancedToast(
+                    'Permissions Saved',
+                    'All permission changes have been saved',
+                    'success'
+                );
+                logAudit('PERMISSIONS_SAVED', 'Updated system permissions', 'system');
+            } catch (error) {
+                console.error('Error saving permissions:', error);
+                showAdvancedToast('Save Failed', 'Failed to save permission changes', 'error');
+            } finally {
+                savingPermissions.value = false;
+                showPermissionManager.value = false;
+            }
+        };
+
+        const getResourcePermissionLevel = (resource) => {
+            return PermissionSystem.getPermissionLevel(currentUser.value?.user_role, resource);
+        };
+
+        const getPermissionDescription = (resource, action) => {
+            const descriptions = {
+                create: 'Create new records',
+                read: 'View records',
+                update: 'Edit existing records',
+                delete: 'Remove records',
+                export: 'Export data',
+                approve: 'Approve requests',
+                override: 'Override restrictions'
+            };
+            return descriptions[action] || action;
+        };
+
+        const formatActionName = (action) => {
+            return action.charAt(0).toUpperCase() + action.slice(1);
+        };
+
+        const formatResourceName = (resource) => {
+            return resource.split('_').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ');
+        };
+
+        // ============ ROLE MANAGEMENT ============
+        const showAddRoleModal = () => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            addRoleModal.value = {
+                show: true,
+                mode: 'add',
+                role: null,
+                form: {
+                    name: '',
+                    description: '',
+                    level: 'read'
+                }
+            };
+        };
+
+        const editRole = (role) => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            addRoleModal.value = {
+                show: true,
+                mode: 'edit',
+                role: role,
+                form: {
+                    name: role.name,
+                    description: role.description,
+                    level: role.level
+                }
+            };
+        };
+
+        const cloneRole = (role) => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            addRoleModal.value = {
+                show: true,
+                mode: 'add',
+                role: null,
+                form: {
+                    name: `${role.name} (Copy)`,
+                    description: role.description,
+                    level: role.level
+                }
+            };
+        };
+
+        const deleteRole = (role) => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            if (role.id === 'system_admin') {
+                showAdvancedToast('Cannot Delete', 'System Admin role cannot be deleted', 'error');
+                return;
+            }
+            
+            if (confirm(`Are you sure you want to delete the "${role.name}" role?`)) {
+                systemRoles.value = systemRoles.value.filter(r => r.id !== role.id);
+                showAdvancedToast('Role Deleted', `${role.name} has been removed`, 'success');
+                logAudit('ROLE_DELETE', `Deleted role: ${role.name}`, 'system');
+            }
+        };
+
+        const saveRole = async () => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            saving.value = true;
+            try {
+                const newRole = {
+                    id: addRoleModal.value.mode === 'add' ? 
+                        addRoleModal.value.form.name.toLowerCase().replace(/\s+/g, '_') : 
+                        addRoleModal.value.role.id,
+                    name: addRoleModal.value.form.name,
+                    description: addRoleModal.value.form.description,
+                    level: addRoleModal.value.form.level,
+                    permissions: {}
+                };
+                
+                // Copy permissions from a similar role
+                const templateRole = PermissionSystem.roles[addRoleModal.value.form.level === 'full' ? 'system_admin' : 'resident_manager'];
+                if (templateRole) {
+                    newRole.permissions = { ...templateRole.permissions };
+                }
+                
+                if (addRoleModal.value.mode === 'add') {
+                    systemRoles.value.push(newRole);
+                    showAdvancedToast('Success', 'New role created successfully', 'success');
+                    logAudit('ROLE_CREATE', `Created role: ${newRole.name}`, 'system');
+                } else {
+                    const index = systemRoles.value.findIndex(r => r.id === newRole.id);
+                    if (index !== -1) {
+                        systemRoles.value[index] = newRole;
+                    }
+                    showAdvancedToast('Success', 'Role updated successfully', 'success');
+                    logAudit('ROLE_UPDATE', `Updated role: ${newRole.name}`, 'system');
+                }
+                
+                addRoleModal.value.show = false;
+            } catch (error) {
+                console.error('Error saving role:', error);
+                showAdvancedToast('Save Failed', error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+
+        // ============ ACTION HANDLERS ============
+        const viewStaffSchedule = (staff) => {
+            showAdvancedToast('Info', `Viewing schedule for ${staff.full_name}`, 'info');
+            logAudit('SCHEDULE_VIEW', `Viewed schedule for ${staff.full_name}`, 'schedules', staff.id);
+        };
+
+        const quickAssignToUnit = (alert) => {
+            if (!hasPermission('placements', 'create')) {
+                showAdvancedToast(
+                    'Permission Denied',
+                    'You need create permission to assign residents',
+                    'permission'
+                );
+                return;
+            }
+            
+            showAdvancedToast('Assign', `Assigning residents to ${alert.unit_name}`, 'info');
+            logAudit('QUICK_ASSIGN', `Quick assigning to unit: ${alert.unit_name}`, 'placements', alert.id);
+        };
+
+        const exportAuditLogs = () => {
+            if (!hasPermission('audit', 'export')) {
+                showAdvancedToast(
+                    'Permission Denied',
+                    'You need export permission to download audit logs',
+                    'permission'
+                );
+                return;
+            }
+            
+            showAdvancedToast('Export', 'Audit logs exported successfully', 'success');
+            logAudit('AUDIT_EXPORT', 'Exported audit logs', 'audit');
+        };
+
+        const handleAdvancedSearch = () => {
+            logAudit('SEARCH', `Searched for: ${searchQuery.value}`, 'system');
+        };
+
+        const togglePermissionFilter = (level) => {
+            const index = permissionFilter.value.indexOf(level);
+            if (index > -1) {
+                permissionFilter.value.splice(index, 1);
+            } else {
+                permissionFilter.value.push(level);
+            }
+        };
+
+        const showUserProfile = () => {
+            userMenuOpen.value = false;
+            showAdvancedToast('Profile', 'User profile would open here', 'info');
+        };
+
+        const showAddTrainingUnitModal = () => {
+            showAdvancedToast('Info', 'Add training unit modal would open here', 'info');
+        };
+
+        const editTrainingUnit = (unit) => {
+            showAdvancedToast('Info', `Editing ${unit.unit_name}`, 'info');
+        };
+
+        const assignResidentsToUnit = (unit) => {
+            showAdvancedToast('Info', `Assigning residents to ${unit.unit_name}`, 'info');
+        };
+
+        const showAddOnCallModal = () => {
+            showAdvancedToast('Info', 'Add on-call schedule modal would open here', 'info');
+        };
+
+        const editOnCallSchedule = (day) => {
+            showAdvancedToast('Info', `Editing on-call for ${formatDate(day.date)}`, 'info');
+        };
+
+        const overrideOnCall = (day) => {
+            showAdvancedToast('Info', `Overriding on-call for ${formatDate(day.date)}`, 'info');
+        };
+
+        const showAddLeaveRequestModal = () => {
+            showAdvancedToast('Info', 'Add leave request modal would open here', 'info');
+        };
+
+        const approveLeaveRequest = (request) => {
+            showAdvancedToast('Approved', `Leave request for ${request.staff_name} approved`, 'success');
+        };
+
+        const rejectLeaveRequest = (request) => {
+            showAdvancedToast('Rejected', `Leave request for ${request.staff_name} rejected`, 'error');
+        };
+
+        const viewLeaveRequestDetails = (request) => {
+            showAdvancedToast('Details', `Viewing details for ${request.staff_name}'s leave request`, 'info');
+        };
+
+        const showAddStaffModal = () => {
+            showAdvancedToast('Info', 'Add staff modal would open here', 'info');
+        };
+
+        // ============ INITIALIZATION ============
+        onMounted(() => {
+            // Check for existing session
+            supabase.auth.getSession().then(({ data: { session } }) => {
+                if (session) {
+                    console.log('Existing session found');
+                }
+            }).catch(error => {
+                console.error('Error getting session:', error);
+            });
+            
+            // Load system roles
+            loadSystemRoles();
+        });
+
+        // ============ RETURN ============
+        return {
+            // State
+            currentUser,
+            loginForm,
+            loading,
+            saving,
+            permissionLoading,
+            savingPermissions,
+            currentView,
+            sidebarCollapsed,
+            mobileMenuOpen,
+            showPermissionManager,
+            searchQuery,
+            permissionFilter,
+            userMenuOpen,
+            
+            // Data
+            medicalStaff,
+            trainingUnits,
+            dailyAssignments,
+            onCallSchedule,
+            announcements,
+            auditLogs,
+            systemRoles,
+            systemStats,
+            
+            // UI
+            toasts,
+            permissionResources,
+            medicalStaffModal,
+            addRoleModal,
+            
+            // Computed
+            stats,
+            filteredMedicalStaff,
+            todaysAssignments,
+            todaysOnCall,
+            recentAnnouncements,
+            coverageAlerts,
+            emergencyAlerts,
+            departmentStats,
+            nextSevenDays,
+            
+            // Permission System
+            hasPermission,
+            hasAnyPermission,
+            getViewPermission,
+            getUserPermissionLevel,
+            getResourcePermissionLevel,
+            getPermissionDescription,
+            formatActionName,
+            formatResourceName,
+            
+            // Navigation
+            switchView,
+            getCurrentTitle,
+            getCurrentSubtitle,
+            getSearchPlaceholder,
+            toggleMobileMenu,
+            closeMobileMenu,
+            togglePermissionManager,
+            toggleUserMenu,
+            getDayStatus,
+            
+            // Authentication
+            handleAdvancedLogin,
+            handleLogout,
+            
+            // Utilities
+            getInitials,
+            formatDate,
+            formatDateTime,
+            formatTimeRange,
+            getUserRoleDisplay,
+            formatStaffType,
+            getStaffTypeClass,
+            getAuditIcon,
+            formatResidentCategory,
+            formatEmploymentStatus,
+            
+            // Medical Staff
+            showAddMedicalStaffModal,
+            editMedicalStaff,
+            saveMedicalStaff,
+            deleteMedicalStaff,
+            viewStaffSchedule,
+            
+            // Role Management
+            showAddRoleModal,
+            editRole,
+            cloneRole,
+            deleteRole,
+            saveRole,
+            
+            // Actions
+            quickAssignToUnit,
+            exportAuditLogs,
+            handleAdvancedSearch,
+            togglePermissionFilter,
+            showUserProfile,
+            
+            // Training Units
+            showAddTrainingUnitModal,
+            editTrainingUnit,
+            assignResidentsToUnit,
+            
+            // On-call Schedule
+            showAddOnCallModal,
+            editOnCallSchedule,
+            overrideOnCall,
+            
+            // Leave Requests
+            showAddLeaveRequestModal,
+            approveLeaveRequest,
+            rejectLeaveRequest,
+            viewLeaveRequestDetails,
+            
+            // Staff Management
+            showAddStaffModal,
+            
+            // Permission Management
+            togglePermission,
+            savePermissionChanges,
+            
+            // Toast
+            removeToast
+        };
+    }
+}).mount('#app');
     </script>
 </body>
 </html>
