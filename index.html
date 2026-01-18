@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PneumoCare Pro | Advanced DRBA Academic Pulmonary Management</title>
+    <title>PneumoCare Pro | Pulmonary Management</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -3520,12 +3520,25 @@ console.log('Auth available:', supabaseClient.auth);
                     return PermissionSystem.getPermissionLevel(currentUser.value?.user_role, resource);
                 };
 
-                const getUserPermissionLevel = () => {
-                    if (!currentUser.value) return 'none';
-                    const role = PermissionSystem.roles[currentUser.value.user_role];
-                    return role ? role.level : 'none';
-                };
-
+               const getUserPermissionLevel = () => {
+    if (!currentUser.value) {
+        console.log('❌ No current user');
+        return 'none';
+    }
+    
+    console.log('🔍 Checking permission level for:', {
+        user: currentUser.value.email,
+        role_from_user: currentUser.value.user_role,
+        role_exists: PermissionSystem.roles[currentUser.value.user_role] ? 'YES' : 'NO',
+        role_data: PermissionSystem.roles[currentUser.value.user_role]
+    });
+    
+    const role = PermissionSystem.roles[currentUser.value.user_role];
+    const level = role ? role.level : 'none';
+    
+    console.log('✅ Permission level:', level);
+    return level;
+};
                 // ============ AUDIT LOGGING SYSTEM ============
                 const logAudit = (action, details, resource, resourceId = null) => {
                     const logEntry = {
