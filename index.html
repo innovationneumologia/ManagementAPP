@@ -3818,82 +3818,117 @@ console.log('Auth available:', supabaseClient.auth);
                         logAudit('PERMISSION_MANAGER_OPEN', 'Opened permission manager', 'system');
                     }
                 };
-
-               const handleAdvancedLogin = async () => {
+                const handleAdvancedLogin = async () => {
     loading.value = true;
     
     try {
-        // ============ TEMPORARY TEST CREDENTIALS ============
-        // Use these while setting up Supabase database
-        const testCredentials = {
-            'resident.manager@hospital.com': 'password123',
-            'department.head@hospital.com': 'password123',
-            'system.admin@hospital.com': 'password123',
-            'viewing.doctor@hospital.com': 'password123'
-        };
-        
         const email = loginForm.value.email.trim().toLowerCase();
         const password = loginForm.value.password;
+        const selectedRole = loginForm.value.user_role;
         
-        // Check if using test credentials
-        if (testCredentials[email] && password === testCredentials[email]) {
-            console.log('🔐 Using test credentials for:', email);
+        if (!email || !password || !selectedRole) {
+            throw new Error('Please fill in all fields');
+        }
+        
+        console.log('🔐 Attempting login:', { email, selectedRole });
+        
+        // 1. Authenticate with Supabase
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+        
+        if (authError) {
+            console.error('Auth error:', authError);
             
-            // Create mock user based on email
-            const userMap = {
-                'resident.manager@hospital.com': {
-                    id: 'test-resident-manager-' + Date.now(),
-                    full_name: 'Dr. Sarah Miller',
-                    user_role: 'resident_manager',
-                    email: email
-                },
-                'department.head@hospital.com': {
-                    id: 'test-department-head-' + Date.now(),
-                    full_name: 'Dr. James Wilson',
-                    user_role: 'department_head',
-                    email: email
-                },
-                'system.admin@hospital.com': {
-                    id: 'test-system-admin-' + Date.now(),
-                    full_name: 'System Administrator',
-                    user_role: 'system_admin',
-                    email: email
-                },
-                'viewing.doctor@hospital.com': {
-                    id: 'test-viewing-doctor-' + Date.now(),
-                    full_name: 'Dr. Emily Chen',
-                    user_role: 'viewing_doctor',
-                    email: email
+            // Check if user exists in app_users table (for users created via SQL)
+            const { data: existingUser } = await supabase
+                .from('app_users')
+                .select('*')
+                .eq('email', email)
+                .maybeSingle();
+            
+            if (existingUser) {
+                // Use existing user from app_users (password verification skipped)
+                console.log('Using existing app_user:', existingUser);
+                currentUser.value = {
+                    ...existingUser,
+                    permissions: PermissionSystem.roles[existingUser.user_role]?.permissions || {}
+                };
+                
+                initializePermissions(existingUser.user_role);
+                showAdvancedToast(`Welcome back, ${existingUser.full_name}!`, 'success');
+            } else {
+                throw new Error('Invalid credentials. Please check your email and password.');
+            }
+        } else if (authData.user) {
+            console.log('✅ Auth successful:', authData.user.email);
+            
+            // 2. Get/Create user in app_users table
+            let userData;
+            
+            // Try to get existing user
+            const { data: existingUser } = await supabase
+                .from('app_users')
+                .select('*')
+                .eq('email', authData.user.email)
+                .maybeSingle();
+            
+            if (existingUser) {
+                userData = existingUser;
+                console.log('Found existing user:', userData);
+            } else {
+                // Create new user record
+                console.log('Creating new app_user for:', authData.user.email);
+                const { data: newUser, error: createError } = await supabase
+                    .from('app_users')
+                    .insert([{
+                        id: authData.user.id,
+                        email: authData.user.email,
+                        full_name: authData.user.user_metadata?.full_name || 
+                                  email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                        user_role: selectedRole,
+                        account_status: 'active',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }])
+                    .select()
+                    .single();
+                
+                if (createError) {
+                    console.error('Error creating app_user:', createError);
+                    // Use temporary user data
+                    userData = {
+                        id: authData.user.id,
+                        email: authData.user.email,
+                        full_name: authData.user.user_metadata?.full_name || 'User',
+                        user_role: selectedRole
+                    };
+                } else {
+                    userData = newUser;
                 }
-            };
+            }
             
-            const userData = userMap[email] || {
-                id: 'test-user-' + Date.now(),
-                full_name: 'Test User',
-                user_role: loginForm.value.user_role,
-                email: email
-            };
-            
+            // 3. Set current user with permissions
             currentUser.value = {
                 ...userData,
                 permissions: PermissionSystem.roles[userData.user_role]?.permissions || {}
             };
             
-            // Initialize permissions
             initializePermissions(userData.user_role);
             
             showAdvancedToast(
-                'Login Successful (Test Mode)',
+                'Login Successful',
                 `Welcome ${userData.full_name}!`,
                 'success'
             );
             
-            console.log('✅ Test login successful:', currentUser.value);
+            logAudit('LOGIN_SUCCESS', `User logged in as ${userData.user_role}`, 'auth', userData.id);
             
-            // Load initial data
+            // 4. Load application data
             await loadInitialData();
             
-            // Set initial view
+            // 5. Set initial view based on permissions
             if (hasPermission('daily_operations', 'read')) {
                 currentView.value = 'daily_operations';
             } else if (hasPermission('medical_staff', 'read')) {
@@ -3901,20 +3936,7 @@ console.log('Auth available:', supabaseClient.auth);
             } else {
                 currentView.value = 'daily_operations';
             }
-            
-            return; // Stop here, don't try Supabase auth
         }
-        // ============ END TEMPORARY TEST CREDENTIALS ============
-        
-        // Original Supabase authentication (only if not using test credentials)
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email: loginForm.value.email,
-            password: loginForm.value.password
-        });
-        
-        if (authError) throw authError;
-        
-        // Rest of your original code...
         
     } catch (error) {
         console.error('Login error:', error);
@@ -3923,12 +3945,13 @@ console.log('Auth available:', supabaseClient.auth);
             error.message || 'Invalid credentials',
             'error'
         );
-        logAudit('LOGIN_FAILED', `Failed login attempt for ${loginForm.value.email}`, 'auth');
+        logAudit('LOGIN_FAILED', `Failed login attempt: ${error.message}`, 'auth');
     } finally {
         loading.value = false;
     }
 };
-                const handleLogout = async () => {
+
+    const handleLogout = async () => {
                     try {
                         logAudit('LOGOUT', 'User logged out', 'auth');
                         await supabase.auth.signOut();
