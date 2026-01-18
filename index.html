@@ -3762,21 +3762,11 @@ const staffFilter = ref({
                         s.staff_type === 'attending_physician' && s.employment_status === 'active'
                     );
                     const supervisors = medicalStaff.value.filter(s => 
-                        s.can_supervise_residents && s.employment_status === 'active'
-                    );
-                    
-                    return {
-                        totalStaff: medicalStaff.value.length,
-                        activeResidents: residents.length,
-                        attendings: attendings.length,
-                        availableSupervisors: supervisors.length
-                    };
-                });
-
-                const filteredMedicalStaff = computed(() => {
-    let filtered = medicalStaff.value || [];
+                        s.can_sconst filteredMedicalStaff = computed(() => {
+    let filtered = medicalStaff.value || []; // Add fallback
     
-    // Filter by search
+    if (!filtered || filtered.length === 0) return [];
+    
     if (staffSearch.value) {
         const search = staffSearch.value.toLowerCase();
         filtered = filtered.filter(s => {
@@ -3786,7 +3776,6 @@ const staffFilter = ref({
         });
     }
     
-    // Filter by staff type
     if (staffFilter.value.staff_type) {
         filtered = filtered.filter(s => {
             if (!s) return false; // Safety check
@@ -3794,7 +3783,6 @@ const staffFilter = ref({
         });
     }
     
-    // Filter by employment status
     if (staffFilter.value.employment_status) {
         filtered = filtered.filter(s => {
             if (!s) return false; // Safety check
@@ -3803,7 +3791,19 @@ const staffFilter = ref({
     }
     
     return filtered;
-});
+});upervise_residents && s.employment_status === 'active'
+                    );
+                    
+                    return {
+                        totalStaff: medicalStaff.value.length,
+                        activeResidents: residents.length,
+                        attendings: attendings.length,
+                        availableSupervisors: supervisors.length
+                    };
+                });
+                
+
+              
                 const todaysAssignments = computed(() => {
                     const today = new Date().toISOString().split('T')[0];
                     return dailyAssignments.value
