@@ -4128,231 +4128,193 @@
    <script>
 const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 
-// Use a different variable name or restructure to avoid duplicate declaration
-const initializeApp = () => {
-    // Supabase Configuration
-    const SUPABASE_URL = 'https://vssmguzuvekkecbmwcjw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
+// Supabase Configuration
+const SUPABASE_URL = 'https://vssmguzuvekkecbmwcjw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
 
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-            autoRefreshToken: true,
-            persistSession: true,
-            detectSessionInUrl: false,
-            storage: window.localStorage
-        }
-    });
-
-    // Advanced DRBA Permission System
-    const PermissionSystem = {
-        resources: {
-            medical_staff: {
-                name: 'Medical Staff',
-                actions: ['create', 'read', 'update', 'delete', 'export'],
-                description: 'Manage medical staff records'
-            },
-            training_units: {
-                name: 'Training Units',
-                actions: ['create', 'read', 'update', 'delete', 'assign'],
-                description: 'Manage training units and capacities'
-            },
-            resident_rotations: {
-                name: 'Resident Rotations',
-                actions: ['create', 'read', 'update', 'delete', 'extend'],
-                description: 'Manage resident rotation schedules'
-            },
-            placements: {
-                name: 'Placements',
-                actions: ['create', 'read', 'update', 'delete', 'drag_drop'],
-                description: 'Assign residents to training units'
-            },
-            daily_operations: {
-                name: 'Daily Operations',
-                actions: ['read', 'update', 'alert'],
-                description: 'View and manage daily operations'
-            },
-            oncall_schedule: {
-                name: 'On-call Schedule',
-                actions: ['create', 'read', 'update', 'delete', 'override'],
-                description: 'Manage on-call schedules'
-            },
-            leave_requests: {
-                name: 'Leave Requests',
-                actions: ['create', 'read', 'update', 'approve', 'reject'],
-                description: 'Manage leave requests and approvals'
-            },
-            announcements: {
-                name: 'Announcements',
-                actions: ['create', 'read', 'update', 'delete', 'publish'],
-                description: 'Create and manage announcements'
-            },
-            audit: {
-                name: 'Audit Logs',
-                actions: ['read', 'export', 'clear'],
-                description: 'View system audit logs'
-            },
-            system: {
-                name: 'System Settings',
-                actions: ['read', 'update', 'admin'],
-                description: 'Manage system settings and permissions'
-            }
-        },
-
-        roles: {
-            system_admin: {
-                name: 'System Administrator',
-                level: 'full',
-                description: 'Full system access and permission management',
-                permissions: {
-                    medical_staff: { create: true, read: true, update: true, delete: true, export: true },
-                    training_units: { create: true, read: true, update: true, delete: true, assign: true },
-                    resident_rotations: { create: true, read: true, update: true, delete: true, extend: true },
-                    placements: { create: true, read: true, update: true, delete: true, drag_drop: true },
-                    daily_operations: { read: true, update: true, alert: true },
-                    oncall_schedule: { create: true, read: true, update: true, delete: true, override: true },
-                    leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
-                    announcements: { create: true, read: true, update: true, delete: true, publish: true },
-                    audit: { read: true, export: true, clear: true },
-                    system: { read: true, update: true, admin: true }
-                }
-            },
-            department_head: {
-                name: 'Head of Department',
-                level: 'full',
-                description: 'Department-wide oversight and management',
-                permissions: {
-                    medical_staff: { create: true, read: true, update: true, delete: false, export: true },
-                    training_units: { create: true, read: true, update: true, delete: false, assign: true },
-                    resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
-                    placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
-                    daily_operations: { read: true, update: true, alert: true },
-                    oncall_schedule: { create: true, read: true, update: true, delete: false, override: true },
-                    leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
-                    announcements: { create: true, read: true, update: true, delete: true, publish: true },
-                    audit: { read: true, export: true, clear: false },
-                    system: { read: true, update: false, admin: false }
-                }
-            },
-            resident_manager: {
-                name: 'Resident Manager',
-                level: 'write',
-                description: 'Manage residents and training units',
-                permissions: {
-                    medical_staff: { create: true, read: true, update: true, delete: false, export: false },
-                    training_units: { create: true, read: true, update: true, delete: false, assign: true },
-                    resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
-                    placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
-                    daily_operations: { read: true, update: true, alert: false },
-                    oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
-                    leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
-                    announcements: { create: false, read: true, update: false, delete: false, publish: false },
-                    audit: { read: false, export: false, clear: false },
-                    system: { read: false, update: false, admin: false }
-                }
-            },
-            attending_physician: {
-                name: 'Attending Physician',
-                level: 'limited',
-                description: 'Supervise residents and view schedules',
-                permissions: {
-                    medical_staff: { create: false, read: true, update: false, delete: false, export: false },
-                    training_units: { create: false, read: true, update: false, delete: false, assign: false },
-                    resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
-                    placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
-                    daily_operations: { read: true, update: false, alert: false },
-                    oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
-                    leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
-                    announcements: { create: false, read: true, update: false, delete: false, publish: false },
-                    audit: { read: false, export: false, clear: false },
-                    system: { read: false, update: false, admin: false }
-                }
-            },
-            viewing_doctor: {
-                name: 'Viewing Doctor',
-                level: 'read',
-                description: 'Read-only access to schedules and assignments',
-                permissions: {
-                    medical_staff: { create: false, read: true, update: false, delete: false, export: false },
-                    training_units: { create: false, read: true, update: false, delete: false, assign: false },
-                    resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
-                    placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
-                    daily_operations: { read: true, update: false, alert: false },
-                    oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
-                    leave_requests: { create: false, read: true, update: false, approve: false, reject: false },
-                    announcements: { create: false, read: true, update: false, delete: false, publish: false },
-                    audit: { read: false, export: false, clear: false },
-                    system: { read: false, update: false, admin: false }
-                }
-            }
-        },
-
-        // Check if user has permission for a resource action
-        hasPermission(userRole, resource, action) {
-            const role = this.roles[userRole];
-            if (!role || !role.permissions[resource]) return false;
-            return role.permissions[resource][action] === true;
-        },
-
-        // Get permission level for a resource
-        getPermissionLevel(userRole, resource) {
-            const role = this.roles[userRole];
-            if (!role || !role.permissions[resource]) return 'none';
-            
-            const permissions = role.permissions[resource];
-            if (permissions.create && permissions.update && permissions.delete) return 'full';
-            if (permissions.create || permissions.update) return 'write';
-            if (permissions.read) return 'read';
-            return 'none';
-        },
-
-        // Get all resources user has access to
-        getAccessibleResources(userRole) {
-            const role = this.roles[userRole];
-            if (!role) return [];
-            
-            return Object.keys(this.resources).filter(resource => 
-                Object.values(role.permissions[resource] || {}).some(v => v === true)
-            );
-        }
-    };
-
-    const rotationModal = ref({
-    show: false,
-    mode: 'add',
-    rotation: null,
-    form: {
-        resident_id: '',
-        unit_id: '',
-        start_date: '',
-        end_date: '',
-        rotation_type: '',
-        supervisor_id: ''
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+        storage: window.localStorage
     }
 });
-Second declaration (around line 5703):
 
-javascript
-const rotationModal = ref({
-    show: false,
-    mode: 'add',
-    rotation: null,
-    form: {
-        rotation_id: '',
-        resident_id: '',
-        training_unit_id: '',
-        supervising_attending_id: '',
-        rotation_start_date: '',
-        rotation_end_date: '',
-        rotation_category: 'clinical_rotation',
-        rotation_status: 'scheduled',
-        clinical_notes: '',
-        supervisor_evaluation: ''
+// Advanced DRBA Permission System
+const PermissionSystem = {
+    resources: {
+        medical_staff: {
+            name: 'Medical Staff',
+            actions: ['create', 'read', 'update', 'delete', 'export'],
+            description: 'Manage medical staff records'
+        },
+        training_units: {
+            name: 'Training Units',
+            actions: ['create', 'read', 'update', 'delete', 'assign'],
+            description: 'Manage training units and capacities'
+        },
+        resident_rotations: {
+            name: 'Resident Rotations',
+            actions: ['create', 'read', 'update', 'delete', 'extend'],
+            description: 'Manage resident rotation schedules'
+        },
+        placements: {
+            name: 'Placements',
+            actions: ['create', 'read', 'update', 'delete', 'drag_drop'],
+            description: 'Assign residents to training units'
+        },
+        daily_operations: {
+            name: 'Daily Operations',
+            actions: ['read', 'update', 'alert'],
+            description: 'View and manage daily operations'
+        },
+        oncall_schedule: {
+            name: 'On-call Schedule',
+            actions: ['create', 'read', 'update', 'delete', 'override'],
+            description: 'Manage on-call schedules'
+        },
+        leave_requests: {
+            name: 'Leave Requests',
+            actions: ['create', 'read', 'update', 'approve', 'reject'],
+            description: 'Manage leave requests and approvals'
+        },
+        announcements: {
+            name: 'Announcements',
+            actions: ['create', 'read', 'update', 'delete', 'publish'],
+            description: 'Create and manage announcements'
+        },
+        audit: {
+            name: 'Audit Logs',
+            actions: ['read', 'export', 'clear'],
+            description: 'View system audit logs'
+        },
+        system: {
+            name: 'System Settings',
+            actions: ['read', 'update', 'admin'],
+            description: 'Manage system settings and permissions'
+        }
+    },
+
+    roles: {
+        system_admin: {
+            name: 'System Administrator',
+            level: 'full',
+            description: 'Full system access and permission management',
+            permissions: {
+                medical_staff: { create: true, read: true, update: true, delete: true, export: true },
+                training_units: { create: true, read: true, update: true, delete: true, assign: true },
+                resident_rotations: { create: true, read: true, update: true, delete: true, extend: true },
+                placements: { create: true, read: true, update: true, delete: true, drag_drop: true },
+                daily_operations: { read: true, update: true, alert: true },
+                oncall_schedule: { create: true, read: true, update: true, delete: true, override: true },
+                leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
+                announcements: { create: true, read: true, update: true, delete: true, publish: true },
+                audit: { read: true, export: true, clear: true },
+                system: { read: true, update: true, admin: true }
+            }
+        },
+        department_head: {
+            name: 'Head of Department',
+            level: 'full',
+            description: 'Department-wide oversight and management',
+            permissions: {
+                medical_staff: { create: true, read: true, update: true, delete: false, export: true },
+                training_units: { create: true, read: true, update: true, delete: false, assign: true },
+                resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
+                placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
+                daily_operations: { read: true, update: true, alert: true },
+                oncall_schedule: { create: true, read: true, update: true, delete: false, override: true },
+                leave_requests: { create: true, read: true, update: true, approve: true, reject: true },
+                announcements: { create: true, read: true, update: true, delete: true, publish: true },
+                audit: { read: true, export: true, clear: false },
+                system: { read: true, update: false, admin: false }
+            }
+        },
+        resident_manager: {
+            name: 'Resident Manager',
+            level: 'write',
+            description: 'Manage residents and training units',
+            permissions: {
+                medical_staff: { create: true, read: true, update: true, delete: false, export: false },
+                training_units: { create: true, read: true, update: true, delete: false, assign: true },
+                resident_rotations: { create: true, read: true, update: true, delete: false, extend: true },
+                placements: { create: true, read: true, update: true, delete: false, drag_drop: true },
+                daily_operations: { read: true, update: true, alert: false },
+                oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
+                leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
+                announcements: { create: false, read: true, update: false, delete: false, publish: false },
+                audit: { read: false, export: false, clear: false },
+                system: { read: false, update: false, admin: false }
+            }
+        },
+        attending_physician: {
+            name: 'Attending Physician',
+            level: 'limited',
+            description: 'Supervise residents and view schedules',
+            permissions: {
+                medical_staff: { create: false, read: true, update: false, delete: false, export: false },
+                training_units: { create: false, read: true, update: false, delete: false, assign: false },
+                resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
+                placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
+                daily_operations: { read: true, update: false, alert: false },
+                oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
+                leave_requests: { create: true, read: true, update: false, approve: false, reject: false },
+                announcements: { create: false, read: true, update: false, delete: false, publish: false },
+                audit: { read: false, export: false, clear: false },
+                system: { read: false, update: false, admin: false }
+            }
+        },
+        viewing_doctor: {
+            name: 'Viewing Doctor',
+            level: 'read',
+            description: 'Read-only access to schedules and assignments',
+            permissions: {
+                medical_staff: { create: false, read: true, update: false, delete: false, export: false },
+                training_units: { create: false, read: true, update: false, delete: false, assign: false },
+                resident_rotations: { create: false, read: true, update: false, delete: false, extend: false },
+                placements: { create: false, read: true, update: false, delete: false, drag_drop: false },
+                daily_operations: { read: true, update: false, alert: false },
+                oncall_schedule: { create: false, read: true, update: false, delete: false, override: false },
+                leave_requests: { create: false, read: true, update: false, approve: false, reject: false },
+                announcements: { create: false, read: true, update: false, delete: false, publish: false },
+                audit: { read: false, export: false, clear: false },
+                system: { read: false, update: false, admin: false }
+            }
+        }
+    },
+
+    // Check if user has permission for a resource action
+    hasPermission(userRole, resource, action) {
+        const role = this.roles[userRole];
+        if (!role || !role.permissions[resource]) return false;
+        return role.permissions[resource][action] === true;
+    },
+
+    // Get permission level for a resource
+    getPermissionLevel(userRole, resource) {
+        const role = this.roles[userRole];
+        if (!role || !role.permissions[resource]) return 'none';
+        
+        const permissions = role.permissions[resource];
+        if (permissions.create && permissions.update && permissions.delete) return 'full';
+        if (permissions.create || permissions.update) return 'write';
+        if (permissions.read) return 'read';
+        return 'none';
+    },
+
+    // Get all resources user has access to
+    getAccessibleResources(userRole) {
+        const role = this.roles[userRole];
+        if (!role) return [];
+        
+        return Object.keys(this.resources).filter(resource => 
+            Object.values(role.permissions[resource] || {}).some(v => v === true)
+        );
     }
-});
-Solution:
-Remove the first declaration and keep the more complete second one. Here's the corrected and organized code:
+};
 
-javascript
+// Create the Vue App
 createApp({
     setup() {
         // ============ ADVANCED STATE MANAGEMENT ============
@@ -4494,7 +4456,7 @@ createApp({
             }
         });
 
-        // Resident Rotation Modal (ONLY ONE DECLARATION - KEEPING THE COMPLETE VERSION)
+        // Resident Rotation Modal (ONLY ONE DECLARATION)
         const rotationModal = ref({
             show: false,
             mode: 'add',
@@ -6503,182 +6465,178 @@ createApp({
             loadSystemRoles();
         });
 
-                        // ============ RETURN ============
-          return {
-    // ============ STATE ============
-    // User & Auth
-    currentUser,
-    loginForm,
-    loading,
-    saving,
-    permissionLoading,
-    savingPermissions,
-    
-    // Navigation
-    currentView,
-    sidebarCollapsed,
-    mobileMenuOpen,
-    showPermissionManager,
-    searchQuery,
-    permissionFilter,
-    userMenuOpen,
-    
-    // ============ MODAL STATES ============
-    medicalStaffModal,
-    addRoleModal,
-    announcementModal,
-    onCallModal,
-    leaveRequestModal,
-    trainingUnitModal,
-    rotationModal,  // Make sure this is here!
-    
-    // ============ DATA STORES ============
-    medicalStaff,
-    trainingUnits,
-    residentRotations,  // ADD THIS - IT'S CRITICAL!
-    dailyAssignments,
-    leaveRequests,  // ADD THIS
-    onCallSchedule,
-    announcements,
-    auditLogs,
-    systemRoles,
-    systemStats,
-    
-    // ============ FILTER & SEARCH ============
-    staffSearch,
-    staffFilter,
-    
-    // ============ UI STATES ============
-    toasts,
-    permissionResources,
-    
-    // ============ COMPUTED PROPERTIES ============
-    stats,
-    filteredMedicalStaff,
-    todaysAssignments,
-    todaysOnCall,
-    recentAnnouncements,
-    coverageAlerts,
-    emergencyAlerts,
-    departmentStats,
-    nextSevenDays,
-    
-    // ============ PERMISSION SYSTEM ============
-    hasPermission,
-    hasAnyPermission,
-    getViewPermission,
-    getUserPermissionLevel,
-    getResourcePermissionLevel,
-    getPermissionDescription,
-    formatActionName,
-    formatResourceName,
-    userPermissions,  // ADD THIS if needed in templates
-    
-    // ============ NAVIGATION ============
-    switchView,
-    getCurrentTitle,
-    getCurrentSubtitle,
-    getSearchPlaceholder,
-    toggleMobileMenu,
-    closeMobileMenu,
-    togglePermissionManager,
-    toggleUserMenu,
-    getDayStatus,
-    
-    // ============ AUTHENTICATION ============
-    handleAdvancedLogin,
-    handleLogout,
-    
-    // ============ UTILITIES ============
-    getInitials,
-    formatDate,
-    formatDateTime,
-    formatTimeRange,
-    getUserRoleDisplay,
-    formatStaffType,
-    getStaffTypeClass,
-    getAuditIcon,
-    formatResidentCategory,
-    formatEmploymentStatus,
-    generateUUID,  // ADD THIS if used in templates
-    showAdvancedToast,  // ADD THIS
-    
-    // ============ MEDICAL STAFF ============
-    showAddMedicalStaffModal,
-    editMedicalStaff,
-    saveMedicalStaff,
-    deleteMedicalStaff,
-    viewStaffSchedule,
-    
-    // ============ ROLE MANAGEMENT ============
-    showAddRoleModal,
-    editRole,
-    cloneRole,
-    deleteRole,
-    saveRole,
-    
-    // ============ ANNOUNCEMENTS ============
-    showAddAnnouncementModal,
-    editAnnouncement,
-    saveAnnouncement,
-    deleteAnnouncement,
-    
-    // ============ ON-CALL SCHEDULE ============
-    showAddOnCallModal,
-    editOnCallSchedule,
-    saveOnCallSchedule,
-    overrideOnCall,
-    
-    // ============ LEAVE REQUESTS ============
-    showAddLeaveRequestModal,
-    viewLeaveRequestDetails,
-    approveLeaveRequest,
-    rejectLeaveRequest,
-    saveLeaveRequest,
-    
-    // ============ TRAINING UNITS ============
-    showAddTrainingUnitModal,
-    editTrainingUnit,
-    saveTrainingUnit,
-    assignResidentsToUnit,
-    
-    // ============ RESIDENT ROTATIONS ============
-    showAddRotationModal,
-    editRotation,
-    extendRotation,
-    saveRotation,
-    handleDragDropPlacement,
-    
-    // ============ ACTIONS ============
-    quickAssignToUnit,
-    exportAuditLogs,
-    handleAdvancedSearch,
-    togglePermissionFilter,
-    showUserProfile,
-    
-    // ============ STAFF MANAGEMENT ============
-    showAddStaffModal,
-    
-    // ============ PERMISSION MANAGEMENT ============
-    togglePermission,
-    savePermissionChanges,
-    
-    // ============ DATA LOADING ============
-    loadInitialData,  // ADD THIS if used in templates
-    loadViewData,     // ADD THIS if used in templates
-    
-    // ============ AUDIT LOGGING ============
-    logAudit,         // ADD THIS if used
-    
-    // ============ TOAST SYSTEM ============
-    removeToast
-};
-        }
-    }).mount('#app');
-};
-
-// Initialize the app
-initializeApp();
+        // ============ RETURN ============
+        return {
+            // ============ STATE ============
+            // User & Auth
+            currentUser,
+            loginForm,
+            loading,
+            saving,
+            permissionLoading,
+            savingPermissions,
+            
+            // Navigation
+            currentView,
+            sidebarCollapsed,
+            mobileMenuOpen,
+            showPermissionManager,
+            searchQuery,
+            permissionFilter,
+            userMenuOpen,
+            
+            // ============ MODAL STATES ============
+            medicalStaffModal,
+            addRoleModal,
+            announcementModal,
+            onCallModal,
+            leaveRequestModal,
+            trainingUnitModal,
+            rotationModal,
+            
+            // ============ DATA STORES ============
+            medicalStaff,
+            trainingUnits,
+            residentRotations,
+            dailyAssignments,
+            leaveRequests,
+            onCallSchedule,
+            announcements,
+            auditLogs,
+            systemRoles,
+            systemStats,
+            
+            // ============ FILTER & SEARCH ============
+            staffSearch,
+            staffFilter,
+            
+            // ============ UI STATES ============
+            toasts,
+            permissionResources,
+            
+            // ============ COMPUTED PROPERTIES ============
+            stats,
+            filteredMedicalStaff,
+            todaysAssignments,
+            todaysOnCall,
+            recentAnnouncements,
+            coverageAlerts,
+            emergencyAlerts,
+            departmentStats,
+            nextSevenDays,
+            
+            // ============ PERMISSION SYSTEM ============
+            hasPermission,
+            hasAnyPermission,
+            getViewPermission,
+            getUserPermissionLevel,
+            getResourcePermissionLevel,
+            getPermissionDescription,
+            formatActionName,
+            formatResourceName,
+            userPermissions,
+            
+            // ============ NAVIGATION ============
+            switchView,
+            getCurrentTitle,
+            getCurrentSubtitle,
+            getSearchPlaceholder,
+            toggleMobileMenu,
+            closeMobileMenu,
+            togglePermissionManager,
+            toggleUserMenu,
+            getDayStatus,
+            
+            // ============ AUTHENTICATION ============
+            handleAdvancedLogin,
+            handleLogout,
+            
+            // ============ UTILITIES ============
+            getInitials,
+            formatDate,
+            formatDateTime,
+            formatTimeRange,
+            getUserRoleDisplay,
+            formatStaffType,
+            getStaffTypeClass,
+            getAuditIcon,
+            formatResidentCategory,
+            formatEmploymentStatus,
+            generateUUID,
+            showAdvancedToast,
+            
+            // ============ MEDICAL STAFF ============
+            showAddMedicalStaffModal,
+            editMedicalStaff,
+            saveMedicalStaff,
+            deleteMedicalStaff,
+            viewStaffSchedule,
+            
+            // ============ ROLE MANAGEMENT ============
+            showAddRoleModal,
+            editRole,
+            cloneRole,
+            deleteRole,
+            saveRole,
+            
+            // ============ ANNOUNCEMENTS ============
+            showAddAnnouncementModal,
+            editAnnouncement,
+            saveAnnouncement,
+            deleteAnnouncement,
+            
+            // ============ ON-CALL SCHEDULE ============
+            showAddOnCallModal,
+            editOnCallSchedule,
+            saveOnCallSchedule,
+            overrideOnCall,
+            
+            // ============ LEAVE REQUESTS ============
+            showAddLeaveRequestModal,
+            viewLeaveRequestDetails,
+            approveLeaveRequest,
+            rejectLeaveRequest,
+            saveLeaveRequest,
+            
+            // ============ TRAINING UNITS ============
+            showAddTrainingUnitModal,
+            editTrainingUnit,
+            saveTrainingUnit,
+            assignResidentsToUnit,
+            
+            // ============ RESIDENT ROTATIONS ============
+            showAddRotationModal,
+            editRotation,
+            extendRotation,
+            saveRotation,
+            handleDragDropPlacement,
+            
+            // ============ ACTIONS ============
+            quickAssignToUnit,
+            exportAuditLogs,
+            handleAdvancedSearch,
+            togglePermissionFilter,
+            showUserProfile,
+            
+            // ============ STAFF MANAGEMENT ============
+            showAddStaffModal,
+            
+            // ============ PERMISSION MANAGEMENT ============
+            togglePermission,
+            savePermissionChanges,
+            
+            // ============ DATA LOADING ============
+            loadInitialData,
+            loadViewData,
+            
+            // ============ AUDIT LOGGING ============
+            logAudit,
+            
+            // ============ TOAST SYSTEM ============
+            removeToast
+        };
+    }
+}).mount('#app');
 </script>
 </body>
 </html>
