@@ -4169,18 +4169,22 @@ const supabase = window.supabase.createClient(supabaseUrl, supabaseKey, {
                 };
 
                 // ============ INITIALIZATION ============
-                onMounted(() => {
-                    // Check for existing session
-                    supabase.auth.getSession().then(({ data: { session } }) => {
-    console.log('Session:', session);
+ // ============ INITIALIZATION ============
+onMounted(() => {
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log('Session:', session);
+        if (session) {
+            console.log('Existing session found:', session.user.email);
+            // Load user and permissions here
+        }
+    }).catch(error => {
+        console.error('Error getting session:', error);
+    });
+    
+    // Load system roles
+    loadSystemRoles();
 });
-                            // Load user and permissions
-                        }
-                    });
-                    
-                    // Load system roles
-                    loadSystemRoles();
-                });
 
                 // ============ RETURN ============
                 return {
