@@ -3402,10 +3402,16 @@ console.log('Auth available:', supabaseClient.auth);
                 );
             }
         };
+        function loadSystemRoles() {
+    console.log('Loading roles...');
+    // Your role loading code here
+}
 
         createApp({
             setup() {
                 // ============ ADVANCED STATE MANAGEMENT ============
+             const supabase = supabaseClient;
+
                 const currentUser = ref(null);
                 const loginForm = ref({
                     email: '',
