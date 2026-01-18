@@ -2904,7 +2904,8 @@
                                                 <div class="person-info-advanced">
                                                     <div class="person-name-advanced">
                                                         {{ staff.full_name }}
-                                                        <span class="badge-system" :class="getStaffTypeClass(staff.staff_type)">
+                                                        <span class="badge-system" :class="getStaffTypeClass(staff?.staff_type || '')">
+
                                                             {{ formatStaffType(staff.staff_type) }}
                                                         </span>
                                                         <span v-if="staff.can_supervise_residents" class="badge-system badge-supervisor-advanced">
