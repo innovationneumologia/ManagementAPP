@@ -3754,58 +3754,7 @@ const staffFilter = ref({
                 };
 
                 // ============ COMPUTED PROPERTIES ============
-              // ============ COMPUTED PROPERTIES ============
-const stats = computed(() => {
-    const residents = medicalStaff.value.filter(s => 
-        s.staff_type === 'medical_resident' && s.employment_status === 'active'
-    );
-    const attendings = medicalStaff.value.filter(s => 
-        s.staff_type === 'attending_physician' && s.employment_status === 'active'
-    );
-    const supervisors = medicalStaff.value.filter(s => 
-        s.can_supervise_residents && s.employment_status === 'active'
-    );
-    
-    return {
-        totalStaff: medicalStaff.value.length,
-        activeResidents: residents.length,
-        attendings: attendings.length,
-        availableSupervisors: supervisors.length
-    };
-});
-
-const filteredMedicalStaff = computed(() => {
-    let filtered = medicalStaff.value || [];
-    
-    if (!filtered || filtered.length === 0) return [];
-    
-    if (staffSearch.value) {
-        const search = staffSearch.value.toLowerCase();
-        filtered = filtered.filter(s => {
-            if (!s) return false;
-            return (s.full_name && s.full_name.toLowerCase().includes(search)) ||
-                   (s.staff_id && s.staff_id.toLowerCase().includes(search));
-        });
-    }
-    
-    if (staffFilter.value.staff_type) {
-        filtered = filtered.filter(s => {
-            if (!s) return false;
-            return s.staff_type === staffFilter.value.staff_type;
-        });
-    }
-    
-    if (staffFilter.value.employment_status) {
-        filtered = filtered.filter(s => {
-            if (!s) return false;
-            return s.employment_status === staffFilter.value.employment_status;
-        });
-    }
-    
-    return filtered;
-});
-
-// ============ COMPUTED PROPERTIES ============
+                // ============ COMPUTED PROPERTIES ============
 const stats = computed(() => {
     const residents = medicalStaff.value.filter(s => 
         s.staff_type === 'medical_resident' && s.employment_status === 'active'
@@ -3899,7 +3848,7 @@ const emergencyAlerts = computed(() => {
         }
     ];
 });
-    
+
 
                 // ============ NAVIGATION & UI ============
                 const switchView = async (view) => {
