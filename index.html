@@ -4318,7 +4318,7 @@ const initializeApp = () => {
 
     createApp({
         setup() {
-            // ============ ADVANCED STATE MANAGEMENT ============
+    // ============ ADVANCED STATE MANAGEMENT ============
 const currentUser = ref(null);
 const loginForm = ref({
     email: '',
@@ -4327,7 +4327,19 @@ const loginForm = ref({
     require_mfa: false,
     mfa_code: ''
 });
-
+const rotationModal = ref({
+    show: false,
+    mode: 'add',
+    rotation: null,
+    form: {
+        resident_id: '',
+        unit_id: '',
+        start_date: '',
+        end_date: '',
+        rotation_type: '',
+        supervisor_id: ''
+    }
+});
 const loading = ref(false);
 const saving = ref(false);
 const permissionLoading = ref(false);
