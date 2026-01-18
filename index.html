@@ -3850,6 +3850,107 @@
         </form>
     </div>
 </div>
+
+        <!-- Resident Rotations/Placements Modal -->
+<div v-if="rotationModal.show" class="modal-overlay-advanced">
+    <div class="modal-advanced" style="max-width: 700px;">
+        <div class="modal-header-advanced">
+            <div class="modal-title-advanced">
+                <div class="card-title-icon">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                {{ rotationModal.mode === 'add' ? 'Schedule Rotation' : 'Edit Rotation' }}
+            </div>
+            <button class="modal-close-advanced" @click="rotationModal.show = false">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form @submit.prevent="saveRotation">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Rotation ID</label>
+                    <input type="text" class="form-input-advanced" v-model="rotationModal.form.rotation_id" required>
+                </div>
+                
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Status *</label>
+                    <select class="form-select-advanced" v-model="rotationModal.form.rotation_status" required>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="active">Active</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Start Date *</label>
+                    <input type="date" class="form-input-advanced" v-model="rotationModal.form.rotation_start_date" required>
+                </div>
+                
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">End Date *</label>
+                    <input type="date" class="form-input-advanced" v-model="rotationModal.form.rotation_end_date" required>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Resident ID (UUID) *</label>
+                    <input type="text" class="form-input-advanced" v-model="rotationModal.form.resident_id" required>
+                </div>
+                
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Training Unit ID (UUID) *</label>
+                    <input type="text" class="form-input-advanced" v-model="rotationModal.form.training_unit_id" required>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Supervising Attending ID (UUID)</label>
+                    <input type="text" class="form-input-advanced" v-model="rotationModal.form.supervising_attending_id">
+                </div>
+                
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Category *</label>
+                    <select class="form-select-advanced" v-model="rotationModal.form.rotation_category" required>
+                        <option value="clinical_rotation">Clinical Rotation</option>
+                        <option value="elective_rotation">Elective Rotation</option>
+                        <option value="research_rotation">Research</option>
+                        <option value="vacation_rotation">Vacation</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Clinical Notes</label>
+                <textarea class="form-textarea-advanced" 
+                          v-model="rotationModal.form.clinical_notes"
+                          placeholder="Enter clinical notes or instructions..."></textarea>
+            </div>
+            
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Supervisor Evaluation</label>
+                <textarea class="form-textarea-advanced" 
+                          v-model="rotationModal.form.supervisor_evaluation"
+                          placeholder="Enter supervisor evaluation..."></textarea>
+            </div>
+            
+            <div class="form-actions-advanced">
+                <button type="button" class="btn-advanced btn-outline-advanced" @click="rotationModal.show = false">
+                    Cancel
+                </button>
+                <button type="submit" class="btn-advanced" :disabled="saving">
+                    <i class="fas fa-save"></i>
+                    {{ saving ? 'Saving...' : (rotationModal.mode === 'add' ? 'Schedule Rotation' : 'Update Rotation') }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 <!-- Announcements Modal -->
 <div v-if="announcementModal.show" class="modal-overlay-advanced">
     <div class="modal-advanced" style="max-width: 700px;">
@@ -5585,7 +5686,236 @@ const saveLeaveRequest = async () => {
         saving.value = false;
     }
 };
-         
+            
+// ============ RESIDENT ROTATIONS MODAL ============
+const rotationModal = ref({
+    show: false,
+    mode: 'add',
+    rotation: null,
+    form: {
+        rotation_id: '',
+        resident_id: '',
+        training_unit_id: '',
+        supervising_attending_id: '',
+        rotation_start_date: '',
+        rotation_end_date: '',
+        rotation_category: 'clinical_rotation',
+        rotation_status: 'scheduled',
+        clinical_notes: '',
+        supervisor_evaluation: ''
+    }
+});
+
+const showAddRotationModal = () => {
+    if (!hasPermission('resident_rotations', 'create')) {
+        showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
+        return;
+    }
+    
+    // Generate rotation ID
+    const date = new Date();
+    const rotationId = `ROT-${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}-${Math.floor(Math.random()*1000).toString().padStart(3,'0')}`;
+    
+    // Set default dates (next month)
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + 30);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 90);
+    
+    rotationModal.value = {
+        show: true,
+        mode: 'add',
+        rotation: null,
+        form: {
+            rotation_id: rotationId,
+            resident_id: '',
+            training_unit_id: '',
+            supervising_attending_id: '',
+            rotation_start_date: startDate.toISOString().split('T')[0],
+            rotation_end_date: endDate.toISOString().split('T')[0],
+            rotation_category: 'clinical_rotation',
+            rotation_status: 'scheduled',
+            clinical_notes: '',
+            supervisor_evaluation: ''
+        }
+    };
+};
+
+const editRotation = (rotation) => {
+    if (!hasPermission('resident_rotations', 'update')) {
+        showAdvancedToast('Permission Denied', 'Need update permission', 'permission');
+        return;
+    }
+    
+    rotationModal.value = {
+        show: true,
+        mode: 'edit',
+        rotation: rotation,
+        form: {
+            rotation_id: rotation.rotation_id,
+            resident_id: rotation.resident_id,
+            training_unit_id: rotation.training_unit_id,
+            supervising_attending_id: rotation.supervising_attending_id || '',
+            rotation_start_date: rotation.rotation_start_date,
+            rotation_end_date: rotation.rotation_end_date,
+            rotation_category: rotation.rotation_category,
+            rotation_status: rotation.rotation_status,
+            clinical_notes: rotation.clinical_notes || '',
+            supervisor_evaluation: rotation.supervisor_evaluation || ''
+        }
+    };
+};
+
+const extendRotation = (rotation) => {
+    if (!hasPermission('resident_rotations', 'extend')) {
+        showAdvancedToast('Permission Denied', 'Need extend permission', 'permission');
+        return;
+    }
+    
+    // Copy rotation and extend end date by 30 days
+    const newEndDate = new Date(rotation.rotation_end_date);
+    newEndDate.setDate(newEndDate.getDate() + 30);
+    
+    rotationModal.value = {
+        show: true,
+        mode: 'edit',
+        rotation: rotation,
+        form: {
+            rotation_id: rotation.rotation_id + '-EXT',
+            resident_id: rotation.resident_id,
+            training_unit_id: rotation.training_unit_id,
+            supervising_attending_id: rotation.supervising_attending_id || '',
+            rotation_start_date: rotation.rotation_end_date, // Start from previous end date
+            rotation_end_date: newEndDate.toISOString().split('T')[0],
+            rotation_category: rotation.rotation_category,
+            rotation_status: 'scheduled',
+            clinical_notes: 'Extended rotation - ' + rotation.clinical_notes,
+            supervisor_evaluation: ''
+        }
+    };
+};
+
+const saveRotation = async () => {
+    const permissionNeeded = rotationModal.value.mode === 'add' ? 'create' : 'update';
+    if (!hasPermission('resident_rotations', permissionNeeded)) {
+        showAdvancedToast('Permission Denied', 'Insufficient permissions', 'permission');
+        return;
+    }
+    
+    saving.value = true;
+    try {
+        // Validate
+        if (!rotationModal.value.form.rotation_id) throw new Error('Rotation ID required');
+        if (!rotationModal.value.form.resident_id) throw new Error('Resident ID required');
+        if (!rotationModal.value.form.training_unit_id) throw new Error('Training Unit ID required');
+        if (!rotationModal.value.form.rotation_start_date) throw new Error('Start date required');
+        if (!rotationModal.value.form.rotation_end_date) throw new Error('End date required');
+        
+        const rotationData = {
+            rotation_id: rotationModal.value.form.rotation_id,
+            resident_id: rotationModal.value.form.resident_id,
+            training_unit_id: rotationModal.value.form.training_unit_id,
+            supervising_attending_id: rotationModal.value.form.supervising_attending_id || null,
+            rotation_start_date: rotationModal.value.form.rotation_start_date,
+            rotation_end_date: rotationModal.value.form.rotation_end_date,
+            rotation_category: rotationModal.value.form.rotation_category,
+            rotation_status: rotationModal.value.form.rotation_status,
+            clinical_notes: rotationModal.value.form.clinical_notes,
+            supervisor_evaluation: rotationModal.value.form.supervisor_evaluation,
+            updated_at: new Date().toISOString()
+        };
+        
+        let result;
+        
+        if (rotationModal.value.mode === 'add') {
+            // Add new rotation
+            const { data, error } = await supabaseClient
+                .from('resident_rotations')
+                .insert([{
+                    ...rotationData,
+                    created_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+            
+            if (error) throw error;
+            result = data;
+            
+            residentRotations.value.unshift(result);
+            showAdvancedToast('Success', 'Rotation scheduled successfully', 'success');
+            logAudit('ROTATION_CREATE', `Created rotation ${rotationData.rotation_id}`, 'resident_rotations', result.id);
+            
+        } else {
+            // Update existing rotation
+            const { data, error } = await supabaseClient
+                .from('resident_rotations')
+                .update(rotationData)
+                .eq('id', rotationModal.value.rotation.id)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            result = data;
+            
+            // Update local state
+            const index = residentRotations.value.findIndex(r => r.id === result.id);
+            if (index !== -1) residentRotations.value[index] = result;
+            
+            showAdvancedToast('Success', 'Rotation updated successfully', 'success');
+            logAudit('ROTATION_UPDATE', `Updated rotation ${rotationData.rotation_id}`, 'resident_rotations', result.id);
+        }
+        
+        rotationModal.value.show = false;
+        
+    } catch (error) {
+        console.error('Error saving rotation:', error);
+        showAdvancedToast('Save Failed', error.message, 'error');
+    } finally {
+        saving.value = false;
+    }
+};
+
+// Drag & drop placement function
+const handleDragDropPlacement = async (residentId, unitId) => {
+    if (!hasPermission('placements', 'drag_drop')) {
+        showAdvancedToast('Permission Denied', 'Need drag & drop permission', 'permission');
+        return;
+    }
+    
+    try {
+        const rotationId = `PLACEMENT-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(Math.random()*1000)}`;
+        const startDate = new Date().toISOString().split('T')[0];
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + 3);
+        
+        const { data, error } = await supabaseClient
+            .from('resident_rotations')
+            .insert([{
+                rotation_id: rotationId,
+                resident_id: residentId,
+                training_unit_id: unitId,
+                rotation_start_date: startDate,
+                rotation_end_date: endDate.toISOString().split('T')[0],
+                rotation_category: 'clinical_rotation',
+                rotation_status: 'scheduled',
+                clinical_notes: 'Placed via drag & drop',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        residentRotations.value.unshift(data);
+        showAdvancedToast('Placement Created', 'Resident placed in unit via drag & drop', 'success');
+        logAudit('PLACEMENT_CREATE', `Drag & drop placement created`, 'placements', data.id);
+        
+    } catch (error) {
+        console.error('Drag & drop error:', error);
+        showAdvancedToast('Placement Failed', error.message, 'error');
+    }
+};    
 
 const showAddTrainingUnitModal = () => {
     if (!hasPermission('training_units', 'create')) {
@@ -6152,7 +6482,12 @@ const overrideOnCall = (day) => {
                 onCallModal,
                 leaveRequestModal,        // <-- ADD THIS
                 trainingUnitModal,
-                
+                //rotations
+                showAddRotationModal,
+                editRotation,
+                extendRotation,
+                saveRotation,
+                handleDragDropPlacement,
                 // Data
                 medicalStaff,
                 trainingUnits,
