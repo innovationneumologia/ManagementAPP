@@ -4178,8 +4178,8 @@ console.log('Supabase auth available:', supabase.auth);
                 onMounted(() => {
                     // Check for existing session
                     supabase.auth.getSession().then(({ data: { session } }) => {
-                        if (session) {
-                            console.log('Existing session found');
+    console.log('Session:', session);
+});
                             // Load user and permissions
                         }
                     });
