@@ -3568,55 +3568,82 @@ const staffFilter = ref({
     return level;
 };
                 // ============ AUDIT LOGGING SYSTEM ============
-                const logAudit = (action, details, resource, resourceId = null) => {
-                    const logEntry = {
-                        id: generateUUID(),
-                        timestamp: new Date().toISOString(),
-                        user_id: currentUser.value?.id,
-                        user_name: currentUser.value?.full_name,
-                        user_role: currentUser.value?.user_role,
-                        action,
-                        details,
-                        resource,
-                        resource_id: resourceId,
-                        permission_level: getUserPermissionLevel(),
-                        ip_address: 'system', // In real app, get from request
-                        user_agent: navigator.userAgent
-                    };
-                    
-                    auditLogs.value.unshift(logEntry);
-                    
-                    // Save to backend
-                    saveAuditLog(logEntry);
-                };
-
-                const saveAuditLog = async (logEntry) => {
+              const logAudit = (action, details, resource, resourceId = null) => {
+    const logEntry = {
+        // REMOVED: id: generateUUID(), - Let database generate it
+        timestamp: new Date().toISOString(),
+        user_id: currentUser.value?.id,
+        user_name: currentUser.value?.full_name,
+        user_role: currentUser.value?.user_role,
+        action,
+        details,
+        resource,
+        resource_id: resourceId,
+        permission_level: getUserPermissionLevel(),
+        ip_address: 'system',
+        user_agent: navigator.userAgent
+        // REMOVED: Don't include created_at - let database handle it
+    };
+    
+    // Add to local audit logs with a temporary ID for display
+    const displayEntry = {
+        ...logEntry,
+        id: generateUUID() // Only for local display
+    };
+    auditLogs.value.unshift(displayEntry);
+    
+    // Save to backend (async, don't await)
+    setTimeout(() => {
+        saveAuditLog(logEntry);
+    }, 0);
+};
+    const saveAuditLog = async (logEntry) => {
     try {
-        // Don't pass id - let database generate it
-        // Don't pass created_at - let database handle it
-        const mappedEntry = {
-            timestamp: logEntry.timestamp || new Date().toISOString(),
-            user_id: logEntry.user_id,
-            user_name: logEntry.user_name,
-            user_role: logEntry.user_role,
-            action: logEntry.action,
-            details: logEntry.details,
-            resource: logEntry.resource,
-            resource_id: logEntry.resource_id,
-            permission_level: logEntry.permission_level,
-            ip_address: logEntry.ip_address || 'system',
-            user_agent: logEntry.user_agent || navigator.userAgent
-            // Don't include: id, created_at
-        };
+        // Create a clean object without any generated IDs
+        const cleanEntry = { ...logEntry };
         
-        console.log('📝 Saving audit log:', mappedEntry.action);
+        // Remove any id field if it exists
+        delete cleanEntry.id;
+        delete cleanEntry.created_at; // Remove created_at if it exists
+        
+        console.log('📝 Saving audit log:', cleanEntry.action);
         
         const { error } = await supabase
             .from('audit_logs')
-            .insert([mappedEntry]);
+            .insert([cleanEntry]);
         
         if (error) {
             console.error('Failed to save audit log:', error);
+            
+            // If it's a conflict error, try without optional fields
+            if (error.code === '23505' || error.message.includes('conflict')) {
+                console.log('Trying minimal audit log entry...');
+                
+                const minimalEntry = {
+                    timestamp: cleanEntry.timestamp,
+                    user_name: cleanEntry.user_name,
+                    action: cleanEntry.action,
+                    details: cleanEntry.details || 'No details'
+                };
+                
+                const { error: minimalError } = await supabase
+                    .from('audit_logs')
+                    .insert([minimalEntry]);
+                
+                if (minimalError) {
+                    console.error('Minimal audit log also failed:', minimalError);
+                } else {
+                    console.log('✅ Minimal audit log saved');
+                }
+            }
+        } else {
+            console.log('✅ Audit log saved successfully');
+        }
+    } catch (error) {
+        console.error('Unexpected error in saveAuditLog:', error);
+        // Don't throw - we don't want audit logs to break the app
+    }
+};
             
             // Try without optional fields
             const minimalEntry = {
