@@ -4987,19 +4987,6 @@ const logAudit = async (action, details, resource, resourceId = null) => {
                 }
             };
             // ============ ANNOUNCEMENTS MODAL ============
-const announcementModal = ref({
-    show: false,
-    mode: 'add',
-    announcement: null,
-    form: {
-        announcement_title: '',
-        announcement_content: '',
-        publish_start_date: '',
-        publish_end_date: '',
-        priority_level: 'medium',
-        target_audience: 'all'
-    }
-});
 
 const showAddAnnouncementModal = () => {
     if (!hasPermission('announcements', 'create')) {
@@ -5572,6 +5559,22 @@ const saveLeaveRequest = async () => {
         saving.value = false;
     }
 };
+// ============ ANNOUNCEMENTS MODAL ============
+const announcementModal = ref({
+    show: false,
+    mode: 'add',
+    announcement: null,
+    form: {
+        announcement_title: '',
+        announcement_content: '',
+        publish_start_date: '',
+        publish_end_date: '',
+        priority_level: 'medium',
+        target_audience: 'all'
+    }
+});
+
+            
 // ============ TRAINING UNITS MODAL ============
 const trainingUnitModal = ref({
     show: false,
@@ -6154,6 +6157,7 @@ const overrideOnCall = (day) => {
                 showAddTrainingUnitModal, 
                 editTrainingUnit, 
                 saveTrainingUnit,
+                showAddAnnouncementModal,
                 // Data
                 medicalStaff,
                 trainingUnits,
