@@ -5805,13 +5805,6 @@ const availableResidents = computed(() => {
                 showAdvancedToast('Delete Failed', error.message, 'error');
             }
         };
-
-        // ============ ANNOUNCEMENTS MODAL ============
-        const showAddAnnouncementModal = () => {
-            if (!hasPermission('announcements', 'create')) {
-                showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
-                return;
-            }
             
             const today = new Date().toISOString().split('T')[0];
             
@@ -7431,8 +7424,6 @@ const deleteRotation = async (rotation) => {
             assignResidentsToUnit,
 
             // ============ ANNOUNCEMENTS ============
-            showAddAnnouncementModal,
-            editAnnouncement,
             saveAnnouncement,
             deleteAnnouncement,
             
