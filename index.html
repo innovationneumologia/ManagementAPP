@@ -3850,6 +3850,97 @@
         </form>
     </div>
 </div>
+<!-- Announcements Modal -->
+<div v-if="announcementModal.show" class="modal-overlay-advanced">
+    <div class="modal-advanced" style="max-width: 700px;">
+        <div class="modal-header-advanced">
+            <div class="modal-title-advanced">
+                <div class="modal-title-icon">
+                    <i class="fas fa-bullhorn"></i>
+                </div>
+                {{ announcementModal.mode === 'add' ? 'Create Announcement' : 'Edit Announcement' }}
+            </div>
+            <button class="modal-close-advanced" @click="announcementModal.show = false">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form @submit.prevent="saveAnnouncement">
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Title *</label>
+                <input type="text" 
+                       class="form-input-advanced" 
+                       v-model="announcementModal.form.announcement_title" 
+                       required
+                       placeholder="Enter announcement title">
+            </div>
+            
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Content *</label>
+                <textarea class="form-textarea-advanced" 
+                          v-model="announcementModal.form.announcement_content"
+                          required
+                          rows="6"
+                          placeholder="Enter announcement details..."></textarea>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Publish Date *</label>
+                    <input type="date" 
+                           class="form-input-advanced" 
+                           v-model="announcementModal.form.publish_start_date" 
+                           required>
+                </div>
+                
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Expiry Date</label>
+                    <input type="date" 
+                           class="form-input-advanced" 
+                           v-model="announcementModal.form.publish_end_date"
+                           placeholder="Leave empty for no expiry">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Priority Level</label>
+                    <select class="form-select-advanced" v-model="announcementModal.form.priority_level">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Target Audience</label>
+                    <select class="form-select-advanced" v-model="announcementModal.form.target_audience">
+                        <option value="all">All Staff</option>
+                        <option value="residents">Residents Only</option>
+                        <option value="attendings">Attending Physicians</option>
+                        <option value="nursing">Nursing Staff</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-actions-advanced">
+                <button type="button" 
+                        class="btn-advanced btn-outline-advanced" 
+                        @click="announcementModal.show = false">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="btn-advanced" 
+                        :disabled="saving">
+                    <i class="fas fa-save"></i>
+                    {{ saving ? 'Saving...' : (announcementModal.mode === 'add' ? 'Publish Announcement' : 'Update Announcement') }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+        
 <!-- Training Units Modal -->
 <div v-if="trainingUnitModal.show" class="modal-overlay-advanced">
     <div class="modal-advanced" style="max-width: 600px;">
@@ -4895,6 +4986,167 @@ const logAudit = async (action, details, resource, resourceId = null) => {
                     leaveRequests.value = [];
                 }
             };
+            // ============ ANNOUNCEMENTS MODAL ============
+const announcementModal = ref({
+    show: false,
+    mode: 'add',
+    announcement: null,
+    form: {
+        announcement_title: '',
+        announcement_content: '',
+        publish_start_date: '',
+        publish_end_date: '',
+        priority_level: 'medium',
+        target_audience: 'all'
+    }
+});
+
+const showAddAnnouncementModal = () => {
+    if (!hasPermission('announcements', 'create')) {
+        showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
+        return;
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    announcementModal.value = {
+        show: true,
+        mode: 'add',
+        announcement: null,
+        form: {
+            announcement_title: '',
+            announcement_content: '',
+            publish_start_date: today,
+            publish_end_date: '',
+            priority_level: 'medium',
+            target_audience: 'all'
+        }
+    };
+};
+
+const editAnnouncement = (announcement) => {
+    if (!hasPermission('announcements', 'update')) {
+        showAdvancedToast('Permission Denied', 'Need update permission', 'permission');
+        return;
+    }
+    
+    announcementModal.value = {
+        show: true,
+        mode: 'edit',
+        announcement: announcement,
+        form: {
+            announcement_title: announcement.announcement_title,
+            announcement_content: announcement.announcement_content,
+            publish_start_date: announcement.publish_start_date,
+            publish_end_date: announcement.publish_end_date || '',
+            priority_level: announcement.priority_level || 'medium',
+            target_audience: announcement.target_audience || 'all'
+        }
+    };
+};
+
+const saveAnnouncement = async () => {
+    if (!hasPermission('announcements', announcementModal.value.mode === 'add' ? 'create' : 'update')) {
+        showAdvancedToast('Permission Denied', 'Insufficient permissions', 'permission');
+        return;
+    }
+    
+    saving.value = true;
+    try {
+        if (!announcementModal.value.form.announcement_title.trim()) {
+            throw new Error('Title is required');
+        }
+        if (!announcementModal.value.form.announcement_content.trim()) {
+            throw new Error('Content is required');
+        }
+        if (!announcementModal.value.form.publish_start_date) {
+            throw new Error('Publish date is required');
+        }
+        
+        const announcementData = {
+            announcement_title: announcementModal.value.form.announcement_title,
+            announcement_content: announcementModal.value.form.announcement_content,
+            publish_start_date: announcementModal.value.form.publish_start_date,
+            publish_end_date: announcementModal.value.form.publish_end_date || null,
+            priority_level: announcementModal.value.form.priority_level,
+            target_audience: announcementModal.value.form.target_audience,
+            created_by: currentUser.value?.full_name,
+            updated_at: new Date().toISOString()
+        };
+        
+        let result;
+        
+        if (announcementModal.value.mode === 'add') {
+            const { data, error } = await supabaseClient
+                .from('department_announcements')
+                .insert([{
+                    ...announcementData,
+                    created_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+            
+            if (error) throw error;
+            result = data;
+            
+            announcements.value.unshift(result);
+            showAdvancedToast('Published', 'Announcement published successfully', 'success');
+            logAudit('ANNOUNCEMENT_CREATE', `Published: ${result.announcement_title}`, 'announcements', result.id);
+            
+        } else {
+            const { data, error } = await supabaseClient
+                .from('department_announcements')
+                .update(announcementData)
+                .eq('id', announcementModal.value.announcement.id)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            result = data;
+            
+            const index = announcements.value.findIndex(a => a.id === result.id);
+            if (index !== -1) announcements.value[index] = result;
+            
+            showAdvancedToast('Updated', 'Announcement updated successfully', 'success');
+            logAudit('ANNOUNCEMENT_UPDATE', `Updated: ${result.announcement_title}`, 'announcements', result.id);
+        }
+        
+        announcementModal.value.show = false;
+        
+    } catch (error) {
+        console.error('Error saving announcement:', error);
+        showAdvancedToast('Save Failed', error.message, 'error');
+    } finally {
+        saving.value = false;
+    }
+};
+
+const deleteAnnouncement = async (announcement) => {
+    if (!hasPermission('announcements', 'delete')) {
+        showAdvancedToast('Permission Denied', 'Need delete permission', 'permission');
+        return;
+    }
+    
+    if (!confirm(`Delete announcement "${announcement.announcement_title}"?`)) return;
+    
+    try {
+        const { error } = await supabaseClient
+            .from('department_announcements')
+            .delete()
+            .eq('id', announcement.id);
+        
+        if (error) throw error;
+        
+        announcements.value = announcements.value.filter(a => a.id !== announcement.id);
+        
+        showAdvancedToast('Deleted', 'Announcement deleted', 'success');
+        logAudit('ANNOUNCEMENT_DELETE', `Deleted: ${announcement.announcement_title}`, 'announcements', announcement.id);
+        
+    } catch (error) {
+        console.error('Error deleting announcement:', error);
+        showAdvancedToast('Delete Failed', error.message, 'error');
+    }
+};
 
             const loadDailyAssignments = async () => {
                 try {
@@ -5914,12 +6166,17 @@ const overrideOnCall = (day) => {
                 showAddTrainingUnitModal, 
                 editTrainingUnit, 
                 saveTrainingUnit
-                    leaveRequestModal,
-showAddLeaveRequestModal,
-viewLeaveRequestDetails,
-approveLeaveRequest,
-rejectLeaveRequest,
-saveLeaveRequest,
+                leaveRequestModal,
+                showAddLeaveRequestModal,
+                viewLeaveRequestDetails,
+                approveLeaveRequest,
+                rejectLeaveRequest,
+                saveLeaveRequest,
+                announcementModal,
+                showAddAnnouncementModal,
+                editAnnouncement,
+                saveAnnouncement,
+                deleteAnnouncement,
 
                 // Data
                 medicalStaff,
