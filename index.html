@@ -3468,28 +3468,47 @@ console.log('Auth available:', supabaseClient.auth);
                     logAudit('PERMISSION_INIT', `Permissions initialized for ${userRole}`, 'system');
                 };
 
-                // Check permission with context
-                const hasPermission = (resource, action, context = {}) => {
-                    if (!currentUser.value) return false;
-                    
-                    // System admin always has permission
-                    if (currentUser.value.user_role === 'system_admin') return true;
-                    
-                    // Check role-based permission
-                    const hasRolePermission = PermissionSystem.hasPermission(
-                        currentUser.value.user_role, 
-                        resource, 
-                        action
-                    );
-                    
-                    // Apply context-based restrictions
-                    if (hasRolePermission && context.resourceId) {
-                        // Add resource-specific checks here
-                        // Example: Can only edit own profile, etc.
-                    }
-                    
-                    return hasRolePermission;
-                };
+            const hasPermission = (resource, action, context = {}) => {
+    console.log(`🔐 PERMISSION CHECK: ${resource}.${action}`, {
+        user: currentUser.value?.email,
+        role: currentUser.value?.user_role,
+        isSystemAdmin: currentUser.value?.user_role === 'system_admin'
+    });
+    
+    if (!currentUser.value) {
+        console.log('❌ No current user');
+        return false;
+    }
+    
+    // System admin always has permission
+    if (currentUser.value.user_role === 'system_admin') {
+        console.log('✅ System admin - automatic approval');
+        return true;
+    }
+    
+    console.log('📋 Checking PermissionSystem for:', {
+        role: currentUser.value.user_role,
+        resource: resource,
+        action: action
+    });
+    
+    // Check role-based permission
+    const hasRolePermission = PermissionSystem.hasPermission(
+        currentUser.value.user_role, 
+        resource, 
+        action
+    );
+    
+    console.log(`📊 PermissionSystem result: ${hasRolePermission}`);
+    
+    // Apply context-based restrictions
+    if (hasRolePermission && context.resourceId) {
+        // Add resource-specific checks here
+        console.log('🔧 Context check for resource:', context.resourceId);
+    }
+    
+    return hasRolePermission;
+};
 
                 const hasAnyPermission = (resources) => {
                     return resources.some(resource => 
