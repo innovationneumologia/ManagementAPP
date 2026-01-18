@@ -1,0 +1,4146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PneumoCare Pro | Dynamic RBAC Pulmonary Management</title>
+    <!-- Production Builds -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.prod.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ============ CSS VARIABLES ============ */
+        :root {
+            /* Medical Color Palette */
+            --medical-deep-blue: #003366;
+            --medical-blue: #005b8e;
+            --medical-teal: #008c8c;
+            --medical-green: #10b981;
+            --medical-amber: #f59e0b;
+            --medical-red: #ef4444;
+            --medical-purple: #8b5cf6;
+            --medical-cyan: #06b6d4;
+            --medical-mint: #34d399;
+            
+            /* Gray Scale */
+            --gray-10: #f8fafc;
+            --gray-50: #f1f5f9;
+            --gray-100: #e2e8f0;
+            --gray-200: #cbd5e1;
+            --gray-300: #94a3b8;
+            --gray-400: #64748b;
+            --gray-500: #475569;
+            --gray-600: #334155;
+            --gray-700: #1e293b;
+            --gray-800: #0f172a;
+            --gray-900: #020617;
+            
+            /* Semantic Colors */
+            --primary: var(--medical-deep-blue);
+            --secondary: var(--medical-blue);
+            --accent: var(--medical-teal);
+            --success: var(--medical-green);
+            --warning: var(--medical-amber);
+            --error: var(--medical-red);
+            --info: var(--medical-cyan);
+            
+            /* UI Colors */
+            --bg-primary: #ffffff;
+            --bg-secondary: var(--gray-10);
+            --bg-tertiary: var(--gray-50);
+            --bg-sidebar: linear-gradient(180deg, var(--medical-deep-blue) 0%, #002244 100%);
+            --bg-card: var(--bg-primary);
+            --bg-modal: var(--bg-primary);
+            
+            --text-primary: var(--gray-900);
+            --text-secondary: var(--gray-600);
+            --text-tertiary: var(--gray-400);
+            --text-on-dark: rgba(255, 255, 255, 0.95);
+            --text-on-dark-secondary: rgba(255, 255, 255, 0.75);
+            
+            --border-light: var(--gray-200);
+            --border-medium: var(--gray-300);
+            --border-dark: var(--gray-400);
+            
+            /* Shadows */
+            --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.12);
+            --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            
+            /* Focus & Glow */
+            --focus-ring: 0 0 0 3px rgba(0, 91, 142, 0.2);
+            --glow-success: 0 0 0 3px rgba(16, 185, 129, 0.2);
+            --glow-warning: 0 0 0 3px rgba(245, 158, 11, 0.2);
+            --glow-error: 0 0 0 3px rgba(239, 68, 68, 0.2);
+            
+            /* Transitions */
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-bounce: 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --radius-2xl: 20px;
+            --radius-3xl: 24px;
+            --radius-full: 9999px;
+            
+            /* Spacing */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 12px;
+            --space-lg: 16px;
+            --space-xl: 24px;
+            --space-2xl: 32px;
+            --space-3xl: 48px;
+            --space-4xl: 64px;
+            
+            /* Z-index */
+            --z-dropdown: 1000;
+            --z-sticky: 1020;
+            --z-fixed: 1030;
+            --z-modal-backdrop: 1040;
+            --z-modal: 1050;
+            --z-popover: 1060;
+            --z-tooltip: 1070;
+            --z-toast: 1080;
+        }
+
+        /* ============ BASE STYLES ============ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        #app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ============ TYPOGRAPHY ============ */
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: var(--space-md);
+            color: var(--text-primary);
+        }
+
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+        }
+
+        h2 {
+            font-size: 1.875rem;
+            letter-spacing: -0.025em;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+        }
+
+        h4 {
+            font-size: 1.25rem;
+        }
+
+        .text-sm {
+            font-size: 0.875rem;
+        }
+
+        .text-xs {
+            font-size: 0.75rem;
+        }
+
+        .text-lg {
+            font-size: 1.125rem;
+        }
+
+        .text-xl {
+            font-size: 1.25rem;
+        }
+
+        .font-medium {
+            font-weight: 500;
+        }
+
+        .font-semibold {
+            font-weight: 600;
+        }
+
+        .font-bold {
+            font-weight: 700;
+        }
+
+        .font-extrabold {
+            font-weight: 800;
+        }
+
+        /* ============ UTILITY CLASSES ============ */
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .items-start { align-items: flex-start; }
+        .items-end { align-items: flex-end; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .justify-end { justify-content: flex-end; }
+        .flex-wrap { flex-wrap: wrap; }
+        .flex-1 { flex: 1; }
+        .flex-none { flex: none; }
+        .gap-2 { gap: var(--space-sm); }
+        .gap-3 { gap: var(--space-md); }
+        .gap-4 { gap: var(--space-lg); }
+        .gap-6 { gap: var(--space-xl); }
+        .gap-8 { gap: var(--space-2xl); }
+
+        .grid { display: grid; }
+        .grid-cols-1 { grid-template-columns: 1fr; }
+        .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+        .grid-cols-5 { grid-template-columns: repeat(5, 1fr); }
+        .grid-cols-6 { grid-template-columns: repeat(6, 1fr); }
+
+        .w-full { width: 100%; }
+        .w-auto { width: auto; }
+        .w-max { width: max-content; }
+        .min-w-0 { min-width: 0; }
+        .max-w-full { max-width: 100%; }
+
+        .h-full { height: 100%; }
+        .h-screen { height: 100vh; }
+        .min-h-0 { min-height: 0; }
+        .min-h-screen { min-height: 100vh; }
+
+        .p-0 { padding: 0; }
+        .p-2 { padding: var(--space-sm); }
+        .p-3 { padding: var(--space-md); }
+        .p-4 { padding: var(--space-lg); }
+        .p-6 { padding: var(--space-xl); }
+        .p-8 { padding: var(--space-2xl); }
+
+        .px-2 { padding-left: var(--space-sm); padding-right: var(--space-sm); }
+        .px-3 { padding-left: var(--space-md); padding-right: var(--space-md); }
+        .px-4 { padding-left: var(--space-lg); padding-right: var(--space-lg); }
+        .px-6 { padding-left: var(--space-xl); padding-right: var(--space-xl); }
+        .py-2 { padding-top: var(--space-sm); padding-bottom: var(--space-sm); }
+        .py-3 { padding-top: var(--space-md); padding-bottom: var(--space-md); }
+        .py-4 { padding-top: var(--space-lg); padding-bottom: var(--space-lg); }
+        .py-6 { padding-top: var(--space-xl); padding-bottom: var(--space-xl); }
+
+        .m-0 { margin: 0; }
+        .m-auto { margin: auto; }
+        .mx-auto { margin-left: auto; margin-right: auto; }
+        .my-2 { margin-top: var(--space-sm); margin-bottom: var(--space-sm); }
+        .my-3 { margin-top: var(--space-md); margin-bottom: var(--space-md); }
+        .my-4 { margin-top: var(--space-lg); margin-bottom: var(--space-lg); }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+
+        .rounded { border-radius: var(--radius-md); }
+        .rounded-lg { border-radius: var(--radius-lg); }
+        .rounded-xl { border-radius: var(--radius-xl); }
+        .rounded-2xl { border-radius: var(--radius-2xl); }
+        .rounded-full { border-radius: var(--radius-full); }
+
+        .shadow-sm { box-shadow: var(--shadow-sm); }
+        .shadow-md { box-shadow: var(--shadow-md); }
+        .shadow-lg { box-shadow: var(--shadow-lg); }
+        .shadow-xl { box-shadow: var(--shadow-xl); }
+
+        .overflow-hidden { overflow: hidden; }
+        .overflow-auto { overflow: auto; }
+        .overflow-y-auto { overflow-y: auto; }
+        .overflow-x-hidden { overflow-x: hidden; }
+
+        .relative { position: relative; }
+        .absolute { position: absolute; }
+        .sticky { position: sticky; }
+        .top-0 { top: 0; }
+        .bottom-0 { bottom: 0; }
+        .left-0 { left: 0; }
+        .right-0 { right: 0; }
+
+        .cursor-pointer { cursor: pointer; }
+        .cursor-not-allowed { cursor: not-allowed; }
+
+        .select-none { user-select: none; }
+        .pointer-events-none { pointer-events: none; }
+
+        .opacity-50 { opacity: 0.5; }
+        .opacity-75 { opacity: 0.75; }
+        .opacity-100 { opacity: 1; }
+
+        .transition-all { transition: all var(--transition-medium); }
+        .transition-colors { transition: color var(--transition-medium), background-color var(--transition-medium); }
+        .transition-transform { transition: transform var(--transition-medium); }
+
+        .hidden { display: none; }
+        .block { display: block; }
+        .inline-block { display: inline-block; }
+        .inline-flex { display: inline-flex; }
+
+        .truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .whitespace-nowrap { white-space: nowrap; }
+        .whitespace-pre-wrap { white-space: pre-wrap; }
+
+        /* ============ LAYOUT COMPONENTS ============ */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+            background: var(--bg-secondary);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-sidebar);
+            position: fixed;
+            height: 100vh;
+            z-index: var(--z-fixed);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform var(--transition-medium), width var(--transition-medium);
+            transform: translateX(0);
+        }
+
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .sidebar.mobile-hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-header {
+            padding: var(--space-xl);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: var(--space-lg);
+            color: var(--text-on-dark);
+        }
+
+        .brand-logo {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05));
+            border-radius: var(--radius-xl);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .brand-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .brand-text .title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            letter-spacing: -0.025em;
+        }
+
+        .brand-text .subtitle {
+            font-size: 0.75rem;
+            opacity: 0.85;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .collapse-toggle {
+            position: absolute;
+            right: var(--space-lg);
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-fast);
+        }
+
+        .collapse-toggle:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: var(--space-lg);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xs);
+        }
+
+        .nav-section {
+            margin-bottom: var(--space-lg);
+        }
+
+        .nav-section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-on-dark-secondary);
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+            padding-left: var(--space-md);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-lg);
+            padding: var(--space-md) var(--space-lg);
+            border: none;
+            background: transparent;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            color: var(--text-on-dark-secondary);
+            transition: var(--transition-fast);
+            font-size: 0.9375rem;
+            font-weight: 500;
+            position: relative;
+            text-align: left;
+            min-width: 0;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-on-dark);
+        }
+
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.12);
+            color: white;
+            font-weight: 600;
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 60%;
+            background: white;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+        }
+
+        .nav-item .icon {
+            font-size: 1.125rem;
+            flex-shrink: 0;
+            width: 24px;
+            text-align: center;
+        }
+
+        .nav-item .label {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .nav-item .badge {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: var(--space-lg);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            transition: margin-left var(--transition-medium);
+        }
+
+        .main-content.expanded {
+            margin-left: 80px;
+        }
+
+        .main-content.full-width {
+            margin-left: 0;
+        }
+
+        /* Top Navigation */
+        .top-nav {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-light);
+            padding: var(--space-md) var(--space-xl);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: var(--z-sticky);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .top-nav-left {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xl);
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: var(--medical-blue);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-lg);
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .page-title h1 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+
+        .page-title .subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .breadcrumb-item.active {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .breadcrumb-separator {
+            opacity: 0.5;
+        }
+
+        .top-nav-right {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xl);
+        }
+
+        .search-box {
+            position: relative;
+            width: 300px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: var(--space-md) var(--space-lg) var(--space-md) var(--space-3xl);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            background: var(--bg-secondary);
+            font-size: 0.9375rem;
+            transition: var(--transition-medium);
+            color: var(--text-primary);
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--medical-blue);
+            box-shadow: var(--focus-ring);
+            background: var(--bg-primary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: var(--space-lg);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            pointer-events: none;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: var(--space-lg);
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: var(--transition-fast);
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+        }
+
+        .user-profile:hover {
+            background: var(--bg-secondary);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--medical-purple), var(--medical-cyan));
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9375rem;
+            flex-shrink: 0;
+        }
+
+        .user-info {
+            text-align: left;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 0.9375rem;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-role {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .quick-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .action-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-light);
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            flex-shrink: 0;
+        }
+
+        .action-btn:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--border-medium);
+        }
+
+        .action-btn.active {
+            background: var(--medical-blue);
+            color: white;
+            border-color: var(--medical-blue);
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: var(--space-xl);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xl);
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: var(--space-xl);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: var(--space-md);
+            flex-shrink: 0;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border-light);
+            box-shadow: var(--shadow-md);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: var(--space-xl);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--space-xl);
+            flex-shrink: 0;
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .card-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        .card-actions {
+            display: flex;
+            gap: var(--space-md);
+            flex-shrink: 0;
+        }
+
+        .card-body {
+            padding: var(--space-xl);
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+        }
+
+        .card-footer {
+            padding: var(--space-xl);
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        /* ============ COMPONENTS ============ */
+        
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md) var(--space-xl);
+            border-radius: var(--radius-lg);
+            border: none;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            text-decoration: none;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--medical-blue);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--medical-deep-blue);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--bg-tertiary);
+            border-color: var(--border-medium);
+        }
+
+        .btn-success {
+            background: var(--medical-green);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #0da271;
+        }
+
+        .btn-warning {
+            background: var(--medical-amber);
+            color: white;
+        }
+
+        .btn-warning:hover:not(:disabled) {
+            background: #d97706;
+        }
+
+        .btn-danger {
+            background: var(--medical-red);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #dc2626;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--medical-blue);
+            color: var(--medical-blue);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: var(--medical-blue);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: var(--space-sm) var(--space-lg);
+            font-size: 0.875rem;
+        }
+
+        .btn-lg {
+            padding: var(--space-lg) var(--space-2xl);
+            font-size: 1rem;
+        }
+
+        /* Badges & Status */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--medical-green);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--medical-amber);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--medical-red);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .badge-info {
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--medical-cyan);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        .badge-purple {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--medical-purple);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .badge-teal {
+            background: rgba(0, 140, 140, 0.1);
+            color: var(--medical-teal);
+            border: 1px solid rgba(0, 140, 140, 0.2);
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: var(--radius-full);
+            flex-shrink: 0;
+        }
+
+        .status-dot.success {
+            background: var(--medical-green);
+        }
+
+        .status-dot.warning {
+            background: var(--medical-amber);
+        }
+
+        .status-dot.danger {
+            background: var(--medical-red);
+        }
+
+        .status-dot.info {
+            background: var(--medical-cyan);
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: var(--space-xl);
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+            color: var(--text-primary);
+            font-size: 0.9375rem;
+        }
+
+        .form-label .required {
+            color: var(--medical-red);
+            margin-left: 2px;
+        }
+
+        .form-hint {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        .form-error {
+            font-size: 0.875rem;
+            color: var(--medical-red);
+            margin-top: var(--space-xs);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: var(--space-md) var(--space-lg);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            background: var(--bg-primary);
+            font-size: 0.9375rem;
+            transition: var(--transition-medium);
+            color: var(--text-primary);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--medical-blue);
+            box-shadow: var(--focus-ring);
+        }
+
+        .form-control.error {
+            border-color: var(--medical-red);
+            box-shadow: var(--glow-error);
+        }
+
+        .form-control:disabled {
+            background: var(--bg-secondary);
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right var(--space-lg) center;
+            background-size: 20px;
+            padding-right: var(--space-3xl);
+        }
+
+        .checkbox-group,
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .checkbox-item,
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            cursor: pointer;
+        }
+
+        .checkbox-item input[type="checkbox"],
+        .radio-item input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .checkbox-label,
+        .radio-label {
+            font-size: 0.9375rem;
+            color: var(--text-primary);
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-light);
+            background: var(--bg-primary);
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        .table thead {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .table th {
+            padding: var(--space-lg);
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .table tbody tr {
+            border-bottom: 1px solid var(--border-light);
+            transition: var(--transition-fast);
+        }
+
+        .table tbody tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .table td {
+            padding: var(--space-lg);
+            color: var(--text-primary);
+            font-size: 0.9375rem;
+            vertical-align: middle;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: var(--space-sm);
+            justify-content: flex-end;
+        }
+
+        /* Modals */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: var(--z-modal-backdrop);
+            padding: var(--space-xl);
+        }
+
+        .modal {
+            background: var(--bg-modal);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-2xl);
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal-lg {
+            max-width: 1000px;
+        }
+
+        .modal-xl {
+            max-width: 1200px;
+        }
+
+        .modal-header {
+            padding: var(--space-xl);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--space-xl);
+            flex-shrink: 0;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: var(--transition-fast);
+            flex-shrink: 0;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: var(--space-xl);
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .modal-footer {
+            padding: var(--space-xl);
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--space-md);
+            flex-shrink: 0;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-light);
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            padding: var(--space-lg) var(--space-xl);
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 3px solid transparent;
+            transition: var(--transition-fast);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            color: var(--medical-blue);
+            border-bottom-color: var(--medical-blue);
+        }
+
+        .tab-content {
+            padding: var(--space-xl);
+        }
+
+        /* Workflow Components */
+        .workflow-tracker {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin: var(--space-xl) 0;
+            position: relative;
+        }
+
+        .workflow-tracker::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--border-light);
+            z-index: 1;
+        }
+
+        .workflow-step {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-sm);
+            flex: 1;
+        }
+
+        .step-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.875rem;
+            background: white;
+            border: 2px solid var(--border-light);
+            transition: var(--transition-medium);
+        }
+
+        .workflow-step.completed .step-icon {
+            background: var(--medical-green);
+            border-color: var(--medical-green);
+            color: white;
+        }
+
+        .workflow-step.active .step-icon {
+            background: var(--medical-blue);
+            border-color: var(--medical-blue);
+            color: white;
+            transform: scale(1.1);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .workflow-step.pending .step-icon {
+            background: var(--bg-secondary);
+            border-color: var(--border-medium);
+            color: var(--text-secondary);
+        }
+
+        .step-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-align: center;
+            max-width: 120px;
+            word-wrap: break-word;
+        }
+
+        .workflow-step.completed .step-label {
+            color: var(--medical-green);
+        }
+
+        .workflow-step.active .step-label {
+            color: var(--medical-blue);
+        }
+
+        .step-connector {
+            flex: 1;
+            height: 2px;
+            background: var(--border-light);
+            position: relative;
+        }
+
+        .workflow-step.completed .step-connector {
+            background: var(--medical-green);
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: var(--space-xl);
+            right: var(--space-xl);
+            z-index: var(--z-toast);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            max-width: 400px;
+        }
+
+        .toast {
+            background: var(--bg-primary);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            box-shadow: var(--shadow-xl);
+            border-left: 4px solid var(--medical-blue);
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-lg);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .toast.success {
+            border-left-color: var(--medical-green);
+        }
+
+        .toast.error {
+            border-left-color: var(--medical-red);
+        }
+
+        .toast.warning {
+            border-left-color: var(--medical-amber);
+        }
+
+        .toast.info {
+            border-left-color: var(--medical-cyan);
+        }
+
+        .toast-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .toast-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+            color: var(--text-primary);
+        }
+
+        .toast-message {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            padding: var(--space-xs);
+            border-radius: var(--radius-sm);
+            transition: var(--transition-fast);
+            flex-shrink: 0;
+        }
+
+        .toast-close:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Loading States */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(0, 91, 142, 0.2);
+            border-radius: var(--radius-full);
+            border-top-color: var(--medical-blue);
+            animation: spin 0.8s linear infinite;
+        }
+
+        .loading-spinner.sm {
+            width: 16px;
+            height: 16px;
+            border-width: 2px;
+        }
+
+        .loading-spinner.lg {
+            width: 32px;
+            height: 32px;
+            border-width: 3px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-tertiary) 50%, var(--bg-secondary) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: var(--radius-md);
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Empty States */
+        .empty-state {
+            text-align: center;
+            padding: var(--space-3xl);
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: var(--space-lg);
+            color: var(--gray-300);
+        }
+
+        .empty-state-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+            color: var(--text-primary);
+        }
+
+        .empty-state-description {
+            font-size: 0.9375rem;
+            max-width: 400px;
+            margin: 0 auto var(--space-xl);
+        }
+
+        /* Data Visualization */
+        .metric-card {
+            background: var(--bg-primary);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            border: 1px solid var(--border-light);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            transition: var(--transition-medium);
+            height: 100%;
+        }
+
+        .metric-card:hover {
+            border-color: var(--medical-blue);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .metric-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--medical-blue);
+            line-height: 1;
+        }
+
+        .metric-trend {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .metric-trend.positive {
+            color: var(--medical-green);
+        }
+
+        .metric-trend.negative {
+            color: var(--medical-red);
+        }
+
+        .metric-footer {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+        }
+
+        /* Progress Bars */
+        .progress-bar {
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--medical-blue);
+            border-radius: var(--radius-full);
+            transition: width 0.5s ease-out;
+        }
+
+        .progress-bar.success .progress-fill {
+            background: var(--medical-green);
+        }
+
+        .progress-bar.warning .progress-fill {
+            background: var(--medical-amber);
+        }
+
+        .progress-bar.danger .progress-fill {
+            background: var(--medical-red);
+        }
+
+        /* ============ RESPONSIVE DESIGN ============ */
+        @media (max-width: 1400px) {
+            .sidebar {
+                width: 240px;
+            }
+            
+            .main-content {
+                margin-left: 240px;
+            }
+            
+            .main-content.expanded {
+                margin-left: 80px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .grid-cols-4 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .grid-cols-3 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0 !important;
+            }
+            
+            .mobile-menu-toggle {
+                display: flex;
+            }
+            
+            .search-box {
+                width: 200px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .top-nav {
+                flex-direction: column;
+                gap: var(--space-lg);
+                padding: var(--space-lg);
+            }
+            
+            .top-nav-left,
+            .top-nav-right {
+                width: 100%;
+            }
+            
+            .search-box {
+                width: 100%;
+            }
+            
+            .content-area {
+                padding: var(--space-lg);
+            }
+            
+            .card-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: var(--space-lg);
+            }
+            
+            .card-title {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-sm);
+            }
+            
+            .card-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+            
+            .grid-cols-2,
+            .grid-cols-3,
+            .grid-cols-4 {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal {
+                margin: var(--space-sm);
+                max-height: calc(100vh - var(--space-xl));
+            }
+            
+            .tabs {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .tab-btn {
+                padding: var(--space-md) var(--space-lg);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .user-profile .user-info {
+                display: none;
+            }
+            
+            .btn {
+                padding: var(--space-md);
+            }
+            
+            .btn .icon + span {
+                display: none;
+            }
+            
+            .modal-backdrop {
+                padding: var(--space-sm);
+            }
+            
+            .modal {
+                max-height: calc(100vh - var(--space-sm));
+            }
+            
+            .metric-value {
+                font-size: 2rem;
+            }
+        }
+
+        /* ============ CUSTOM SCROLLBAR ============ */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-full);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: var(--radius-full);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-400);
+        }
+
+        /* Dark scrollbar for sidebar */
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div v-if="!currentUser" class="app-container">
+            <div class="flex items-center justify-center min-h-screen p-6 bg-gradient-to-br from-medical-deep-blue to-medical-blue">
+                <div class="card w-full max-w-md">
+                    <div class="card-body p-8">
+                        <div class="text-center mb-8">
+                            <div class="brand-logo mx-auto mb-4">
+                                <i class="fas fa-lungs"></i>
+                            </div>
+                            <h1 class="text-2xl font-extrabold text-medical-deep-blue mb-2">PneumoCare Pro</h1>
+                            <p class="text-gray-600">Dynamic RBAC Pulmonary Management System</p>
+                        </div>
+
+                        <div class="mb-6">
+                            <div class="grid grid-cols-2 gap-3">
+                                <button 
+                                    v-for="role in availableRoles" 
+                                    :key="role.id"
+                                    class="p-4 rounded-xl border-2 transition-all"
+                                    :class="[
+                                        loginForm.user_role === role.key 
+                                            ? 'border-medical-blue bg-blue-50' 
+                                            : 'border-gray-200 hover:border-gray-300'
+                                    ]"
+                                    @click="loginForm.user_role = role.key"
+                                >
+                                    <div class="flex flex-col items-center gap-2">
+                                        <i :class="['text-lg', role.icon, loginForm.user_role === role.key ? 'text-medical-blue' : 'text-gray-400']"></i>
+                                        <span class="font-semibold text-sm">{{ role.name }}</span>
+                                        <span class="text-xs text-gray-500 text-center">{{ role.description }}</span>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <form @submit.prevent="handleLogin">
+                            <div class="form-group">
+                                <label class="form-label">Email Address</label>
+                                <input 
+                                    type="email" 
+                                    class="form-control"
+                                    v-model="loginForm.email"
+                                    placeholder="Enter your hospital email"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="form-label">Password</label>
+                                    <button type="button" class="text-sm text-medical-blue hover:underline">
+                                        Forgot password?
+                                    </button>
+                                </div>
+                                <input 
+                                    type="password" 
+                                    class="form-control"
+                                    v-model="loginForm.password"
+                                    placeholder="Enter your password"
+                                    required
+                                >
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                class="btn btn-primary w-full mt-6"
+                                :disabled="loading"
+                            >
+                                <span v-if="loading" class="loading-spinner"></span>
+                                <span v-else>
+                                    <i class="fas fa-sign-in-alt"></i>
+                                    Sign In as {{ getRoleDisplayName(loginForm.user_role) }}
+                                </span>
+                            </button>
+                        </form>
+
+                        <div class="mt-8 pt-6 border-t border-gray-200">
+                            <div class="text-center text-xs text-gray-500">
+                                <div class="flex items-center justify-center gap-2 mb-2">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <span>HIPAA Compliant • TLS 1.3 Encrypted</span>
+                                </div>
+                                <div>System ID: {{ systemConfig.systemId }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Application -->
+        <div v-else>
+            <!-- Mobile Menu Toggle -->
+            <button class="mobile-menu-toggle fixed top-4 left-4 z-50" @click="toggleMobileMenu">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <div class="app-container">
+                <!-- Sidebar -->
+                <aside class="sidebar" :class="{ 'mobile-hidden': !mobileMenuOpen, 'collapsed': sidebarCollapsed }">
+                    <div class="sidebar-header relative">
+                        <div class="brand">
+                            <div class="brand-logo">
+                                <i class="fas fa-lungs"></i>
+                            </div>
+                            <div class="brand-text" v-if="!sidebarCollapsed">
+                                <div class="title">PneumoCare Pro</div>
+                                <div class="subtitle">DRBAC v2.0</div>
+                            </div>
+                        </div>
+                        <button class="collapse-toggle" @click="sidebarCollapsed = !sidebarCollapsed">
+                            <i :class="sidebarCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left'"></i>
+                        </button>
+                    </div>
+
+                    <nav class="sidebar-nav">
+                        <!-- Workflows Section -->
+                        <div class="nav-section" v-if="!sidebarCollapsed && activeWorkflows.length > 0">
+                            <div class="nav-section-title">Active Workflows</div>
+                            <button 
+                                v-for="workflow in activeWorkflows"
+                                :key="workflow.id"
+                                class="nav-item"
+                                :class="{ active: currentView === 'workflow_' + workflow.id }"
+                                @click="openWorkflow(workflow)"
+                            >
+                                <div class="icon">
+                                    <i :class="workflow.icon"></i>
+                                </div>
+                                <div class="label truncate">{{ workflow.name }}</div>
+                                <div class="badge">{{ workflow.pendingSteps }}</div>
+                            </button>
+                        </div>
+
+                        <!-- Management Section -->
+                        <div class="nav-section">
+                            <div class="nav-section-title" v-if="!sidebarCollapsed">Management</div>
+                            <button 
+                                v-for="item in filteredNavigationItems"
+                                :key="item.key"
+                                class="nav-item"
+                                :class="{ 
+                                    active: currentView === item.key
+                                }"
+                                @click="switchView(item.key)"
+                            >
+                                <div class="icon">
+                                    <i :class="item.icon"></i>
+                                </div>
+                                <div class="label" v-if="!sidebarCollapsed">{{ item.label }}</div>
+                                <div class="badge" v-if="item.badge && !sidebarCollapsed && item.badge > 0">{{ item.badge }}</div>
+                            </button>
+                        </div>
+
+                        <!-- Reports Section -->
+                        <div class="nav-section" v-if="hasPermission('view_reports') && !sidebarCollapsed">
+                            <div class="nav-section-title">Analytics & Reports</div>
+                            <button 
+                                v-for="report in filteredReportItems"
+                                :key="report.key"
+                                class="nav-item"
+                                :class="{ active: currentView === report.key }"
+                                @click="switchView(report.key)"
+                            >
+                                <div class="icon">
+                                    <i :class="report.icon"></i>
+                                </div>
+                                <div class="label">{{ report.label }}</div>
+                            </button>
+                        </div>
+                    </nav>
+
+                    <div class="sidebar-footer" v-if="!sidebarCollapsed">
+                        <div class="flex items-center gap-3">
+                            <div class="user-avatar">
+                                {{ getInitials(currentUser.full_name) }}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="user-name truncate">{{ currentUser.full_name }}</div>
+                                <div class="user-role">{{ getRoleDisplayName(currentUser.user_role) }}</div>
+                            </div>
+                            <button class="action-btn" @click="handleLogout" title="Logout">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Main Content -->
+                <main class="main-content" :class="{ 'expanded': sidebarCollapsed, 'full-width': !currentUser }">
+                    <!-- Top Navigation -->
+                    <header class="top-nav">
+                        <div class="top-nav-left">
+                            <div class="breadcrumb">
+                                <span class="breadcrumb-item">
+                                    <i class="fas fa-home"></i>
+                                    PneumoCare Pro
+                                </span>
+                                <span class="breadcrumb-separator">/</span>
+                                <span class="breadcrumb-item active">{{ getCurrentTitle() }}</span>
+                            </div>
+                        </div>
+
+                        <div class="top-nav-right">
+                            <div class="search-box">
+                                <i class="fas fa-search search-icon"></i>
+                                <input 
+                                    type="text" 
+                                    v-model="searchQuery"
+                                    :placeholder="getSearchPlaceholder()"
+                                    @input="handleSearch"
+                                >
+                            </div>
+
+                            <div class="quick-actions">
+                                <button class="action-btn" @click="showNotifications" :class="{ 'active': unreadNotifications > 0 }">
+                                    <i class="fas fa-bell"></i>
+                                    <span v-if="unreadNotifications > 0" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                                        {{ unreadNotifications }}
+                                    </span>
+                                </button>
+                                <button class="action-btn" @click="showQuickActions">
+                                    <i class="fas fa-bolt"></i>
+                                </button>
+                            </div>
+
+                            <button class="user-profile" @click="toggleUserMenu">
+                                <div class="user-avatar">
+                                    {{ getInitials(currentUser.full_name) }}
+                                </div>
+                                <div class="user-info" v-if="windowWidth > 768">
+                                    <div class="user-name">{{ currentUser.full_name }}</div>
+                                    <div class="user-role">{{ getRoleDisplayName(currentUser.user_role) }}</div>
+                                </div>
+                                <i class="fas fa-chevron-down text-gray-400"></i>
+                            </button>
+                        </div>
+                    </header>
+
+                    <!-- Content Area -->
+                    <div class="content-area">
+                        <!-- Loading State -->
+                        <div v-if="loading" class="flex items-center justify-center py-20">
+                            <div class="text-center">
+                                <div class="loading-spinner lg mb-4"></div>
+                                <p class="text-gray-600">Loading system data...</p>
+                            </div>
+                        </div>
+
+                        <!-- Dashboard View -->
+                        <div v-if="currentView === 'dashboard' && !loading">
+                            <!-- Quick Stats -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div class="metric-card">
+                                    <div class="metric-header">
+                                        <div class="metric-title">Active Staff</div>
+                                        <i class="fas fa-user-md text-gray-400"></i>
+                                    </div>
+                                    <div class="metric-value">{{ dashboardStats.activeStaff }}</div>
+                                    <div class="progress-bar mt-2">
+                                        <div class="progress-fill" :style="{ width: Math.min(dashboardStats.activeStaff / 100 * 100, 100) + '%' }"></div>
+                                    </div>
+                                    <div class="metric-footer">{{ dashboardStats.attendings }} Attendings, {{ dashboardStats.residents }} Residents</div>
+                                </div>
+
+                                <div class="metric-card">
+                                    <div class="metric-header">
+                                        <div class="metric-title">Active Workflows</div>
+                                        <i class="fas fa-project-diagram text-gray-400"></i>
+                                    </div>
+                                    <div class="metric-value">{{ dashboardStats.activeWorkflows }}</div>
+                                    <div class="progress-bar mt-2">
+                                        <div class="progress-fill" :style="{ width: dashboardStats.workflowCompletion + '%' }"></div>
+                                    </div>
+                                    <div class="metric-footer">{{ dashboardStats.awaitingAction }} awaiting your action</div>
+                                </div>
+
+                                <div class="metric-card">
+                                    <div class="metric-header">
+                                        <div class="metric-title">Unit Occupancy</div>
+                                        <i class="fas fa-hospital text-gray-400"></i>
+                                    </div>
+                                    <div class="metric-value">{{ dashboardStats.occupancyRate }}%</div>
+                                    <div class="progress-bar mt-2" :class="{ 'warning': dashboardStats.occupancyRate > 80, 'danger': dashboardStats.occupancyRate > 95 }">
+                                        <div class="progress-fill" :style="{ width: dashboardStats.occupancyRate + '%' }"></div>
+                                    </div>
+                                    <div class="metric-footer">{{ dashboardStats.occupiedUnits }}/{{ dashboardStats.totalUnits }} units at capacity</div>
+                                </div>
+
+                                <div class="metric-card">
+                                    <div class="metric-header">
+                                        <div class="metric-title">Schedule Compliance</div>
+                                        <i class="fas fa-calendar-check text-gray-400"></i>
+                                    </div>
+                                    <div class="metric-value">{{ dashboardStats.compliance }}%</div>
+                                    <div class="metric-trend positive" v-if="dashboardStats.complianceTrend > 0">
+                                        <i class="fas fa-arrow-up"></i>
+                                        <span>{{ dashboardStats.complianceTrend }}% improvement</span>
+                                    </div>
+                                    <div class="metric-trend negative" v-else-if="dashboardStats.complianceTrend < 0">
+                                        <i class="fas fa-arrow-down"></i>
+                                        <span>{{ Math.abs(dashboardStats.complianceTrend) }}% decline</span>
+                                    </div>
+                                    <div class="metric-footer">{{ dashboardStats.dutyHourAlerts }} duty hour alerts</div>
+                                </div>
+                            </div>
+
+                            <!-- Pending Actions -->
+                            <div class="card" v-if="pendingActions.length > 0">
+                                <div class="card-header">
+                                    <div class="card-title">
+                                        <i class="fas fa-clock text-medical-amber"></i>
+                                        Pending Actions
+                                    </div>
+                                    <div class="card-actions">
+                                        <button class="btn btn-sm btn-outline" @click="viewAllPendingActions">
+                                            View All
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-container">
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Workflow</th>
+                                                    <th>Action Required</th>
+                                                    <th>Initiated By</th>
+                                                    <th>Waiting Since</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="action in pendingActions.slice(0, 5)" :key="action.id">
+                                                    <td>
+                                                        <div class="flex items-center gap-2">
+                                                            <i :class="['text-sm', action.icon]"></i>
+                                                            <span>{{ action.workflow }}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge" :class="action.priorityClass">
+                                                            {{ action.action }}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{ action.initiatedBy }}</td>
+                                                    <td>{{ formatRelativeTime(action.waitingSince) }}</td>
+                                                    <td>
+                                                        <div class="table-actions">
+                                                            <button class="btn btn-sm btn-primary" @click="handlePendingAction(action)">
+                                                                <i class="fas fa-play"></i>
+                                                                <span>Take Action</span>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Recent Activity -->
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <!-- Workflow Status -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-project-diagram text-medical-blue"></i>
+                                            Workflow Status
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="space-y-4">
+                                            <div v-for="workflow in workflowStatus" :key="workflow.id" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="workflow.bgColor">
+                                                        <i :class="[workflow.icon, 'text-white']"></i>
+                                                    </div>
+                                                    <div>
+                                                        <div class="font-semibold">{{ workflow.name }}</div>
+                                                        <div class="text-sm text-gray-600">{{ workflow.active }} active, {{ workflow.completed }} completed</div>
+                                                    </div>
+                                                </div>
+                                                <div class="text-right">
+                                                    <div class="text-2xl font-bold">{{ workflow.completion }}%</div>
+                                                    <div class="text-xs text-gray-500">completion</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- System Alerts -->
+                                <div class="card" v-if="systemAlerts.length > 0">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <i class="fas fa-exclamation-triangle text-medical-amber"></i>
+                                            System Alerts
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="space-y-3">
+                                            <div v-for="alert in systemAlerts.slice(0, 5)" :key="alert.id" 
+                                                 class="p-3 rounded-lg border-l-4 flex items-start gap-3"
+                                                 :class="{
+                                                     'border-medical-red bg-red-50': alert.severity === 'high',
+                                                     'border-medical-amber bg-amber-50': alert.severity === 'medium',
+                                                     'border-medical-blue bg-blue-50': alert.severity === 'low'
+                                                 }">
+                                                <i :class="[
+                                                    'mt-1',
+                                                    alert.severity === 'high' ? 'fas fa-exclamation-circle text-medical-red' :
+                                                    alert.severity === 'medium' ? 'fas fa-exclamation-triangle text-medical-amber' :
+                                                    'fas fa-info-circle text-medical-blue'
+                                                ]"></i>
+                                                <div class="flex-1">
+                                                    <div class="font-semibold">{{ alert.title }}</div>
+                                                    <div class="text-sm text-gray-600">{{ alert.description }}</div>
+                                                    <div class="text-xs text-gray-500 mt-1">{{ formatRelativeTime(alert.created_at) }}</div>
+                                                </div>
+                                                <button class="btn btn-sm btn-outline" @click="dismissAlert(alert)" v-if="hasPermission('dismiss_alerts')">
+                                                    Dismiss
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Medical Staff Management -->
+                        <div v-if="currentView === 'medical_staff' && !loading">
+                            <medical-staff-management></medical-staff-management>
+                        </div>
+
+                        <!-- Training Units Management -->
+                        <div v-if="currentView === 'training_units' && !loading">
+                            <training-units-management></training-units-management>
+                        </div>
+
+                        <!-- Resident Rotations -->
+                        <div v-if="currentView === 'resident_rotations' && !loading">
+                            <resident-rotations-management></resident-rotations-management>
+                        </div>
+
+                        <!-- Placements View -->
+                        <div v-if="currentView === 'placements' && !loading">
+                            <placements-management></placements-management>
+                        </div>
+
+                        <!-- Daily Assignments -->
+                        <div v-if="currentView === 'daily_assignments' && !loading">
+                            <daily-assignments-management></daily-assignments-management>
+                        </div>
+
+                        <!-- On-call Schedule -->
+                        <div v-if="currentView === 'oncall_schedule' && !loading">
+                            <oncall-schedule-management></oncall-schedule-management>
+                        </div>
+
+                        <!-- Leave Requests -->
+                        <div v-if="currentView === 'leave_requests' && !loading">
+                            <leave-requests-management></leave-requests-management>
+                        </div>
+
+                        <!-- Announcements -->
+                        <div v-if="currentView === 'announcements' && !loading">
+                            <announcements-management></announcements-management>
+                        </div>
+
+                        <!-- Department Overview -->
+                        <div v-if="currentView === 'department_overview' && !loading">
+                            <department-overview></department-overview>
+                        </div>
+
+                        <!-- Staff Management -->
+                        <div v-if="currentView === 'staff_management' && !loading">
+                            <staff-management></staff-management>
+                        </div>
+
+                        <!-- Schedule Approval -->
+                        <div v-if="currentView === 'schedule_approval' && !loading">
+                            <schedule-approval-management></schedule-approval-management>
+                        </div>
+
+                        <!-- Workflow Analytics -->
+                        <div v-if="currentView === 'workflow_analytics' && !loading">
+                            <workflow-analytics></workflow-analytics>
+                        </div>
+
+                        <!-- Compliance Reports -->
+                        <div v-if="currentView === 'compliance_reports' && !loading">
+                            <compliance-reports></compliance-reports>
+                        </div>
+
+                        <!-- Audit Logs -->
+                        <div v-if="currentView === 'audit_logs' && !loading">
+                            <audit-logs></audit-logs>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div v-if="currentView === 'empty' && !loading" class="empty-state">
+                            <i class="fas fa-compass empty-state-icon"></i>
+                            <h3 class="empty-state-title">No Content Available</h3>
+                            <p class="empty-state-description">Select a section from the sidebar to get started.</p>
+                            <button class="btn btn-primary" @click="switchView('dashboard')">
+                                <i class="fas fa-home"></i>
+                                Go to Dashboard
+                            </button>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <!-- Toast Container -->
+            <div class="toast-container">
+                <div v-for="toast in toasts" :key="toast.id" class="toast" :class="toast.type">
+                    <div class="toast-icon">
+                        <i :class="toast.icon"></i>
+                    </div>
+                    <div class="toast-content">
+                        <div class="toast-title">{{ toast.title }}</div>
+                        <div class="toast-message">{{ toast.message }}</div>
+                    </div>
+                    <button class="toast-close" @click="removeToast(toast.id)">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Container -->
+            <div v-if="activeModal">
+                <component 
+                    :is="activeModal.component" 
+                    v-bind="activeModal.props"
+                    @close="closeModal"
+                    @confirm="handleModalConfirm"
+                ></component>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vue Templates -->
+    <script type="text/x-template" id="medical-staff-management-template">
+        <div class="medical-staff-management">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-user-md"></i>
+                        Medical Staff Management
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn btn-primary" @click="showAddModal" v-if="hasPermission('add_medical_staff')">
+                            <i class="fas fa-user-plus"></i>
+                            Add Medical Staff
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-6">
+                        <div class="flex flex-wrap gap-3">
+                            <select class="form-control w-48" v-model="filters.staffType">
+                                <option value="">All Types</option>
+                                <option value="medical_resident">Medical Resident</option>
+                                <option value="attending_physician">Attending Physician</option>
+                                <option value="fellow">Fellow</option>
+                                <option value="nurse_practitioner">Nurse Practitioner</option>
+                            </select>
+                            <select class="form-control w-48" v-model="filters.employmentStatus">
+                                <option value="">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="on_leave">On Leave</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                            <input type="text" class="form-control flex-1 min-w-200" v-model="searchQuery" placeholder="Search staff by name, ID, or email...">
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Staff Member</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Primary Unit</th>
+                                    <th>Supervisor</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="staff in filteredStaff" :key="staff.id">
+                                    <td>
+                                        <div class="flex items-center gap-3">
+                                            <div class="user-avatar">
+                                                {{ getInitials(staff.full_name) }}
+                                            </div>
+                                            <div>
+                                                <div class="font-semibold">{{ staff.full_name }}</div>
+                                                <div class="text-sm text-gray-600">{{ staff.staff_id }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge" :class="getStaffTypeClass(staff.staff_type)">
+                                            {{ formatStaffType(staff.staff_type) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-indicator">
+                                            <span class="status-dot" :class="getStatusClass(staff.employment_status)"></span>
+                                            {{ formatEmploymentStatus(staff.employment_status) }}
+                                        </span>
+                                    </td>
+                                    <td>{{ staff.primary_clinic || 'Not assigned' }}</td>
+                                    <td>{{ staff.supervisor_name || 'Not assigned' }}</td>
+                                    <td>
+                                        <div class="table-actions">
+                                            <button class="btn btn-sm btn-outline" @click="editStaff(staff)" v-if="hasPermission('edit_medical_staff')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-primary" @click="viewSchedule(staff)">
+                                                <i class="fas fa-calendar"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/x-template" id="training-units-management-template">
+        <div class="training-units-management">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-hospital-alt"></i>
+                        Training Units Management
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn btn-primary" @click="showAddModal" v-if="hasPermission('add_training_unit')">
+                            <i class="fas fa-plus"></i>
+                            Add Training Unit
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Unit Code</th>
+                                    <th>Unit Name</th>
+                                    <th>Department</th>
+                                    <th>Capacity</th>
+                                    <th>Current</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="unit in filteredUnits" :key="unit.id">
+                                    <td>{{ unit.unit_code }}</td>
+                                    <td>
+                                        <div class="font-semibold">{{ unit.unit_name }}</div>
+                                        <div class="text-sm text-gray-600">{{ unit.unit_description || 'No description' }}</div>
+                                    </td>
+                                    <td>{{ unit.department_name }}</td>
+                                    <td>{{ unit.maximum_residents }}</td>
+                                    <td>
+                                        <div class="flex items-center gap-2">
+                                            <span>{{ unit.current_residents || 0 }}</span>
+                                            <div class="progress-bar w-20">
+                                                <div class="progress-fill" 
+                                                     :style="{ width: Math.min(((unit.current_residents || 0) / unit.maximum_residents) * 100, 100) + '%' }"
+                                                     :class="{ 'warning': ((unit.current_residents || 0) / unit.maximum_residents) > 0.8, 'danger': ((unit.current_residents || 0) / unit.maximum_residents) >= 1 }">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge" :class="unit.unit_status === 'active' ? 'badge-success' : 'badge-danger'">
+                                            {{ unit.unit_status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="table-actions">
+                                            <button class="btn btn-sm btn-outline" @click="editUnit(unit)" v-if="hasPermission('edit_training_unit')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-primary" @click="viewUnitDetails(unit)">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/x-template" id="resident-rotations-management-template">
+        <div class="resident-rotations-management">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-calendar-alt"></i>
+                        Resident Rotations Management
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn btn-primary" @click="showAddModal" v-if="hasPermission('add_resident_rotation')">
+                            <i class="fas fa-plus"></i>
+                            New Rotation
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-6">
+                        <div class="flex flex-wrap gap-3">
+                            <select class="form-control w-48" v-model="filters.status">
+                                <option value="">All Status</option>
+                                <option value="scheduled">Scheduled</option>
+                                <option value="active">Active</option>
+                                <option value="completed">Completed</option>
+                                <option value="extended">Extended</option>
+                            </select>
+                            <input type="date" class="form-control w-48" v-model="filters.startDate">
+                            <input type="date" class="form-control w-48" v-model="filters.endDate">
+                            <input type="text" class="form-control flex-1 min-w-200" v-model="searchQuery" placeholder="Search rotations...">
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Resident</th>
+                                    <th>Training Unit</th>
+                                    <th>Supervisor</th>
+                                    <th>Rotation Period</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="rotation in filteredRotations" :key="rotation.id">
+                                    <td>
+                                        <div class="flex items-center gap-3">
+                                            <div class="user-avatar">
+                                                {{ getInitials(rotation.resident_name) }}
+                                            </div>
+                                            <div>
+                                                <div class="font-semibold">{{ rotation.resident_name }}</div>
+                                                <div class="text-sm text-gray-600">{{ rotation.resident_id }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ rotation.unit_name }}</td>
+                                    <td>{{ rotation.supervisor_name || 'Not assigned' }}</td>
+                                    <td>
+                                        <div class="text-sm">
+                                            <div>From: {{ formatDate(rotation.rotation_start_date) }}</div>
+                                            <div>To: {{ formatDate(rotation.rotation_end_date) }}</div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge" :class="getRotationStatusClass(rotation.rotation_status)">
+                                            {{ rotation.rotation_status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="table-actions">
+                                            <button class="btn btn-sm btn-outline" @click="editRotation(rotation)" v-if="hasPermission('edit_resident_rotation')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-warning" @click="extendRotation(rotation)" v-if="hasPermission('extend_resident_rotation')">
+                                                <i class="fas fa-calendar-plus"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <!-- Add more component templates as needed -->
+
+    <script type="text/x-template" id="add-medical-staff-modal-template">
+        <div class="modal-backdrop" @click.self="$emit('close')">
+            <div class="modal modal-lg">
+                <div class="modal-header">
+                    <div class="modal-title">
+                        <i class="fas fa-user-plus"></i>
+                        {{ editingStaff ? 'Edit Medical Staff' : 'Add Medical Staff' }}
+                    </div>
+                    <button class="modal-close" @click="$emit('close')">×</button>
+                </div>
+                <div class="modal-body">
+                    <form @submit.prevent="submitForm">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="form-group">
+                                <label class="form-label">Full Name <span class="required">*</span></label>
+                                <input type="text" class="form-control" v-model="formData.full_name" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Professional Email</label>
+                                <input type="email" class="form-control" v-model="formData.professional_email">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Staff Type <span class="required">*</span></label>
+                                <select class="form-control" v-model="formData.staff_type" required @change="handleStaffTypeChange">
+                                    <option value="">Select type...</option>
+                                    <option value="medical_resident">Medical Resident</option>
+                                    <option value="attending_physician">Attending Physician</option>
+                                    <option value="fellow">Fellow</option>
+                                    <option value="nurse_practitioner">Nurse Practitioner</option>
+                                </select>
+                            </div>
+                            <div class="form-group" v-if="formData.staff_type === 'medical_resident'">
+                                <label class="form-label">Resident Category</label>
+                                <select class="form-control" v-model="formData.resident_category">
+                                    <option value="department_internal">Department Internal</option>
+                                    <option value="rotating_other_dept">Rotating - Other Dept</option>
+                                    <option value="external_abroad">External/Abroad</option>
+                                </select>
+                            </div>
+                            <div class="form-group" v-if="formData.staff_type === 'medical_resident'">
+                                <label class="form-label">Training Year</label>
+                                <select class="form-control" v-model="formData.training_year">
+                                    <option value="1">Year 1</option>
+                                    <option value="2">Year 2</option>
+                                    <option value="3">Year 3</option>
+                                    <option value="4">Year 4</option>
+                                    <option value="5">Year 5+</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Primary Clinic/Unit</label>
+                                <select class="form-control" v-model="formData.primary_clinic_id">
+                                    <option value="">Select unit...</option>
+                                    <option v-for="unit in availableUnits" :value="unit.id">{{ unit.unit_name }}</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Work Phone</label>
+                                <input type="text" class="form-control" v-model="formData.work_phone">
+                            </div>
+                            <div class="form-group" v-if="formData.staff_type === 'attending_physician'">
+                                <label class="form-label">
+                                    <input type="checkbox" v-model="formData.can_supervise_residents">
+                                    Can Supervise Residents
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Employment Status <span class="required">*</span></label>
+                                <select class="form-control" v-model="formData.employment_status" required>
+                                    <option value="active">Active</option>
+                                    <option value="on_leave">On Leave</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Special Notes</label>
+                            <textarea class="form-control" v-model="formData.special_notes" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @click="$emit('close')">Cancel</button>
+                    <button class="btn btn-primary" @click="submitForm" :disabled="saving">
+                        <span v-if="saving" class="loading-spinner"></span>
+                        <span v-else>{{ editingStaff ? 'Update' : 'Save' }} Staff</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <script>
+    // ============ SINGLE SUPABASE INITIALIZATION ============
+    const SUPABASE_URL = 'https://vssmguzuvekkecbmwcjw.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
+
+    // Initialize Supabase once
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: false
+        }
+    });
+
+    // ============ DRBC SERVICE ============
+    class DynamicRBACService {
+        constructor() {
+            this.permissionCache = new Map();
+            this.cacheTTL = 5 * 60 * 1000;
+        }
+
+        async checkPermission(user, permissionKey, context = null) {
+            try {
+                const cacheKey = `${user.id}_${permissionKey}_${context ? JSON.stringify(context) : 'no-context'}`;
+                
+                // Check cache
+                const cached = this.permissionCache.get(cacheKey);
+                if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
+                    return cached.result;
+                }
+
+                // Check static permission
+                const hasStatic = await this.checkStaticPermission(user, permissionKey);
+                if (!hasStatic) {
+                    this.cacheResult(cacheKey, false);
+                    return false;
+                }
+
+                // Check dynamic sequence if context provided
+                if (context) {
+                    const sequence = await this.getSequenceForPermission(permissionKey, context);
+                    if (sequence) {
+                        const canExecute = await this.checkDynamicSequence(user, sequence, context);
+                        this.cacheResult(cacheKey, canExecute);
+                        return canExecute;
+                    }
+                }
+
+                this.cacheResult(cacheKey, true);
+                return true;
+            } catch (error) {
+                console.error('DRBC permission check error:', error);
+                return false;
+            }
+        }
+
+        async checkStaticPermission(user, permissionKey) {
+            const { data: permission } = await supabase
+                .from('role_permissions')
+                .select('*')
+                .eq('role_key', user.user_role)
+                .eq('permission_key', permissionKey)
+                .eq('is_active', true)
+                .single();
+            
+            return !!permission;
+        }
+
+        async getSequenceForPermission(permissionKey, context) {
+            const { data: sequence } = await supabase
+                .from('permission_sequences')
+                .select(`
+                    *,
+                    sequence_steps (
+                        id,
+                        step_number,
+                        permission_key,
+                        required_role,
+                        auto_complete,
+                        timeout_minutes,
+                        escalation_role
+                    )
+                `)
+                .eq('is_active', true)
+                .contains('trigger_permissions', [permissionKey])
+                .single();
+            
+            return sequence;
+        }
+
+        async checkDynamicSequence(user, sequence, context) {
+            // Get active execution for this context
+            const { data: execution } = await supabase
+                .from('sequence_executions')
+                .select(`
+                    *,
+                    step_completions (
+                        id,
+                        step_number,
+                        completed_by,
+                        completed_at,
+                        notes
+                    )
+                `)
+                .eq('sequence_id', sequence.id)
+                .eq('context_id', context.id)
+                .eq('is_completed', false)
+                .single();
+
+            if (!execution) {
+                return await this.canStartSequence(user, sequence, context);
+            }
+
+            const currentStep = sequence.sequence_steps.find(
+                step => step.step_number === execution.current_step
+            );
+
+            if (!currentStep) return false;
+
+            if (currentStep.required_role !== user.user_role) {
+                if (currentStep.escalation_role !== user.user_role) {
+                    return false;
+                }
+            }
+
+            const completedSteps = execution.step_completions || [];
+            const previousSteps = sequence.sequence_steps.filter(
+                step => step.step_number < execution.current_step
+            );
+
+            return previousSteps.every(step =>
+                completedSteps.some(completion => completion.step_number === step.step_number)
+            );
+        }
+
+        async canStartSequence(user, sequence, context) {
+            const { data: canStart } = await supabase
+                .from('sequence_start_permissions')
+                .select('*')
+                .eq('sequence_id', sequence.id)
+                .eq('role_key', user.user_role)
+                .single();
+
+            if (!canStart) return false;
+
+            const { data: existing } = await supabase
+                .from('sequence_executions')
+                .select('id')
+                .eq('sequence_id', sequence.id)
+                .eq('context_id', context.id)
+                .eq('is_completed', true)
+                .single();
+
+            return !existing;
+        }
+
+        async startWorkflow(sequenceId, context, initiator) {
+            const { data: execution } = await supabase
+                .from('sequence_executions')
+                .insert({
+                    sequence_id: sequenceId,
+                    context_id: context.id,
+                    context_type: context.type,
+                    metadata: context,
+                    current_step: 1,
+                    status: 'active',
+                    created_by: initiator.id
+                })
+                .select()
+                .single();
+
+            await this.logAudit({
+                type: 'workflow_started',
+                user_id: initiator.id,
+                execution_id: execution.id,
+                metadata: { sequenceId, context }
+            });
+
+            await this.notifyNextStep(execution, 1);
+
+            return execution;
+        }
+
+        async completeStep(executionId, stepNumber, user, notes = null) {
+            await supabase
+                .from('step_completions')
+                .insert({
+                    execution_id: executionId,
+                    step_number: stepNumber,
+                    completed_by: user.id,
+                    notes: notes
+                });
+
+            const { data: execution } = await supabase
+                .from('sequence_executions')
+                .select('*, permission_sequences!inner(*)')
+                .eq('id', executionId)
+                .single();
+
+            const { data: steps } = await supabase
+                .from('sequence_steps')
+                .select('step_number')
+                .eq('sequence_id', execution.sequence_id)
+                .order('step_number');
+
+            const nextStep = steps.find(s => s.step_number === execution.current_step + 1);
+
+            let updateData = {};
+
+            if (nextStep) {
+                updateData.current_step = nextStep.step_number;
+            } else {
+                updateData.is_completed = true;
+                updateData.completed_at = new Date().toISOString();
+                updateData.status = 'completed';
+            }
+
+            await supabase
+                .from('sequence_executions')
+                .update(updateData)
+                .eq('id', executionId);
+
+            await this.logAudit({
+                type: 'step_completed',
+                user_id: user.id,
+                execution_id: executionId,
+                step_number: stepNumber,
+                metadata: { notes }
+            });
+
+            if (nextStep) {
+                await this.notifyNextStep(execution, nextStep.step_number);
+            }
+
+            return nextStep;
+        }
+
+        async notifyNextStep(execution, stepNumber) {
+            const { data: step } = await supabase
+                .from('sequence_steps')
+                .select('required_role')
+                .eq('sequence_id', execution.sequence_id)
+                .eq('step_number', stepNumber)
+                .single();
+
+            if (!step) return;
+
+            const { data: users } = await supabase
+                .from('app_users')
+                .select('id, email, full_name')
+                .eq('user_role', step.required_role)
+                .eq('account_status', 'active');
+
+            for (const user of users) {
+                await supabase
+                    .from('notifications')
+                    .insert({
+                        user_id: user.id,
+                        type: 'workflow_action_required',
+                        title: 'Action Required',
+                        message: `Please complete step ${stepNumber} of workflow`,
+                        data: { execution_id: execution.id, step_number: stepNumber },
+                        is_read: false
+                    });
+            }
+        }
+
+        cacheResult(key, result) {
+            this.permissionCache.set(key, {
+                result,
+                timestamp: Date.now()
+            });
+        }
+
+        async logAudit(logData) {
+            await supabase
+                .from('audit_logs')
+                .insert({
+                    ...logData,
+                    timestamp: new Date().toISOString()
+                });
+        }
+
+        clearCache() {
+            this.permissionCache.clear();
+        }
+    }
+
+    const drbac = new DynamicRBACService();
+
+    // ============ VUE COMPONENTS ============
+    const { createApp, ref, computed, onMounted, watch } = Vue;
+
+    // Component Registry
+    const components = {
+        'MedicalStaffManagement': {
+            template: '#medical-staff-management-template',
+            setup() {
+                const staff = ref([]);
+                const filters = ref({
+                    staffType: '',
+                    employmentStatus: ''
+                });
+                const searchQuery = ref('');
+                const loading = ref(true);
+
+                const filteredStaff = computed(() => {
+                    return staff.value.filter(s => {
+                        const matchesType = !filters.value.staffType || s.staff_type === filters.value.staffType;
+                        const matchesStatus = !filters.value.employmentStatus || s.employment_status === filters.value.employmentStatus;
+                        const matchesSearch = !searchQuery.value || 
+                            s.full_name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+                            (s.staff_id && s.staff_id.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
+                            (s.professional_email && s.professional_email.toLowerCase().includes(searchQuery.value.toLowerCase()));
+                        
+                        return matchesType && matchesStatus && matchesSearch;
+                    });
+                });
+
+                const loadStaff = async () => {
+                    loading.value = true;
+                    try {
+                        const { data, error } = await supabase
+                            .from('medical_staff')
+                            .select(`
+                                *,
+                                training_units!medical_staff_primary_clinic_id_fkey(unit_name),
+                                medical_staff!medical_staff_supervisor_id_fkey(full_name)
+                            `)
+                            .order('full_name');
+                        
+                        if (!error) {
+                            staff.value = data || [];
+                        }
+                    } catch (error) {
+                        console.error('Error loading staff:', error);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const showAddModal = () => {
+                    window.app.showModal('AddMedicalStaffModal', {
+                        onConfirm: async (data) => {
+                            await loadStaff();
+                        }
+                    });
+                };
+
+                const editStaff = (staff) => {
+                    window.app.showModal('AddMedicalStaffModal', {
+                        staff,
+                        editing: true,
+                        onConfirm: async (data) => {
+                            await loadStaff();
+                        }
+                    });
+                };
+
+                const viewSchedule = (staff) => {
+                    // Implement schedule view
+                };
+
+                const getInitials = (name) => {
+                    if (!name) return '??';
+                    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                };
+
+                const formatStaffType = (type) => {
+                    const types = {
+                        medical_resident: 'Medical Resident',
+                        attending_physician: 'Attending Physician',
+                        fellow: 'Fellow',
+                        nurse_practitioner: 'Nurse Practitioner'
+                    };
+                    return types[type] || type;
+                };
+
+                const formatEmploymentStatus = (status) => {
+                    const statuses = {
+                        active: 'Active',
+                        on_leave: 'On Leave',
+                        inactive: 'Inactive'
+                    };
+                    return statuses[status] || status;
+                };
+
+                const getStaffTypeClass = (type) => {
+                    const classes = {
+                        medical_resident: 'badge-purple',
+                        attending_physician: 'badge-teal',
+                        fellow: 'badge-info',
+                        nurse_practitioner: 'badge-success'
+                    };
+                    return classes[type] || 'badge-info';
+                };
+
+                const getStatusClass = (status) => {
+                    const classes = {
+                        active: 'success',
+                        on_leave: 'warning',
+                        inactive: 'danger'
+                    };
+                    return classes[status] || 'info';
+                };
+
+                const hasPermission = (permission) => {
+                    return window.app.hasPermission(permission);
+                };
+
+                onMounted(() => {
+                    loadStaff();
+                });
+
+                return {
+                    staff,
+                    filters,
+                    searchQuery,
+                    loading,
+                    filteredStaff,
+                    showAddModal,
+                    editStaff,
+                    viewSchedule,
+                    getInitials,
+                    formatStaffType,
+                    formatEmploymentStatus,
+                    getStaffTypeClass,
+                    getStatusClass,
+                    hasPermission
+                };
+            }
+        },
+
+        'TrainingUnitsManagement': {
+            template: '#training-units-management-template',
+            setup() {
+                const units = ref([]);
+                const filters = ref({
+                    status: '',
+                    department: ''
+                });
+                const searchQuery = ref('');
+                const loading = ref(true);
+
+                const filteredUnits = computed(() => {
+                    return units.value.filter(u => {
+                        const matchesStatus = !filters.value.status || u.unit_status === filters.value.status;
+                        const matchesDepartment = !filters.value.department || u.department_name === filters.value.department;
+                        const matchesSearch = !searchQuery.value || 
+                            u.unit_name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+                            u.unit_code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+                            u.department_name.toLowerCase().includes(searchQuery.value.toLowerCase());
+                        
+                        return matchesStatus && matchesDepartment && matchesSearch;
+                    });
+                });
+
+                const loadUnits = async () => {
+                    loading.value = true;
+                    try {
+                        const { data, error } = await supabase
+                            .from('training_units')
+                            .select(`
+                                *,
+                                medical_staff!training_units_default_supervisor_id_fkey(full_name)
+                            `)
+                            .order('unit_name');
+                        
+                        if (!error) {
+                            units.value = data || [];
+                        }
+                    } catch (error) {
+                        console.error('Error loading units:', error);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const showAddModal = () => {
+                    // Implement add modal
+                };
+
+                const editUnit = (unit) => {
+                    // Implement edit modal
+                };
+
+                const viewUnitDetails = (unit) => {
+                    // Implement details view
+                };
+
+                const hasPermission = (permission) => {
+                    return window.app.hasPermission(permission);
+                };
+
+                onMounted(() => {
+                    loadUnits();
+                });
+
+                return {
+                    units,
+                    filters,
+                    searchQuery,
+                    loading,
+                    filteredUnits,
+                    showAddModal,
+                    editUnit,
+                    viewUnitDetails,
+                    hasPermission
+                };
+            }
+        },
+
+        'ResidentRotationsManagement': {
+            template: '#resident-rotations-management-template',
+            setup() {
+                const rotations = ref([]);
+                const filters = ref({
+                    status: '',
+                    startDate: '',
+                    endDate: ''
+                });
+                const searchQuery = ref('');
+                const loading = ref(true);
+
+                const filteredRotations = computed(() => {
+                    return rotations.value.filter(r => {
+                        const matchesStatus = !filters.value.status || r.rotation_status === filters.value.status;
+                        const matchesStartDate = !filters.value.startDate || r.rotation_start_date >= filters.value.startDate;
+                        const matchesEndDate = !filters.value.endDate || r.rotation_end_date <= filters.value.endDate;
+                        const matchesSearch = !searchQuery.value || 
+                            r.resident_name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+                            r.unit_name.toLowerCase().includes(searchQuery.value.toLowerCase());
+                        
+                        return matchesStatus && matchesStartDate && matchesEndDate && matchesSearch;
+                    });
+                });
+
+                const loadRotations = async () => {
+                    loading.value = true;
+                    try {
+                        const { data, error } = await supabase
+                            .from('resident_rotations')
+                            .select(`
+                                *,
+                                medical_staff!resident_rotations_resident_id_fkey(full_name as resident_name, staff_id as resident_id),
+                                training_units!resident_rotations_training_unit_id_fkey(unit_name),
+                                medical_staff!resident_rotations_supervising_attending_id_fkey(full_name as supervisor_name)
+                            `)
+                            .order('rotation_start_date', { ascending: false });
+                        
+                        if (!error) {
+                            rotations.value = data || [];
+                        }
+                    } catch (error) {
+                        console.error('Error loading rotations:', error);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const showAddModal = () => {
+                    // Implement add modal
+                };
+
+                const editRotation = (rotation) => {
+                    // Implement edit modal
+                };
+
+                const extendRotation = async (rotation) => {
+                    try {
+                        const newEndDate = prompt('Enter new end date (YYYY-MM-DD):', rotation.rotation_end_date);
+                        if (newEndDate) {
+                            await supabase
+                                .from('resident_rotations')
+                                .update({
+                                    rotation_end_date: newEndDate,
+                                    rotation_status: 'extended'
+                                })
+                                .eq('id', rotation.id);
+                            
+                            await loadRotations();
+                            window.app.showToast('Success', 'Rotation extended successfully', 'success');
+                        }
+                    } catch (error) {
+                        console.error('Error extending rotation:', error);
+                        window.app.showToast('Error', 'Failed to extend rotation', 'error');
+                    }
+                };
+
+                const getInitials = (name) => {
+                    if (!name) return '??';
+                    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                };
+
+                const formatDate = (dateString) => {
+                    if (!dateString) return '';
+                    return new Date(dateString).toLocaleDateString();
+                };
+
+                const getRotationStatusClass = (status) => {
+                    const classes = {
+                        scheduled: 'badge-info',
+                        active: 'badge-success',
+                        completed: 'badge-teal',
+                        extended: 'badge-warning'
+                    };
+                    return classes[status] || 'badge-info';
+                };
+
+                const hasPermission = (permission) => {
+                    return window.app.hasPermission(permission);
+                };
+
+                onMounted(() => {
+                    loadRotations();
+                });
+
+                return {
+                    rotations,
+                    filters,
+                    searchQuery,
+                    loading,
+                    filteredRotations,
+                    showAddModal,
+                    editRotation,
+                    extendRotation,
+                    getInitials,
+                    formatDate,
+                    getRotationStatusClass,
+                    hasPermission
+                };
+            }
+        },
+
+        'AddMedicalStaffModal': {
+            template: '#add-medical-staff-modal-template',
+            props: ['staff', 'editing', 'onConfirm'],
+            setup(props) {
+                const formData = ref({
+                    full_name: '',
+                    professional_email: '',
+                    staff_type: 'medical_resident',
+                    resident_category: 'department_internal',
+                    training_year: '1',
+                    primary_clinic_id: '',
+                    work_phone: '',
+                    can_supervise_residents: false,
+                    employment_status: 'active',
+                    special_notes: ''
+                });
+
+                const availableUnits = ref([]);
+                const saving = ref(false);
+
+                const loadUnits = async () => {
+                    const { data } = await supabase
+                        .from('training_units')
+                        .select('id, unit_name')
+                        .eq('unit_status', 'active')
+                        .order('unit_name');
+                    
+                    availableUnits.value = data || [];
+                };
+
+                const handleStaffTypeChange = () => {
+                    if (formData.value.staff_type !== 'medical_resident') {
+                        formData.value.resident_category = '';
+                        formData.value.training_year = '';
+                    }
+                    if (formData.value.staff_type !== 'attending_physician') {
+                        formData.value.can_supervise_residents = false;
+                    }
+                };
+
+                const submitForm = async () => {
+                    saving.value = true;
+                    try {
+                        let result;
+                        
+                        if (props.editing && props.staff) {
+                            result = await supabase
+                                .from('medical_staff')
+                                .update(formData.value)
+                                .eq('id', props.staff.id);
+                        } else {
+                            result = await supabase
+                                .from('medical_staff')
+                                .insert([{
+                                    ...formData.value,
+                                    staff_id: 'STAFF-' + Date.now().toString().slice(-6),
+                                    created_at: new Date().toISOString()
+                                }]);
+                        }
+
+                        if (result.error) throw result.error;
+                        
+                        window.app.showToast(
+                            'Success',
+                            props.editing ? 'Staff updated successfully' : 'Staff added successfully',
+                            'success'
+                        );
+                        
+                        if (props.onConfirm) {
+                            props.onConfirm(formData.value);
+                        }
+                        
+                        window.app.closeModal();
+                    } catch (error) {
+                        console.error('Error saving staff:', error);
+                        window.app.showToast('Error', 'Failed to save staff', 'error');
+                    } finally {
+                        saving.value = false;
+                    }
+                };
+
+                onMounted(() => {
+                    loadUnits();
+                    
+                    if (props.editing && props.staff) {
+                        formData.value = { ...props.staff };
+                    }
+                });
+
+                return {
+                    formData,
+                    availableUnits,
+                    saving,
+                    handleStaffTypeChange,
+                    submitForm
+                };
+            }
+        }
+    };
+
+    // Additional component stubs
+    const componentStubs = [
+        'PlacementsManagement',
+        'DailyAssignmentsManagement',
+        'OncallScheduleManagement',
+        'LeaveRequestsManagement',
+        'AnnouncementsManagement',
+        'DepartmentOverview',
+        'StaffManagement',
+        'ScheduleApprovalManagement',
+        'WorkflowAnalytics',
+        'ComplianceReports',
+        'AuditLogs'
+    ];
+
+    componentStubs.forEach(componentName => {
+        components[componentName] = {
+            template: `<div class="p-8 text-center text-gray-500">
+                <i class="fas fa-tools text-4xl mb-4"></i>
+                <h3 class="text-xl font-bold mb-2">${componentName}</h3>
+                <p>This component is under development</p>
+            </div>`,
+            setup() {
+                return {};
+            }
+        };
+    });
+
+    // ============ MAIN APP ============
+    const app = createApp({
+        setup() {
+            // State
+            const currentUser = ref(null);
+            const loading = ref(true);
+            const sidebarCollapsed = ref(false);
+            const mobileMenuOpen = ref(false);
+            const currentView = ref('dashboard');
+            const searchQuery = ref('');
+            const windowWidth = ref(window.innerWidth);
+            const activeModal = ref(null);
+            const toasts = ref([]);
+
+            // Login form
+            const loginForm = ref({
+                email: '',
+                password: '',
+                user_role: 'resident_manager'
+            });
+
+            // Data stores
+            const medicalStaff = ref([]);
+            const trainingUnits = ref([]);
+            const workflows = ref([]);
+            const activeWorkflows = ref([]);
+            const pendingActions = ref([]);
+            const systemAlerts = ref([]);
+            const notifications = ref([]);
+            const dashboardStats = ref({
+                activeStaff: 0,
+                residents: 0,
+                attendings: 0,
+                activeWorkflows: 0,
+                awaitingAction: 0,
+                workflowCompletion: 0,
+                totalUnits: 0,
+                occupiedUnits: 0,
+                occupancyRate: 0,
+                compliance: 0,
+                complianceTrend: 0,
+                dutyHourAlerts: 0
+            });
+
+            // System config
+            const systemConfig = ref({
+                systemId: 'PC-DRBAC-' + new Date().getFullYear() + '-001',
+                version: '2.0.0'
+            });
+
+            // Available roles
+            const availableRoles = ref([
+                {
+                    id: 1,
+                    key: 'resident_manager',
+                    name: 'Resident Manager',
+                    description: 'Manage residents, units, rotations',
+                    icon: 'fas fa-user-md'
+                },
+                {
+                    id: 2,
+                    key: 'department_head',
+                    name: 'Department Head',
+                    description: 'Oversee department operations',
+                    icon: 'fas fa-user-tie'
+                },
+                {
+                    id: 3,
+                    key: 'attending_physician',
+                    name: 'Attending Physician',
+                    description: 'Supervise residents, patient care',
+                    icon: 'fas fa-stethoscope'
+                },
+                {
+                    id: 4,
+                    key: 'medical_resident',
+                    name: 'Medical Resident',
+                    description: 'Resident physician in training',
+                    icon: 'fas fa-graduation-cap'
+                }
+            ]);
+
+            // Navigation items
+            const navigationItems = computed(() => [
+                {
+                    key: 'dashboard',
+                    label: 'Dashboard',
+                    icon: 'fas fa-tachometer-alt',
+                    permission: 'view_dashboard',
+                    badge: pendingActions.value.length
+                },
+                {
+                    key: 'medical_staff',
+                    label: 'Medical Staff',
+                    icon: 'fas fa-user-md',
+                    permission: 'view_medical_staff',
+                    badge: null
+                },
+                {
+                    key: 'training_units',
+                    label: 'Training Units',
+                    icon: 'fas fa-hospital-alt',
+                    permission: 'view_training_units',
+                    badge: null
+                },
+                {
+                    key: 'resident_rotations',
+                    label: 'Resident Rotations',
+                    icon: 'fas fa-calendar-alt',
+                    permission: 'view_rotations',
+                    badge: null
+                },
+                {
+                    key: 'placements',
+                    label: 'Placements',
+                    icon: 'fas fa-map-marker-alt',
+                    permission: 'view_placements',
+                    badge: null
+                },
+                {
+                    key: 'daily_assignments',
+                    label: 'Daily Assignments',
+                    icon: 'fas fa-calendar-day',
+                    permission: 'view_assignments',
+                    badge: null
+                },
+                {
+                    key: 'oncall_schedule',
+                    label: 'On-call Schedule',
+                    icon: 'fas fa-phone-alt',
+                    permission: 'view_oncall',
+                    badge: null
+                },
+                {
+                    key: 'leave_requests',
+                    label: 'Leave Requests',
+                    icon: 'fas fa-calendar-times',
+                    permission: 'view_leave_requests',
+                    badge: pendingActions.value.filter(a => a.type === 'leave_request').length
+                },
+                {
+                    key: 'announcements',
+                    label: 'Announcements',
+                    icon: 'fas fa-bullhorn',
+                    permission: 'view_announcements',
+                    badge: null
+                },
+                {
+                    key: 'department_overview',
+                    label: 'Department Overview',
+                    icon: 'fas fa-chart-line',
+                    permission: 'view_department_overview',
+                    badge: null
+                },
+                {
+                    key: 'staff_management',
+                    label: 'Staff Management',
+                    icon: 'fas fa-users',
+                    permission: 'manage_staff',
+                    badge: null
+                },
+                {
+                    key: 'schedule_approval',
+                    label: 'Schedule Approval',
+                    icon: 'fas fa-calendar-check',
+                    permission: 'approve_schedules',
+                    badge: pendingActions.value.filter(a => a.type === 'schedule_approval').length
+                }
+            ]);
+
+            // Report items
+            const reportItems = computed(() => [
+                {
+                    key: 'workflow_analytics',
+                    label: 'Workflow Analytics',
+                    icon: 'fas fa-chart-pie',
+                    permission: 'view_analytics'
+                },
+                {
+                    key: 'compliance_reports',
+                    label: 'Compliance Reports',
+                    icon: 'fas fa-clipboard-check',
+                    permission: 'view_compliance_reports'
+                },
+                {
+                    key: 'audit_logs',
+                    label: 'Audit Logs',
+                    icon: 'fas fa-history',
+                    permission: 'view_audit_logs'
+                }
+            ]);
+
+            // Filtered navigation based on permissions
+            const filteredNavigationItems = computed(() => {
+                return navigationItems.value.filter(item => hasPermission(item.permission));
+            });
+
+            const filteredReportItems = computed(() => {
+                return reportItems.value.filter(item => hasPermission(item.permission));
+            });
+
+            // Computed
+            const workflowStatus = computed(() => [
+                {
+                    id: 1,
+                    name: 'Leave Approval',
+                    icon: 'fas fa-calendar-check',
+                    bgColor: 'bg-green-500',
+                    active: workflows.value.filter(w => w.type === 'leave_approval' && !w.is_completed).length,
+                    completed: workflows.value.filter(w => w.type === 'leave_approval' && w.is_completed).length,
+                    completion: 65
+                },
+                {
+                    id: 2,
+                    name: 'Rotation Placement',
+                    icon: 'fas fa-user-graduate',
+                    bgColor: 'bg-blue-500',
+                    active: workflows.value.filter(w => w.type === 'rotation_placement' && !w.is_completed).length,
+                    completed: workflows.value.filter(w => w.type === 'rotation_placement' && w.is_completed).length,
+                    completion: 45
+                },
+                {
+                    id: 3,
+                    name: 'Capacity Approval',
+                    icon: 'fas fa-hospital',
+                    bgColor: 'bg-purple-500',
+                    active: workflows.value.filter(w => w.type === 'capacity_approval' && !w.is_completed).length,
+                    completed: workflows.value.filter(w => w.type === 'capacity_approval' && w.is_completed).length,
+                    completion: 30
+                }
+            ]);
+
+            const unreadNotifications = computed(() => {
+                return notifications.value.filter(n => !n.is_read).length;
+            });
+
+            // Methods
+            const showToast = (title, message, type = 'info', duration = 5000) => {
+                const icons = {
+                    info: 'fas fa-info-circle',
+                    success: 'fas fa-check-circle',
+                    error: 'fas fa-exclamation-circle',
+                    warning: 'fas fa-exclamation-triangle'
+                };
+
+                const toast = {
+                    id: Date.now(),
+                    title,
+                    message,
+                    type,
+                    icon: icons[type] || icons.info
+                };
+
+                toasts.value.push(toast);
+
+                if (duration > 0) {
+                    setTimeout(() => {
+                        removeToast(toast.id);
+                    }, duration);
+                }
+            };
+
+            const removeToast = (id) => {
+                toasts.value = toasts.value.filter(t => t.id !== id);
+            };
+
+            const getInitials = (name) => {
+                if (!name) return '??';
+                return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+            };
+
+            const formatDate = (dateString) => {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            };
+
+            const formatRelativeTime = (dateString) => {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+
+                if (diffMins < 60) return `${diffMins}m ago`;
+                if (diffHours < 24) return `${diffHours}h ago`;
+                if (diffDays < 7) return `${diffDays}d ago`;
+                return formatDate(dateString);
+            };
+
+            const getRoleDisplayName = (roleKey) => {
+                const role = availableRoles.value.find(r => r.key === roleKey);
+                return role ? role.name : roleKey;
+            };
+
+            const getCurrentTitle = () => {
+                const titles = {
+                    dashboard: 'Dashboard',
+                    medical_staff: 'Medical Staff Management',
+                    training_units: 'Training Units',
+                    resident_rotations: 'Resident Rotations',
+                    placements: 'Resident Placements',
+                    daily_assignments: 'Daily Assignments',
+                    oncall_schedule: 'On-call Schedule',
+                    leave_requests: 'Leave Requests',
+                    announcements: 'Announcements',
+                    department_overview: 'Department Overview',
+                    staff_management: 'Staff Management',
+                    schedule_approval: 'Schedule Approval',
+                    workflow_analytics: 'Workflow Analytics',
+                    compliance_reports: 'Compliance Reports',
+                    audit_logs: 'Audit Logs'
+                };
+
+                if (currentView.value.startsWith('workflow_')) {
+                    const workflowId = currentView.value.replace('workflow_', '');
+                    const workflow = workflows.value.find(w => w.id === workflowId);
+                    return workflow ? workflow.name : 'Workflow Details';
+                }
+
+                return titles[currentView.value] || 'PneumoCare Pro';
+            };
+
+            const getSearchPlaceholder = () => {
+                const placeholders = {
+                    dashboard: 'Search workflows, actions...',
+                    medical_staff: 'Search staff by name, ID, or email...',
+                    training_units: 'Search training units...',
+                    resident_rotations: 'Search rotations...',
+                    placements: 'Search placements...',
+                    daily_assignments: 'Search assignments...',
+                    oncall_schedule: 'Search on-call schedule...',
+                    leave_requests: 'Search leave requests...',
+                    announcements: 'Search announcements...'
+                };
+
+                return placeholders[currentView.value] || 'Search...';
+            };
+
+            const toggleMobileMenu = () => {
+                mobileMenuOpen.value = !mobileMenuOpen.value;
+            };
+
+            const toggleUserMenu = () => {
+                showToast('User Menu', 'User profile menu would open here', 'info');
+            };
+
+            const switchView = (view) => {
+                currentView.value = view;
+                mobileMenuOpen.value = false;
+                loadViewData(view);
+            };
+
+            const openWorkflow = (workflow) => {
+                switchView(`workflow_${workflow.id}`);
+            };
+
+            const hasPermission = async (permissionKey, context = null) => {
+                if (!currentUser.value) return false;
+                return await drbac.checkPermission(currentUser.value, permissionKey, context);
+            };
+
+            // Modal management
+            const showModal = (component, props = {}) => {
+                activeModal.value = { component, props };
+            };
+
+            const closeModal = () => {
+                activeModal.value = null;
+            };
+
+            const handleModalConfirm = (data) => {
+                if (activeModal.value?.props?.onConfirm) {
+                    activeModal.value.props.onConfirm(data);
+                }
+                closeModal();
+            };
+
+            // Data loading
+            const loadInitialData = async () => {
+                loading.value = true;
+                try {
+                    await Promise.all([
+                        loadMedicalStaff(),
+                        loadTrainingUnits(),
+                        loadWorkflows(),
+                        loadActiveWorkflows(),
+                        loadPendingActions(),
+                        loadSystemAlerts(),
+                        loadNotifications(),
+                        loadDashboardStats()
+                    ]);
+                } catch (error) {
+                    console.error('Error loading initial data:', error);
+                    showToast('Error', 'Failed to load system data', 'error');
+                } finally {
+                    loading.value = false;
+                }
+            };
+
+            const loadViewData = async (view) => {
+                // View-specific data loading
+            };
+
+            const loadMedicalStaff = async () => {
+                const { data } = await supabase
+                    .from('medical_staff')
+                    .select('*')
+                    .order('full_name');
+                
+                medicalStaff.value = data || [];
+            };
+
+            const loadTrainingUnits = async () => {
+                const { data } = await supabase
+                    .from('training_units')
+                    .select('*')
+                    .order('unit_name');
+                
+                trainingUnits.value = data || [];
+            };
+
+            const loadWorkflows = async () => {
+                const { data } = await supabase
+                    .from('sequence_executions')
+                    .select(`
+                        *,
+                        permission_sequences!inner(*)
+                    `)
+                    .order('created_at', { ascending: false });
+                
+                workflows.value = data || [];
+            };
+
+            const loadActiveWorkflows = async () => {
+                activeWorkflows.value = workflows.value
+                    .filter(w => !w.is_completed)
+                    .map(w => ({
+                        id: w.id,
+                        name: w.permission_sequences?.name || 'Unknown Workflow',
+                        icon: w.permission_sequences?.icon || 'fas fa-project-diagram',
+                        pendingSteps: w.permission_sequences?.sequence_steps?.length - (w.step_completions?.length || 0) || 0
+                    }));
+            };
+
+            const loadPendingActions = async () => {
+                if (!currentUser.value) return;
+                
+                const { data: actions } = await supabase
+                    .from('sequence_executions')
+                    .select(`
+                        *,
+                        permission_sequences!inner(*),
+                        step_completions(*)
+                    `)
+                    .eq('is_completed', false)
+                    .contains('permission_sequences.required_roles', [currentUser.value.user_role]);
+                
+                pendingActions.value = (actions || []).map(action => ({
+                    id: action.id,
+                    workflow: action.permission_sequences?.name || 'Unknown',
+                    action: 'Complete Step',
+                    priorityClass: 'badge-warning',
+                    initiatedBy: action.created_by_user || 'System',
+                    waitingSince: action.created_at,
+                    type: 'workflow_action',
+                    icon: action.permission_sequences?.icon || 'fas fa-project-diagram'
+                }));
+            };
+
+            const loadSystemAlerts = async () => {
+                const { data } = await supabase
+                    .from('system_alerts')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                systemAlerts.value = data || [];
+            };
+
+            const loadNotifications = async () => {
+                if (!currentUser.value) return;
+                
+                const { data } = await supabase
+                    .from('notifications')
+                    .select('*')
+                    .eq('user_id', currentUser.value.id)
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+                
+                notifications.value = data || [];
+            };
+
+            const loadDashboardStats = async () => {
+                const residents = medicalStaff.value.filter(s => s.staff_type === 'medical_resident' && s.employment_status === 'active');
+                const attendings = medicalStaff.value.filter(s => s.staff_type === 'attending_physician' && s.employment_status === 'active');
+                const activeUnits = trainingUnits.value.filter(u => u.unit_status === 'active');
+                const occupiedUnits = trainingUnits.value.filter(u => (u.current_residents || 0) >= u.maximum_residents);
+
+                dashboardStats.value = {
+                    activeStaff: medicalStaff.value.filter(s => s.employment_status === 'active').length,
+                    residents: residents.length,
+                    attendings: attendings.length,
+                    activeWorkflows: activeWorkflows.value.length,
+                    awaitingAction: pendingActions.value.length,
+                    workflowCompletion: workflows.value.length > 0 ? 
+                        Math.round((workflows.value.filter(w => w.is_completed).length / workflows.value.length) * 100) : 0,
+                    totalUnits: activeUnits.length,
+                    occupiedUnits: occupiedUnits.length,
+                    occupancyRate: activeUnits.length > 0 ? 
+                        Math.round((occupiedUnits.length / activeUnits.length) * 100) : 0,
+                    compliance: 92,
+                    complianceTrend: 2,
+                    dutyHourAlerts: 2
+                };
+            };
+
+            // Event handlers
+            const handleLogin = async () => {
+                loading.value = true;
+                try {
+                    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                        email: loginForm.value.email,
+                        password: loginForm.value.password
+                    });
+
+                    if (authError) throw authError;
+
+                    const { data: userProfile } = await supabase
+                        .from('app_users')
+                        .select('*')
+                        .eq('email', loginForm.value.email)
+                        .single();
+
+                    if (userProfile) {
+                        currentUser.value = userProfile;
+                    } else {
+                        const { data: newUser } = await supabase
+                            .from('app_users')
+                            .insert([{
+                                email: loginForm.value.email,
+                                full_name: loginForm.value.email.split('@')[0].replace(/\./g, ' '),
+                                user_role: loginForm.value.user_role,
+                                account_status: 'active',
+                                created_at: new Date().toISOString()
+                            }])
+                            .select()
+                            .single();
+
+                        currentUser.value = newUser;
+                    }
+
+                    showToast('Welcome', `Welcome back, ${currentUser.value.full_name}!`, 'success');
+                    await loadInitialData();
+                    switchView('dashboard');
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showToast('Login Failed', error.message || 'Invalid credentials', 'error');
+                } finally {
+                    loading.value = false;
+                }
+            };
+
+            const handleLogout = async () => {
+                try {
+                    await supabase.auth.signOut();
+                    currentUser.value = null;
+                    showToast('Logged Out', 'You have been logged out successfully', 'success');
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    showToast('Error', 'Failed to logout', 'error');
+                }
+            };
+
+            const handleSearch = () => {
+                // Implement search functionality
+            };
+
+            const handlePendingAction = (action) => {
+                switchView('workflow_' + action.id);
+            };
+
+            const viewAllPendingActions = () => {
+                switchView('leave_requests');
+            };
+
+            const dismissAlert = async (alert) => {
+                try {
+                    await supabase
+                        .from('system_alerts')
+                        .update({ is_active: false })
+                        .eq('id', alert.id);
+                    
+                    systemAlerts.value = systemAlerts.value.filter(a => a.id !== alert.id);
+                    showToast('Success', 'Alert dismissed', 'success');
+                } catch (error) {
+                    console.error('Error dismissing alert:', error);
+                    showToast('Error', 'Failed to dismiss alert', 'error');
+                }
+            };
+
+            const showNotifications = () => {
+                showToast('Notifications', 'Notifications panel would open here', 'info');
+            };
+
+            const showQuickActions = () => {
+                showToast('Quick Actions', 'Quick actions menu would open here', 'info');
+            };
+
+            // Lifecycle
+            onMounted(() => {
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                    if (session) {
+                        loadUserFromSession(session);
+                    } else {
+                        loading.value = false;
+                    }
+                });
+
+                window.addEventListener('resize', () => {
+                    windowWidth.value = window.innerWidth;
+                    if (windowWidth.value > 1024) {
+                        mobileMenuOpen.value = false;
+                    }
+                });
+            });
+
+            const loadUserFromSession = async (session) => {
+                const { data: userProfile } = await supabase
+                    .from('app_users')
+                    .select('*')
+                    .eq('email', session.user.email)
+                    .single();
+
+                if (userProfile) {
+                    currentUser.value = userProfile;
+                    await loadInitialData();
+                    switchView('dashboard');
+                }
+            };
+
+            // Watch for window width changes
+            watch(windowWidth, (width) => {
+                if (width > 1024 && mobileMenuOpen.value) {
+                    mobileMenuOpen.value = false;
+                }
+            });
+
+            // Expose methods to window for components
+            window.app = {
+                showToast,
+                showModal,
+                closeModal,
+                hasPermission
+            };
+
+            return {
+                // State
+                currentUser,
+                loading,
+                sidebarCollapsed,
+                mobileMenuOpen,
+                currentView,
+                searchQuery,
+                windowWidth,
+                activeModal,
+                toasts,
+                loginForm,
+                medicalStaff,
+                trainingUnits,
+                workflows,
+                activeWorkflows,
+                pendingActions,
+                systemAlerts,
+                notifications,
+                dashboardStats,
+                systemConfig,
+                availableRoles,
+                navigationItems,
+                reportItems,
+                filteredNavigationItems,
+                filteredReportItems,
+                workflowStatus,
+                unreadNotifications,
+
+                // Methods
+                showToast,
+                removeToast,
+                getInitials,
+                formatDate,
+                formatRelativeTime,
+                getRoleDisplayName,
+                getCurrentTitle,
+                getSearchPlaceholder,
+                toggleMobileMenu,
+                toggleUserMenu,
+                switchView,
+                openWorkflow,
+                hasPermission,
+                showModal,
+                closeModal,
+                handleModalConfirm,
+                handleLogin,
+                handleLogout,
+                handleSearch,
+                handlePendingAction,
+                viewAllPendingActions,
+                dismissAlert,
+                showNotifications,
+                showQuickActions
+            };
+        }
+    });
+
+    // Register all components
+    Object.entries(components).forEach(([name, component]) => {
+        app.component(name, component);
+    });
+
+    // Mount the app
+    app.mount('#app');
+    </script>
+</body>
+</html>
