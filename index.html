@@ -3799,28 +3799,28 @@ const staffFilter = ref({
                     };
                 });
 
-               const filteredMedicalStaff = computed(() => {
-    let filtered = medicalStaff.value;
-    
-    if (staffSearch.value) {
-        const search = staffSearch.value.toLowerCase();
-        filtered = filtered.filter(s => 
-            s.full_name?.toLowerCase().includes(search) ||
-            (s.staff_id && s.staff_id.toLowerCase().includes(search)) ||
-            (s.professional_email && s.professional_email.toLowerCase().includes(search))
-        );
-    }
-    
-    if (staffFilter.value.staff_type) {
-        filtered = filtered.filter(s => s.staff_type === staffFilter.value.staff_type);
-    }
-    
-    if (staffFilter.value.employment_status) {
-        filtered = filtered.filter(s => s.employment_status === staffFilter.value.employment_status);
-    }
-    
-    return filtered;
-});
+                const filteredMedicalStaff = computed(() => {
+                    let filtered = medicalStaff.value;
+                    
+                    if (staffSearch.value) {
+                        const search = staffSearch.value.toLowerCase();
+                        filtered = filtered.filter(s => 
+                            s.full_name.toLowerCase().includes(search) ||
+                            (s.staff_id && s.staff_id.toLowerCase().includes(search))
+                        );
+                    }
+                    
+                    if (staffFilter.value.staff_type) {
+                        filtered = filtered.filter(s => s.staff_type === staffFilter.value.staff_type);
+                    }
+                    
+                    if (staffFilter.value.employment_status) {
+                        filtered = filtered.filter(s => s.employment_status === staffFilter.value.employment_status);
+                    }
+                    
+                    return filtered;
+                });
+
                 const todaysAssignments = computed(() => {
                     const today = new Date().toISOString().split('T')[0];
                     return dailyAssignments.value
@@ -4391,12 +4391,7 @@ const deleteRole = (role) => {
     console.log('Delete role clicked:', role.name);
     showAdvancedToast('Delete Role', `Would delete ${role.name}`, 'warning');
 };
-// Add these with your other reactive variables in setup()
-const staffSearch = ref('');
-const staffFilter = ref({
-    staff_type: '',
-    employment_status: ''
-});
+
 const editRole = (role) => {
     console.log('Edit role clicked:', role.name);
     // Your edit logic here
@@ -4411,242 +4406,98 @@ const showAddRoleModal = () => {
     console.log('Show add role modal clicked');
     // Your modal logic here
 };
-        // ============ UTILITY FUNCTIONS ============
-const getInitials = (name) => {
-    if (!name) return '??';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-};
-
-const formatDate = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-    });
-};
-
-const formatDateTime = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-};
-
-const formatTimeRange = (start, end) => {
-    const formatTime = (time) => {
-        if (!time) return '';
-        const [hours, minutes] = time.split(':');
-        const hour = parseInt(hours);
-        return `${hour % 12 || 12}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
-    };
-    return `${formatTime(start)} - ${formatTime(end)}`;
-};
-
-const generateUUID = () => {
-    return crypto.randomUUID ? crypto.randomUUID() : 
-        'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-};
-
-const getUserRoleDisplay = (role) => {
-    const roles = {
-        resident_manager: 'Resident Manager',
-        department_head: 'Head of Department',
-        system_admin: 'System Administrator',
-        viewing_doctor: 'Viewing Doctor',
-        attending_physician: 'Attending Physician'
-    };
-    return roles[role] || role;
-};
-
-const formatStaffType = (type) => {
-    const types = {
-        medical_resident: 'Medical Resident',
-        attending_physician: 'Attending Physician',
-        fellow: 'Fellow',
-        nurse_practitioner: 'Nurse Practitioner'
-    };
-    return types[type] || type;
-};
-
-const getStaffTypeClass = (type) => {
-    return type === 'medical_resident' ? 'badge-resident-advanced' : 
-           type === 'attending_physician' ? 'badge-attending-advanced' : 
-           'badge-admin-advanced';
-};
-
-const getAuditIcon = (action) => {
-    const icons = {
-        CREATE: 'fas fa-plus-circle',
-        UPDATE: 'fas fa-edit',
-        DELETE: 'fas fa-trash',
-        READ: 'fas fa-eye',
-        LOGIN: 'fas fa-sign-in-alt',
-        LOGOUT: 'fas fa-sign-out-alt',
-        PERMISSION_CHANGE: 'fas fa-user-shield'
-    };
-    return icons[action] || 'fas fa-info-circle';
-};
-
-// NEW: Missing utility functions that your template needs:
-const formatResidentCategory = (category) => {
-    const categories = {
-        'pg_year_1': 'PGY-1',
-        'pg_year_2': 'PGY-2',
-        'pg_year_3': 'PGY-3',
-        'pg_year_4': 'PGY-4',
-        'senior': 'Senior Resident'
-    };
-    return categories[category] || category;
-};
-
-const formatEmploymentStatus = (status) => {
-    const statusMap = {
-        'active': 'Active',
-        'on_leave': 'On Leave',
-        'inactive': 'Inactive',
-        'terminated': 'Terminated'
-    };
-    return statusMap[status] || status;
-};
-
-const formatDateShort = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric'
-    });
-};
-
-// Add this for duty hours display
-const getDutyHoursStatus = (hours) => {
-    if (hours >= 80) return { class: 'critical', label: 'Critical' };
-    if (hours >= 70) return { class: 'warning', label: 'Warning' };
-    return { class: 'compliant', label: 'Compliant' };
-};
-
-// Add this for formatting time
-const formatTime = (timeString) => {
-    if (!timeString) return '';
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
-};
                 // ============ RETURN ============
-               return {
-    // State
-    currentUser,
-    loginForm,
-    loading,
-    saving,
-    permissionLoading,
-    savingPermissions,
-    currentView,
-    sidebarCollapsed,
-    mobileMenuOpen,
-    showPermissionManager,
-    searchQuery,
-    permissionFilter,
-    
-    // New reactive variables
-    staffSearch,
-    staffFilter,
-    
-    // Data
-    medicalStaff,
-    trainingUnits,
-    residentRotations,
-    dailyAssignments,
-    onCallSchedule,
-    leaveRequests,
-    announcements,
-    auditLogs,
-    systemRoles,
-    systemStats,
-    
-    // UI
-    toasts,
-    permissionResources,
-    
-    // Computed
-    stats,
-    filteredMedicalStaff,
-    todaysAssignments,
-    todaysOnCall,
-    recentAnnouncements,
-    coverageAlerts,
-    emergencyAlerts,
-    
-    // Permission System
-    hasPermission,
-    hasAnyPermission,
-    getViewPermission,
-    getUserPermissionLevel,
-    getResourcePermissionLevel,
-    getPermissionDescription,
-    formatActionName,
-    formatResourceName,
-    
-    // Navigation
-    switchView,
-    getCurrentTitle,
-    getCurrentSubtitle,
-    getSearchPlaceholder,
-    toggleMobileMenu,
-    closeMobileMenu,
-    togglePermissionManager,
-    
-    // Authentication
-    handleAdvancedLogin,
-    handleLogout,
-    
-    // ============ UTILITY FUNCTIONS ============
-    getInitials,
-    formatDate,
-    formatDateTime,
-    formatTimeRange,
-    generateUUID,
-    getUserRoleDisplay,
-    formatStaffType,
-    getStaffTypeClass,
-    getAuditIcon,
-    
-    // New utility functions
-    formatResidentCategory,
-    formatEmploymentStatus,
-    formatDateShort,
-    getDutyHoursStatus,
-    formatTime,
-    
-    // Actions
-    showAddMedicalStaffModal,
-    editMedicalStaff,
-    deleteMedicalStaff,
-    quickAssignToUnit,
-    exportAuditLogs,
-    handleAdvancedSearch,
-    togglePermissionFilter,
-    
-    // Permission Management
-    togglePermission,
-    savePermissionChanges,
-    
-    // Toast
-    removeToast,
-    
-    // Role management functions
-    deleteRole,
-    editRole,
+                return {
+                    // State
+                     toggleUserMenu,
+                    hasPermission,
+                    currentUser,
+                    loginForm,
+                    loading,
+                    saving,
+                    permissionLoading,
+                    savingPermissions,
+                    currentView,
+                    sidebarCollapsed,
+                    mobileMenuOpen,
+                    showPermissionManager,
+                    searchQuery,
+                    permissionFilter,
+                    deleteRole,
+    editRole, 
     cloneRole,
-    showAddRoleModal
+    showAddRoleModal,
+                    // Data
+                    medicalStaff,
+                    trainingUnits,
+                    dailyAssignments,
+                    onCallSchedule,
+                    announcements,
+                    auditLogs,
+                    systemRoles,
+                    systemStats,
+                    
+                    // UI
+                    toasts,
+                    permissionResources,
+                    
+                    // Computed
+                    stats,
+                    filteredMedicalStaff,
+                    todaysAssignments,
+                    todaysOnCall,
+                    recentAnnouncements,
+                    coverageAlerts,
+                    emergencyAlerts,
+                    
+                    // Permission System
+                    hasPermission,
+                    hasAnyPermission,
+                    getViewPermission,
+                    getUserPermissionLevel,
+                    getResourcePermissionLevel,
+                    getPermissionDescription,
+                    formatActionName,
+                    formatResourceName,
+                    
+                    // Navigation
+                    switchView,
+                    getCurrentTitle,
+                    getCurrentSubtitle,
+                    getSearchPlaceholder,
+                    toggleMobileMenu,
+                    closeMobileMenu,
+                    togglePermissionManager,
+                    
+                    // Authentication
+                    handleAdvancedLogin,
+                    handleLogout,
+                    
+                    // Utilities
+                    getInitials,
+                    formatDate,
+                    formatDateTime,
+                    formatTimeRange,
+                    getUserRoleDisplay,
+                    formatStaffType,
+                    getStaffTypeClass,
+                    getAuditIcon,
+                    
+                    // Actions
+                    showAddMedicalStaffModal,
+                    editMedicalStaff,
+                    deleteMedicalStaff,
+                    quickAssignToUnit,
+                    exportAuditLogs,
+                    handleAdvancedSearch,
+                    togglePermissionFilter,
+                    
+                    // Permission Management
+                    togglePermission,
+                    savePermissionChanges,
+                    
+                    // Toast
+                    removeToast
                 };
             }
         }).mount('#app');
