@@ -3228,13 +3228,18 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
         persistSession: true,
         detectSessionInUrl: false,
         storage: window.localStorage
+    },
+    global: {
+        headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
     }
 });
 
 // Test if it works
 console.log('Supabase Client:', supabaseClient);
 console.log('Auth available:', supabaseClient.auth);
-
         // Advanced DRBA Permission System
         const PermissionSystem = {
             resources: {
