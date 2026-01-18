@@ -3775,6 +3775,81 @@
         </form>
     </div>
 </div>
+        <!-- Leave Requests Modal -->
+<div v-if="leaveRequestModal.show" class="modal-overlay-advanced">
+    <div class="modal-advanced" style="max-width: 600px;">
+        <div class="modal-header-advanced">
+            <div class="modal-title-advanced">
+                <div class="modal-title-icon">
+                    <i class="fas fa-calendar-times"></i>
+                </div>
+                {{ leaveRequestModal.mode === 'add' ? 'Request Leave' : 'Review Leave Request' }}
+            </div>
+            <button class="modal-close-advanced" @click="leaveRequestModal.show = false">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form @submit.prevent="saveLeaveRequest">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Start Date *</label>
+                    <input type="date" class="form-input-advanced" v-model="leaveRequestModal.form.start_date" required>
+                </div>
+                
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">End Date *</label>
+                    <input type="date" class="form-input-advanced" v-model="leaveRequestModal.form.end_date" required>
+                </div>
+            </div>
+            
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Leave Type *</label>
+                <select class="form-select-advanced" v-model="leaveRequestModal.form.leave_type" required>
+                    <option value="vacation">Vacation</option>
+                    <option value="sick_leave">Sick Leave</option>
+                    <option value="personal">Personal</option>
+                    <option value="maternity">Maternity/Paternity</option>
+                    <option value="educational">Educational</option>
+                </select>
+            </div>
+            
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Reason *</label>
+                <textarea class="form-textarea-advanced" 
+                          v-model="leaveRequestModal.form.reason"
+                          required
+                          placeholder="Please provide details for your leave request..."></textarea>
+            </div>
+            
+            <div v-if="leaveRequestModal.mode === 'review'" class="form-group-advanced">
+                <label class="form-label-advanced">Status</label>
+                <select class="form-select-advanced" v-model="leaveRequestModal.form.status">
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+            
+            <div v-if="leaveRequestModal.mode === 'review'" class="form-group-advanced">
+                <label class="form-label-advanced">Approver Notes</label>
+                <textarea class="form-textarea-advanced" 
+                          v-model="leaveRequestModal.form.approver_notes"
+                          placeholder="Add approval notes or comments..."></textarea>
+            </div>
+            
+            <div class="form-actions-advanced">
+                <button type="button" class="btn-advanced btn-outline-advanced" @click="leaveRequestModal.show = false">
+                    Cancel
+                </button>
+                <button type="submit" class="btn-advanced" :disabled="saving">
+                    <i class="fas fa-save"></i>
+                    {{ saving ? 'Saving...' : (leaveRequestModal.mode === 'add' ? 'Submit Request' : 'Update Request') }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 <!-- Training Units Modal -->
 <div v-if="trainingUnitModal.show" class="modal-overlay-advanced">
     <div class="modal-advanced" style="max-width: 600px;">
@@ -5046,6 +5121,205 @@ const onCallModal = ref({
         coverage_notes: ''
     }
 });
+            // ============ LEAVE REQUESTS MODAL ============
+const leaveRequestModal = ref({
+    show: false,
+    mode: 'add', // 'add' or 'review'
+    request: null,
+    form: {
+        start_date: '',
+        end_date: '',
+        leave_type: 'vacation',
+        reason: '',
+        status: 'pending',
+        approver_notes: ''
+    }
+});
+
+const showAddLeaveRequestModal = () => {
+    if (!hasPermission('leave_requests', 'create')) {
+        showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
+        return;
+    }
+    
+    // Set default dates (next week)
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const startDate = new Date().toISOString().split('T')[0];
+    const endDate = nextWeek.toISOString().split('T')[0];
+    
+    leaveRequestModal.value = {
+        show: true,
+        mode: 'add',
+        request: null,
+        form: {
+            start_date: startDate,
+            end_date: endDate,
+            leave_type: 'vacation',
+            reason: '',
+            status: 'pending',
+            approver_notes: ''
+        }
+    };
+};
+
+const viewLeaveRequestDetails = (request) => {
+    leaveRequestModal.value = {
+        show: true,
+        mode: 'review',
+        request: request,
+        form: {
+            start_date: request.start_date,
+            end_date: request.end_date,
+            leave_type: request.leave_type,
+            reason: request.reason,
+            status: request.status,
+            approver_notes: request.approver_notes || ''
+        }
+    };
+};
+
+const approveLeaveRequest = async (request) => {
+    if (!hasPermission('leave_requests', 'approve')) {
+        showAdvancedToast('Permission Denied', 'Need approve permission', 'permission');
+        return;
+    }
+    
+    if (!confirm(`Approve leave request for ${request.staff_name}?`)) return;
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('leave_requests')
+            .update({
+                status: 'approved',
+                approver_notes: `Approved by ${currentUser.value.full_name}`,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', request.id)
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        // Update local state
+        const index = leaveRequests.value.findIndex(r => r.id === data.id);
+        if (index !== -1) leaveRequests.value[index] = data;
+        
+        showAdvancedToast('Approved', `Leave request approved`, 'success');
+        logAudit('LEAVE_APPROVE', `Approved leave request for ${request.staff_name}`, 'leave_requests', request.id);
+        
+    } catch (error) {
+        console.error('Error approving leave:', error);
+        showAdvancedToast('Approval Failed', error.message, 'error');
+    }
+};
+
+const rejectLeaveRequest = async (request) => {
+    if (!hasPermission('leave_requests', 'reject')) {
+        showAdvancedToast('Permission Denied', 'Need reject permission', 'permission');
+        return;
+    }
+    
+    if (!confirm(`Reject leave request for ${request.staff_name}?`)) return;
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('leave_requests')
+            .update({
+                status: 'rejected',
+                approver_notes: `Rejected by ${currentUser.value.full_name}`,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', request.id)
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        // Update local state
+        const index = leaveRequests.value.findIndex(r => r.id === data.id);
+        if (index !== -1) leaveRequests.value[index] = data;
+        
+        showAdvancedToast('Rejected', `Leave request rejected`, 'error');
+        logAudit('LEAVE_REJECT', `Rejected leave request for ${request.staff_name}`, 'leave_requests', request.id);
+        
+    } catch (error) {
+        console.error('Error rejecting leave:', error);
+        showAdvancedToast('Rejection Failed', error.message, 'error');
+    }
+};
+
+const saveLeaveRequest = async () => {
+    saving.value = true;
+    try {
+        if (!leaveRequestModal.value.form.start_date || !leaveRequestModal.value.form.end_date) {
+            throw new Error('Start and end dates are required');
+        }
+        
+        if (leaveRequestModal.value.mode === 'add') {
+            // Add new leave request
+            if (!hasPermission('leave_requests', 'create')) {
+                throw new Error('No permission to create leave requests');
+            }
+            
+            const { data, error } = await supabaseClient
+                .from('leave_requests')
+                .insert([{
+                    staff_id: currentUser.value.id,
+                    staff_name: currentUser.value.full_name,
+                    start_date: leaveRequestModal.value.form.start_date,
+                    end_date: leaveRequestModal.value.form.end_date,
+                    leave_type: leaveRequestModal.value.form.leave_type,
+                    reason: leaveRequestModal.value.form.reason,
+                    status: 'pending',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+            
+            if (error) throw error;
+            
+            leaveRequests.value.unshift(data);
+            showAdvancedToast('Success', 'Leave request submitted', 'success');
+            logAudit('LEAVE_CREATE', `Submitted leave request`, 'leave_requests', data.id);
+            
+        } else {
+            // Update/review existing request
+            if (!hasPermission('leave_requests', 'update')) {
+                throw new Error('No permission to update leave requests');
+            }
+            
+            const { data, error } = await supabaseClient
+                .from('leave_requests')
+                .update({
+                    status: leaveRequestModal.value.form.status,
+                    approver_notes: leaveRequestModal.value.form.approver_notes,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', leaveRequestModal.value.request.id)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            
+            // Update local state
+            const index = leaveRequests.value.findIndex(r => r.id === data.id);
+            if (index !== -1) leaveRequests.value[index] = data;
+            
+            showAdvancedToast('Success', 'Leave request updated', 'success');
+            logAudit('LEAVE_UPDATE', `Updated leave request status to ${data.status}`, 'leave_requests', data.id);
+        }
+        
+        leaveRequestModal.value.show = false;
+        
+    } catch (error) {
+        console.error('Error saving leave request:', error);
+        showAdvancedToast('Save Failed', error.message, 'error');
+    } finally {
+        saving.value = false;
+    }
+};
 // ============ TRAINING UNITS MODAL ============
 const trainingUnitModal = ref({
     show: false,
@@ -5643,6 +5917,12 @@ const overrideOnCall = (day) => {
                 showAddTrainingUnitModal, 
                 editTrainingUnit, 
                 saveTrainingUnit
+                    leaveRequestModal,
+showAddLeaveRequestModal,
+viewLeaveRequestDetails,
+approveLeaveRequest,
+rejectLeaveRequest,
+saveLeaveRequest,
 
                 // Data
                 medicalStaff,
