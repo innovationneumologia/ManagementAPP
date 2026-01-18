@@ -5969,29 +5969,7 @@ const showAddAnnouncementModal = () => {
         }
     };
 };
-
-const editAnnouncement = (announcement) => {
-    if (!hasPermission('announcements', 'update')) {
-        showAdvancedToast('Permission Denied', 'Need update permission', 'permission');
-        return;
-    }
-    
-    announcementModal.value = {
-        show: true,
-        mode: 'edit',
-        announcement: announcement,
-        form: {
-            announcement_title: announcement.announcement_title,
-            announcement_content: announcement.announcement_content,
-            publish_start_date: announcement.publish_start_date,
-            publish_end_date: announcement.publish_end_date || '',
-            priority_level: announcement.priority_level || 'medium',
-            target_audience: announcement.target_audience || 'all'
-        }
-    };
-};
-
-        
+ 
         const announcementData = {
             announcement_title: announcementModal.value.form.announcement_title,
             announcement_content: announcementModal.value.form.announcement_content,
