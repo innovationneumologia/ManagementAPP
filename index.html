@@ -4146,30 +4146,34 @@ const staffFilter = ref({
             };
 
             // ============ AUDIT LOGGING SYSTEM ============
-            const generateAuditId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            const logEntry = {
-                id: generateAuditId(), // Use timestamp-based ID
-                    timestamp: new Date().toISOString(),
-                    user_id: currentUser.value?.id,
-                    user_name: currentUser.value?.full_name,
-                    user_role: currentUser.value?.user_role,
-                    action,
-                    details,
-                    resource,
-                    resource_id: resourceId,
-                    permission_level: getUserPermissionLevel(),
-                    ip_address: 'system',
-                    user_agent: navigator.userAgent
-                };
-                
-                auditLogs.value.unshift(logEntry);
-                
-                try {
-                    await supabaseClient.from('audit_logs').insert([logEntry]);
-                } catch (error) {
-                    console.error('Failed to save audit log:', error);
-                }
-            };
+     // Add this BEFORE the logAudit function:
+const generateAuditId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+// Then the logAudit function:
+const logAudit = async (action, details, resource, resourceId = null) => {
+    const logEntry = {
+        id: generateAuditId(),
+        timestamp: new Date().toISOString(),
+        user_id: currentUser.value?.id,
+        user_name: currentUser.value?.full_name,
+        user_role: currentUser.value?.user_role,
+        action,
+        details,
+        resource,
+        resource_id: resourceId,
+        permission_level: getUserPermissionLevel(),
+        ip_address: 'system',
+        user_agent: navigator.userAgent
+    };
+    
+    auditLogs.value.unshift(logEntry);
+    
+    try {
+        await supabaseClient.from('audit_logs').insert([logEntry]);
+    } catch (error) {
+        console.error('Failed to save audit log:', error);
+    }
+};
 
             // ============ ADVANCED UTILITIES ============
             const showAdvancedToast = (title, message, type = 'info', duration = 5000) => {
