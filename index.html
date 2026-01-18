@@ -4066,17 +4066,13 @@ const initializeApp = () => {
                     level: 'read'
                 }
             });
-            
             // Filter states
-            const staffSearch = ref('');
-            const staffFilter = ref({
-                staff_type: '',
-                employment_status: ''
-            });
-            const staffFilter = ref({
+const staffSearch = ref('');
+const staffFilter = ref({
     staff_type: '',
     employment_status: ''
 });
+            
 
             // ============ PERMISSION SYSTEM ============
             const userPermissions = ref({});
