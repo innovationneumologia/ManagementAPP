@@ -3436,6 +3436,12 @@ console.log('Auth available:', supabaseClient.auth);
                 const showPermissionManager = ref(false);
                 const searchQuery = ref('');
                 const permissionFilter = ref([]);
+                // Add these with your other reactive variables
+const staffSearch = ref('');
+const staffFilter = ref({
+    staff_type: '',
+    employment_status: ''
+});
                 
                 // Data Stores
                 const medicalStaff = ref([]);
