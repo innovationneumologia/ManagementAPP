@@ -3212,6 +3212,8 @@
     <script>
 const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 
+// SUPABASE URL IS MISSING - ADD IT
+const supabaseUrl = 'https://vssmguzuvekkecbmwcjw.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzc21ndXp1dmVra2VjYm13Y2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTI4NTIsImV4cCI6MjA4NDE2ODg1Mn0.8qPFsMEn4n5hDfxhgXvq2lQarts8OlL8hWiRYXb-vXw';
 
 // Create Supabase client ONCE
@@ -3222,7 +3224,6 @@ const supabase = window.supabase.createClient(supabaseUrl, supabaseKey, {
         detectSessionInUrl: false
     }
 });
-
 
 
         // Advanced DRBA Permission System
