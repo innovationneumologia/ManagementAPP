@@ -5473,6 +5473,14 @@ createApp({
                 !residentsInRotations.has(staff.id)
             );
         });
+        const availablePhysicians = computed(() => {
+    return medicalStaff.value.filter(staff => 
+        (staff.staff_type === 'attending_physician' || 
+         staff.staff_type === 'medical_resident' || 
+         staff.staff_type === 'fellow') && 
+        staff.employment_status === 'active'
+    ).sort((a, b) => a.full_name.localeCompare(b.full_name));
+});
 
         const pendingSchedules = computed(() => {
             return residentRotations.value.filter(r => 
