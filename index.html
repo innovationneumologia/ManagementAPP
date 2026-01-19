@@ -4806,7 +4806,7 @@ createApp({
             }
         });
 
-        // Resident Rotation Modal (ONLY ONE DECLARATION)
+        // Resident Rotation Modal
         const rotationModal = ref({
             show: false,
             mode: 'add',
@@ -5033,6 +5033,7 @@ createApp({
                    type === 'attending_physician' ? 'badge-attending-advanced' : 
                    'badge-admin-advanced';
         };
+        
 
         const getAuditIcon = (action) => {
             const icons = {
@@ -5068,6 +5069,84 @@ createApp({
                 inactive: 'Inactive'
             };
             return statuses[status] || status;
+        };
+
+        // ============ NEW HELPER FUNCTIONS ============
+        const getResidentName = (residentId) => {
+            const resident = medicalStaff.value.find(s => s.id === residentId);
+            return resident ? resident.full_name : `Resident ${residentId?.substring(0, 8) || 'Unknown'}`;
+        };
+
+        const getTrainingUnitName = (unitId) => {
+            const unit = trainingUnits.value.find(u => u.id === unitId);
+            return unit ? unit.unit_name : `Unit ${unitId?.substring(0, 8) || 'Unknown'}`;
+        };
+
+        const getAttendingName = (attendingId) => {
+            const attending = medicalStaff.value.find(s => s.id === attendingId && s.staff_type === 'attending_physician');
+            return attending ? attending.full_name : `Attending ${attendingId?.substring(0, 8) || 'Unknown'}`;
+        };
+
+        const getAssignedResidents = (unitId) => {
+            const rotationIds = residentRotations.value
+                .filter(r => r.training_unit_id === unitId && (r.rotation_status === 'active' || r.rotation_status === 'scheduled'))
+                .map(r => r.resident_id);
+            
+            return medicalStaff.value.filter(staff => 
+                staff.staff_type === 'medical_resident' && rotationIds.includes(staff.id)
+            );
+        };
+
+        const formatRotationCategory = (category) => {
+            const categories = {
+                clinical_rotation: 'Clinical Rotation',
+                elective_rotation: 'Elective Rotation',
+                research_rotation: 'Research',
+                vacation_rotation: 'Vacation'
+            };
+            return categories[category] || category;
+        };
+
+        const getRotationCategoryClass = (category) => {
+            return category === 'clinical_rotation' ? 'badge-attending-advanced' :
+                   category === 'elective_rotation' ? 'badge-resident-advanced' :
+                   category === 'research_rotation' ? 'badge-admin-advanced' :
+                   'badge-supervisor-advanced';
+        };
+
+        const formatPriorityLevel = (priority) => {
+            const priorities = {
+                low: 'Low',
+                medium: 'Medium',
+                high: 'High',
+                urgent: 'Urgent'
+            };
+            return priorities[priority] || priority;
+        };
+
+        const getPriorityClass = (priority) => {
+            return priority === 'urgent' ? 'status-critical' :
+                   priority === 'high' ? 'status-reported' :
+                   priority === 'medium' ? 'status-oncall' :
+                   'status-available';
+        };
+
+        const formatAudience = (audience) => {
+            const audiences = {
+                all: 'All Staff',
+                residents: 'Residents Only',
+                attendings: 'Attending Physicians',
+                nursing: 'Nursing Staff'
+            };
+            return audiences[audience] || audience;
+        };
+
+        const formatDateShort = (dateString) => {
+            if (!dateString) return '';
+            return new Date(dateString).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+            });
         };
 
         // ============ COMPUTED PROPERTIES ============
@@ -5307,7 +5386,6 @@ createApp({
                 }
                 
                 // For demo purposes, we'll use mock authentication
-                // In production, you would verify against Supabase
                 const mockUsers = {
                     'admin@hospital.org': { role: 'system_admin', name: 'System Administrator' },
                     'head@hospital.org': { role: 'department_head', name: 'Department Head' },
@@ -5804,7 +5882,8 @@ createApp({
                 showAdvancedToast('Delete Failed', error.message, 'error');
             }
         };
-            
+
+        // ============ ANNOUNCEMENTS MODAL FUNCTIONS ============
         const showAddAnnouncementModal = () => {
             if (!hasPermission('announcements', 'create')) {
                 showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
@@ -6602,6 +6681,207 @@ createApp({
             };
         };
 
+        // ============ DRAG & DROP FUNCTIONS ============
+        const handleDragStart = (event, resident) => {
+            event.dataTransfer.setData('text/plain', resident.id);
+            event.dataTransfer.effectAllowed = 'move';
+        };
+
+        const handleDrop = async (event, unit) => {
+            event.preventDefault();
+            
+            const residentId = event.dataTransfer.getData('text/plain');
+            if (!residentId || !unit) return;
+            
+            if (!hasPermission('placements', 'create')) {
+                showAdvancedToast('Permission Denied', 'Need create permission for placements', 'permission');
+                return;
+            }
+            
+            try {
+                await handleDragDropPlacement(residentId, unit.id);
+                
+                // Update unit current residents count
+                const unitIndex = trainingUnits.value.findIndex(u => u.id === unit.id);
+                if (unitIndex !== -1) {
+                    trainingUnits.value[unitIndex].current_residents = 
+                        (trainingUnits.value[unitIndex].current_residents || 0) + 1;
+                }
+                
+                const residentName = getResidentName(residentId);
+                showAdvancedToast('Placement Created', `${residentName} assigned to ${unit.unit_name}`, 'success');
+                
+            } catch (error) {
+                console.error('Drop error:', error);
+                showAdvancedToast('Placement Failed', error.message, 'error');
+            }
+        };
+
+        const removePlacement = async (residentId, unitId) => {
+            if (!hasPermission('placements', 'delete')) {
+                showAdvancedToast('Permission Denied', 'Need delete permission', 'permission');
+                return;
+            }
+            
+            const residentName = getResidentName(residentId);
+            const unitName = getTrainingUnitName(unitId);
+            
+            if (!confirm(`Remove ${residentName} from ${unitName}?`)) return;
+            
+            try {
+                // Find and update the rotation status
+                const rotationIndex = residentRotations.value.findIndex(r => 
+                    r.resident_id === residentId && 
+                    r.training_unit_id === unitId && 
+                    (r.rotation_status === 'active' || r.rotation_status === 'scheduled')
+                );
+                
+                if (rotationIndex !== -1) {
+                    const rotation = residentRotations.value[rotationIndex];
+                    
+                    const { data, error } = await supabaseClient
+                        .from('resident_rotations')
+                        .update({
+                            rotation_status: 'cancelled',
+                            clinical_notes: (rotation.clinical_notes || '') + '\nRemoved via placement interface',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', rotation.id)
+                        .select()
+                        .single();
+                    
+                    if (error) throw error;
+                    
+                    // Update local state
+                    residentRotations.value[rotationIndex] = data;
+                    
+                    // Update unit current residents count
+                    const unitIndex = trainingUnits.value.findIndex(u => u.id === unitId);
+                    if (unitIndex !== -1) {
+                        trainingUnits.value[unitIndex].current_residents = 
+                            Math.max(0, (trainingUnits.value[unitIndex].current_residents || 0) - 1);
+                    }
+                    
+                    showAdvancedToast('Placement Removed', `${residentName} removed from ${unitName}`, 'success');
+                    logAudit('PLACEMENT_REMOVE', `Removed resident ${residentName} from unit ${unitName}`, 'placements', rotation.id);
+                }
+                
+            } catch (error) {
+                console.error('Error removing placement:', error);
+                showAdvancedToast('Removal Failed', error.message, 'error');
+            }
+        };
+
+        // ============ QUICK PLACEMENT MODAL FUNCTIONS ============
+        const showQuickPlacementModal = () => {
+            if (!hasPermission('placements', 'create')) {
+                showAdvancedToast('Permission Denied', 'Need create permission for placements', 'permission');
+                return;
+            }
+            
+            quickPlacementModal.value = {
+                show: true,
+                form: {
+                    resident_id: '',
+                    unit_id: '',
+                    duration: 4
+                }
+            };
+        };
+
+        const saveQuickPlacement = async () => {
+            if (!hasPermission('placements', 'create')) {
+                showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
+                return;
+            }
+            
+            saving.value = true;
+            try {
+                if (!quickPlacementModal.value.form.resident_id || !quickPlacementModal.value.form.unit_id) {
+                    throw new Error('Please select both resident and unit');
+                }
+                
+                // Create a new rotation
+                const rotationId = `PLACEMENT-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(Math.random()*1000)}`;
+                const startDate = new Date().toISOString().split('T')[0];
+                const endDate = new Date();
+                endDate.setDate(endDate.getDate() + (quickPlacementModal.value.form.duration * 7));
+                
+                const { data, error } = await supabaseClient
+                    .from('resident_rotations')
+                    .insert([{
+                        rotation_id: rotationId,
+                        resident_id: quickPlacementModal.value.form.resident_id,
+                        training_unit_id: quickPlacementModal.value.form.unit_id,
+                        rotation_start_date: startDate,
+                        rotation_end_date: endDate.toISOString().split('T')[0],
+                        rotation_category: 'clinical_rotation',
+                        rotation_status: 'scheduled',
+                        clinical_notes: 'Placed via quick placement',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                // Add to local state
+                residentRotations.value.unshift(data);
+                
+                // Update unit current residents count
+                const unitIndex = trainingUnits.value.findIndex(u => u.id === quickPlacementModal.value.form.unit_id);
+                if (unitIndex !== -1) {
+                    trainingUnits.value[unitIndex].current_residents = 
+                        (trainingUnits.value[unitIndex].current_residents || 0) + 1;
+                }
+                
+                showAdvancedToast('Success', 'Resident placed successfully', 'success');
+                logAudit('QUICK_PLACEMENT', `Quick placement created for resident`, 'placements', data.id);
+                
+                quickPlacementModal.value.show = false;
+                
+            } catch (error) {
+                console.error('Error saving quick placement:', error);
+                showAdvancedToast('Save Failed', error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+
+        // ============ DELETE ROTATION FUNCTION ============
+        const deleteRotation = async (rotation) => {
+            if (!hasPermission('resident_rotations', 'delete')) {
+                showAdvancedToast('Permission Denied', 'Need delete permission', 'permission');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete rotation "${rotation.rotation_id}"?`)) {
+                return;
+            }
+            
+            try {
+                const { error } = await supabaseClient
+                    .from('resident_rotations')
+                    .delete()
+                    .eq('id', rotation.id);
+                
+                if (error) throw error;
+                
+                // Remove from local array
+                const index = residentRotations.value.findIndex(r => r.id === rotation.id);
+                if (index !== -1) {
+                    residentRotations.value.splice(index, 1);
+                }
+                
+                showAdvancedToast('Deleted', `Rotation ${rotation.rotation_id} has been removed`, 'success');
+                logAudit('ROTATION_DELETE', `Deleted rotation: ${rotation.rotation_id}`, 'resident_rotations', rotation.id);
+            } catch (error) {
+                console.error('Error deleting rotation:', error);
+                showAdvancedToast('Delete Failed', error.message, 'error');
+            }
+        };
+
         // ============ PERMISSION MANAGEMENT ============
         const togglePermission = (resource, action) => {
             if (!hasPermission('system', 'admin')) {
@@ -6840,285 +7120,6 @@ createApp({
             showAdvancedToast('Info', 'Add staff modal would open here', 'info');
         };
 
-        // ============ NEW HELPER FUNCTIONS ============
-        const getResidentName = (residentId) => {
-            const resident = medicalStaff.value.find(s => s.id === residentId);
-            return resident ? resident.full_name : `Resident ${residentId?.substring(0, 8) || 'Unknown'}`;
-        };
-
-        const getTrainingUnitName = (unitId) => {
-            const unit = trainingUnits.value.find(u => u.id === unitId);
-            return unit ? unit.unit_name : `Unit ${unitId?.substring(0, 8) || 'Unknown'}`;
-        };
-
-        const getAttendingName = (attendingId) => {
-            const attending = medicalStaff.value.find(s => s.id === attendingId && s.staff_type === 'attending_physician');
-            return attending ? attending.full_name : `Attending ${attendingId?.substring(0, 8) || 'Unknown'}`;
-        };
-
-        const getAssignedResidents = (unitId) => {
-            const rotationIds = residentRotations.value
-                .filter(r => r.training_unit_id === unitId && (r.rotation_status === 'active' || r.rotation_status === 'scheduled'))
-                .map(r => r.resident_id);
-            
-            return medicalStaff.value.filter(staff => 
-                staff.staff_type === 'medical_resident' && rotationIds.includes(staff.id)
-            );
-        };
-
-        const formatRotationCategory = (category) => {
-            const categories = {
-                clinical_rotation: 'Clinical Rotation',
-                elective_rotation: 'Elective Rotation',
-                research_rotation: 'Research',
-                vacation_rotation: 'Vacation'
-            };
-            return categories[category] || category;
-        };
-
-        const getRotationCategoryClass = (category) => {
-            return category === 'clinical_rotation' ? 'badge-attending-advanced' :
-                   category === 'elective_rotation' ? 'badge-resident-advanced' :
-                   category === 'research_rotation' ? 'badge-admin-advanced' :
-                   'badge-supervisor-advanced';
-        };
-
-        const formatPriorityLevel = (priority) => {
-            const priorities = {
-                low: 'Low',
-                medium: 'Medium',
-                high: 'High',
-                urgent: 'Urgent'
-            };
-            return priorities[priority] || priority;
-        };
-
-        const getPriorityClass = (priority) => {
-            return priority === 'urgent' ? 'status-critical' :
-                   priority === 'high' ? 'status-reported' :
-                   priority === 'medium' ? 'status-oncall' :
-                   'status-available';
-        };
-
-        const formatAudience = (audience) => {
-            const audiences = {
-                all: 'All Staff',
-                residents: 'Residents Only',
-                attendings: 'Attending Physicians',
-                nursing: 'Nursing Staff'
-            };
-            return audiences[audience] || audience;
-        };
-
-        const formatDateShort = (dateString) => {
-            if (!dateString) return '';
-            return new Date(dateString).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric'
-            });
-        };
-
-        // ============ DRAG & DROP FUNCTIONS ============
-        const handleDragStart = (event, resident) => {
-            event.dataTransfer.setData('text/plain', resident.id);
-            event.dataTransfer.effectAllowed = 'move';
-        };
-
-        const handleDrop = async (event, unit) => {
-            event.preventDefault();
-            
-            const residentId = event.dataTransfer.getData('text/plain');
-            if (!residentId || !unit) return;
-            
-            if (!hasPermission('placements', 'create')) {
-                showAdvancedToast('Permission Denied', 'Need create permission for placements', 'permission');
-                return;
-            }
-            
-            try {
-                await handleDragDropPlacement(residentId, unit.id);
-                
-                // Update unit current residents count
-                const unitIndex = trainingUnits.value.findIndex(u => u.id === unit.id);
-                if (unitIndex !== -1) {
-                    trainingUnits.value[unitIndex].current_residents = 
-                        (trainingUnits.value[unitIndex].current_residents || 0) + 1;
-                }
-                
-                const residentName = getResidentName(residentId);
-                showAdvancedToast('Placement Created', `${residentName} assigned to ${unit.unit_name}`, 'success');
-                
-            } catch (error) {
-                console.error('Drop error:', error);
-                showAdvancedToast('Placement Failed', error.message, 'error');
-            }
-        };
-
-        const removePlacement = async (residentId, unitId) => {
-            if (!hasPermission('placements', 'delete')) {
-                showAdvancedToast('Permission Denied', 'Need delete permission', 'permission');
-                return;
-            }
-            
-            const residentName = getResidentName(residentId);
-            const unitName = getTrainingUnitName(unitId);
-            
-            if (!confirm(`Remove ${residentName} from ${unitName}?`)) return;
-            
-            try {
-                // Find and update the rotation status
-                const rotationIndex = residentRotations.value.findIndex(r => 
-                    r.resident_id === residentId && 
-                    r.training_unit_id === unitId && 
-                    (r.rotation_status === 'active' || r.rotation_status === 'scheduled')
-                );
-                
-                if (rotationIndex !== -1) {
-                    const rotation = residentRotations.value[rotationIndex];
-                    
-                    const { data, error } = await supabaseClient
-                        .from('resident_rotations')
-                        .update({
-                            rotation_status: 'cancelled',
-                            clinical_notes: (rotation.clinical_notes || '') + '\nRemoved via placement interface',
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', rotation.id)
-                        .select()
-                        .single();
-                    
-                    if (error) throw error;
-                    
-                    // Update local state
-                    residentRotations.value[rotationIndex] = data;
-                    
-                    // Update unit current residents count
-                    const unitIndex = trainingUnits.value.findIndex(u => u.id === unitId);
-                    if (unitIndex !== -1) {
-                        trainingUnits.value[unitIndex].current_residents = 
-                            Math.max(0, (trainingUnits.value[unitIndex].current_residents || 0) - 1);
-                    }
-                    
-                    showAdvancedToast('Placement Removed', `${residentName} removed from ${unitName}`, 'success');
-                    logAudit('PLACEMENT_REMOVE', `Removed resident ${residentName} from unit ${unitName}`, 'placements', rotation.id);
-                }
-                
-            } catch (error) {
-                console.error('Error removing placement:', error);
-                showAdvancedToast('Removal Failed', error.message, 'error');
-            }
-        };
-
-        // ============ QUICK PLACEMENT MODAL FUNCTIONS ============
-        const showQuickPlacementModal = () => {
-            if (!hasPermission('placements', 'create')) {
-                showAdvancedToast('Permission Denied', 'Need create permission for placements', 'permission');
-                return;
-            }
-            
-            quickPlacementModal.value = {
-                show: true,
-                form: {
-                    resident_id: '',
-                    unit_id: '',
-                    duration: 4
-                }
-            };
-        };
-
-        const saveQuickPlacement = async () => {
-            if (!hasPermission('placements', 'create')) {
-                showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
-                return;
-            }
-            
-            saving.value = true;
-            try {
-                if (!quickPlacementModal.value.form.resident_id || !quickPlacementModal.value.form.unit_id) {
-                    throw new Error('Please select both resident and unit');
-                }
-                
-                // Create a new rotation
-                const rotationId = `PLACEMENT-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(Math.random()*1000)}`;
-                const startDate = new Date().toISOString().split('T')[0];
-                const endDate = new Date();
-                endDate.setDate(endDate.getDate() + (quickPlacementModal.value.form.duration * 7));
-                
-                const { data, error } = await supabaseClient
-                    .from('resident_rotations')
-                    .insert([{
-                        rotation_id: rotationId,
-                        resident_id: quickPlacementModal.value.form.resident_id,
-                        training_unit_id: quickPlacementModal.value.form.unit_id,
-                        rotation_start_date: startDate,
-                        rotation_end_date: endDate.toISOString().split('T')[0],
-                        rotation_category: 'clinical_rotation',
-                        rotation_status: 'scheduled',
-                        clinical_notes: 'Placed via quick placement',
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }])
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                
-                // Add to local state
-                residentRotations.value.unshift(data);
-                
-                // Update unit current residents count
-                const unitIndex = trainingUnits.value.findIndex(u => u.id === quickPlacementModal.value.form.unit_id);
-                if (unitIndex !== -1) {
-                    trainingUnits.value[unitIndex].current_residents = 
-                        (trainingUnits.value[unitIndex].current_residents || 0) + 1;
-                }
-                
-                showAdvancedToast('Success', 'Resident placed successfully', 'success');
-                logAudit('QUICK_PLACEMENT', `Quick placement created for resident`, 'placements', data.id);
-                
-                quickPlacementModal.value.show = false;
-                
-            } catch (error) {
-                console.error('Error saving quick placement:', error);
-                showAdvancedToast('Save Failed', error.message, 'error');
-            } finally {
-                saving.value = false;
-            }
-        };
-
-        // ============ DELETE ROTATION FUNCTION ============
-        const deleteRotation = async (rotation) => {
-            if (!hasPermission('resident_rotations', 'delete')) {
-                showAdvancedToast('Permission Denied', 'Need delete permission', 'permission');
-                return;
-            }
-            
-            if (!confirm(`Are you sure you want to delete rotation "${rotation.rotation_id}"?`)) {
-                return;
-            }
-            
-            try {
-                const { error } = await supabaseClient
-                    .from('resident_rotations')
-                    .delete()
-                    .eq('id', rotation.id);
-                
-                if (error) throw error;
-                
-                // Remove from local array
-                const index = residentRotations.value.findIndex(r => r.id === rotation.id);
-                if (index !== -1) {
-                    residentRotations.value.splice(index, 1);
-                }
-                
-                showAdvancedToast('Deleted', `Rotation ${rotation.rotation_id} has been removed`, 'success');
-                logAudit('ROTATION_DELETE', `Deleted rotation: ${rotation.rotation_id}`, 'resident_rotations', rotation.id);
-            } catch (error) {
-                console.error('Error deleting rotation:', error);
-                showAdvancedToast('Delete Failed', error.message, 'error');
-            }
-        };
-
         // ============ INITIALIZATION ============
         onMounted(() => {
             // Check for existing session
@@ -7162,6 +7163,7 @@ createApp({
             leaveRequestModal,
             trainingUnitModal,
             rotationModal,
+            quickPlacementModal,
             
             // ============ DATA STORES ============
             medicalStaff,
@@ -7178,6 +7180,7 @@ createApp({
             // ============ FILTER & SEARCH ============
             staffSearch,
             staffFilter,
+            rotationFilter,
             
             // ============ UI STATES ============
             toasts,
@@ -7193,6 +7196,8 @@ createApp({
             emergencyAlerts,
             departmentStats,
             nextSevenDays,
+            filteredRotations,
+            availableResidents,
             
             // ============ PERMISSION SYSTEM ============
             hasPermission,
@@ -7234,6 +7239,18 @@ createApp({
             generateUUID,
             showAdvancedToast,
             
+            // ============ HELPER FUNCTIONS ============
+            getResidentName,
+            getTrainingUnitName,
+            getAttendingName,
+            getAssignedResidents,
+            formatRotationCategory,
+            getRotationCategoryClass,
+            formatPriorityLevel,
+            getPriorityClass,
+            formatAudience,
+            formatDateShort,
+            
             // ============ MEDICAL STAFF ============
             showAddMedicalStaffModal,
             editMedicalStaff,
@@ -7272,9 +7289,6 @@ createApp({
             editTrainingUnit,
             saveTrainingUnit,
             assignResidentsToUnit,
-
-            // ============ ANNOUNCEMENTS ============
-            deleteAnnouncement,
             
             // ============ RESIDENT ROTATIONS ============
             showAddRotationModal,
@@ -7282,6 +7296,16 @@ createApp({
             extendRotation,
             saveRotation,
             handleDragDropPlacement,
+            deleteRotation,
+            
+            // ============ DRAG & DROP ============
+            handleDragStart,
+            handleDrop,
+            removePlacement,
+            
+            // ============ QUICK PLACEMENT ============
+            showQuickPlacementModal,
+            saveQuickPlacement,
             
             // ============ ACTIONS ============
             quickAssignToUnit,
@@ -7305,29 +7329,7 @@ createApp({
             logAudit,
             
             // ============ TOAST SYSTEM ============
-            removeToast,
-            
-            // New properties:
-            rotationFilter,
-            quickPlacementModal,
-            filteredRotations,
-            availableResidents,
-            getResidentName,
-            getTrainingUnitName,
-            getAttendingName,
-            getAssignedResidents,
-            formatRotationCategory,
-            getRotationCategoryClass,
-            formatPriorityLevel,
-            getPriorityClass,
-            formatAudience,
-            formatDateShort,
-            handleDragStart,
-            handleDrop,
-            removePlacement,
-            showQuickPlacementModal,
-            saveQuickPlacement,
-            deleteRotation
+            removeToast
         };
     }
 }).mount('#app');
