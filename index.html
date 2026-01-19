@@ -4780,6 +4780,31 @@ createApp({
                 duration: 4
             }
         });
+        // Put this with your other helper functions
+const mapLeaveRequestToDB = (form, user) => {
+  const date = new Date();
+  const dateStr = date.toISOString().slice(0,10).replace(/-/g,'');
+  const random = Math.floor(Math.random()*1000).toString().padStart(3,'0');
+  
+  const start = new Date(form.start_date);
+  const end = new Date(form.end_date);
+  const days = Math.ceil((end - start)/(1000*60*60*24)) + 1;
+  
+  return {
+    request_id: `LEAVE-${dateStr}-${random}`,
+    staff_member_id: user.id,
+    leave_category: form.leave_type,
+    leave_start_date: form.start_date,
+    leave_end_date: form.end_date,
+    total_days: days,
+    leave_reason: form.reason,
+    approval_status: 'pending',
+    coverage_required: true,
+    coverage_assigned: false,
+    created_at: date.toISOString(),
+    updated_at: date.toISOString()
+  };
+};
 
         // Add Role Modal
         const addRoleModal = ref({
@@ -6520,20 +6545,31 @@ const availableAttendings = computed(() => {
                     if (!hasPermission('leave_requests', 'create')) {
                         throw new Error('No permission to create leave requests');
                     }
-                    
-                    const { data, error } = await supabaseClient
-                        .from('leave_requests')
-                        .insert([{
-                            staff_id: currentUser.value.id,
-                            staff_name: currentUser.value.full_name,
-                            start_date: leaveRequestModal.value.form.start_date,
-                            end_date: leaveRequestModal.value.form.end_date,
-                            leave_type: leaveRequestModal.value.form.leave_type,
-                            reason: leaveRequestModal.value.form.reason,
-                            status: 'pending',
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                        }])
+                        // Calculate total days
+const start = new Date(leaveRequestModal.value.form.start_date);
+const end = new Date(leaveRequestModal.value.form.end_date);
+const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+// Generate request ID
+const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+const random = Math.floor(Math.random() * 1000).toString().padStart(3,'0');
+
+const { data, error } = await supabaseClient
+  .from('leave_requests')
+  .insert([{
+    request_id: `LEAVE-${dateStr}-${random}`,        // REQUIRED
+    staff_member_id: currentUser.value.id,           // REQUIRED: was staff_id
+    leave_category: leaveRequestModal.value.form.leave_type, // REQUIRED: was leave_type
+    leave_start_date: leaveRequestModal.value.form.start_date, // REQUIRED: was start_date
+    leave_end_date: leaveRequestModal.value.form.end_date,     // REQUIRED: was end_date
+    total_days: totalDays,                          // REQUIRED: new field
+    leave_reason: leaveRequestModal.value.form.reason, // REQUIRED: was reason
+    approval_status: 'pending',                     // REQUIRED: was status
+    coverage_required: true,
+    coverage_assigned: false,
+    created_at: new Date().toISOString(),           // REQUIRED
+    updated_at: new Date().toISOString()            // REQUIRED
+  }])
                         .select()
                         .single();
                     
