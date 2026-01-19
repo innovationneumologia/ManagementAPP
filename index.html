@@ -2232,6 +2232,7 @@
     </style>
 </head>
 <body>
+<body>
     <div id="app">
     <!-- Login Screen with Enhanced Security -->
     <div v-if="!currentUser" class="login-container">
@@ -4020,13 +4021,30 @@
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="form-group-advanced">
-                            <label class="form-label-advanced">Primary Physician ID *</label>
-                            <input type="text" class="form-input-advanced" v-model="onCallModal.form.primary_physician_id" required>
+                            <label class="form-label-advanced">Primary Physician *</label>
+                            <select class="form-select-advanced" 
+                                    v-model="onCallModal.form.primary_physician_id" 
+                                    required>
+                                <option value="">Select Primary Physician</option>
+                                <option v-for="physician in availablePhysicians" 
+                                        :key="physician.id" 
+                                        :value="physician.id">
+                                    {{ physician.full_name }} ({{ physician.staff_id }})
+                                </option>
+                            </select>
                         </div>
                         
                         <div class="form-group-advanced">
-                            <label class="form-label-advanced">Backup Physician ID</label>
-                            <input type="text" class="form-input-advanced" v-model="onCallModal.form.backup_physician_id">
+                            <label class="form-label-advanced">Backup Physician</label>
+                            <select class="form-select-advanced" 
+                                    v-model="onCallModal.form.backup_physician_id">
+                                <option value="">No Backup Assigned</option>
+                                <option v-for="physician in availablePhysicians" 
+                                        :key="physician.id" 
+                                        :value="physician.id">
+                                    {{ physician.full_name }} ({{ physician.staff_id }})
+                                </option>
+                            </select>
                         </div>
                     </div>
                     
@@ -4183,20 +4201,48 @@
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="form-group-advanced">
-                            <label class="form-label-advanced">Resident ID (UUID) *</label>
-                            <input type="text" class="form-input-advanced" v-model="rotationModal.form.resident_id" required>
+                            <label class="form-label-advanced">Resident *</label>
+                            <select class="form-select-advanced" 
+                                    v-model="rotationModal.form.resident_id" 
+                                    required>
+                                <option value="">Select Resident</option>
+                                <option v-for="resident in availableResidents" 
+                                        :key="resident.id" 
+                                        :value="resident.id">
+                                    {{ resident.full_name }} ({{ resident.staff_id }} - {{ formatResidentCategory(resident.resident_category) }})
+                                </option>
+                            </select>
                         </div>
                         
                         <div class="form-group-advanced">
-                            <label class="form-label-advanced">Training Unit ID (UUID) *</label>
-                            <input type="text" class="form-input-advanced" v-model="rotationModal.form.training_unit_id" required>
+                            <label class="form-label-advanced">Training Unit *</label>
+                            <select class="form-select-advanced" 
+                                    v-model="rotationModal.form.training_unit_id" 
+                                    required>
+                                <option value="">Select Training Unit</option>
+                                <option v-for="unit in activeTrainingUnits" 
+                                        :key="unit.id" 
+                                        :value="unit.id">
+                                    {{ unit.unit_name }} ({{ unit.current_residents || 0 }}/{{ unit.maximum_residents }})
+                                    <span v-if="unit.specialty"> - {{ unit.specialty }}</span>
+                                </option>
+                            </select>
                         </div>
                     </div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="form-group-advanced">
-                            <label class="form-label-advanced">Supervising Attending ID (UUID)</label>
-                            <input type="text" class="form-input-advanced" v-model="rotationModal.form.supervising_attending_id">
+                            <label class="form-label-advanced">Supervising Attending (Optional)</label>
+                            <select class="form-select-advanced" 
+                                    v-model="rotationModal.form.supervising_attending_id">
+                                <option value="">No Supervisor Assigned</option>
+                                <option v-for="attending in availableAttendings" 
+                                        :key="attending.id" 
+                                        :value="attending.id">
+                                    {{ attending.full_name }} ({{ attending.staff_id }})
+                                    <span v-if="attending.can_supervise_residents"> - Supervisor</span>
+                                </option>
+                            </select>
                         </div>
                         
                         <div class="form-group-advanced">
@@ -4465,6 +4511,7 @@
             </div>
         </div>
     </div>
+          
 
 <script>
 const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
@@ -5485,7 +5532,25 @@ createApp({
             });
             return departments;
         });
+        // Add to your computed properties
+const availableResidents = computed(() => {
+    return medicalStaff.value.filter(staff => 
+        staff.staff_type === 'medical_resident' && 
+        staff.employment_status === 'active'
+    );
+});
 
+const activeTrainingUnits = computed(() => {
+    return trainingUnits.value.filter(unit => 
+        unit.unit_status === 'active'
+    );
+});
+const availableAttendings = computed(() => {
+    return medicalStaff.value.filter(staff => 
+        staff.staff_type === 'attending_physician' && 
+        staff.employment_status === 'active'
+    );
+});
         // ============ NAVIGATION & UI ============
         const switchView = async (view) => {
             currentView.value = view;
@@ -7642,6 +7707,8 @@ createApp({
             searchQuery,
             permissionFilter,
             userMenuOpen,
+            availableAttendings,
+
             
             // ============ MODAL STATES ============
             medicalStaffModal,
@@ -7655,7 +7722,7 @@ createApp({
             systemSettingsModal,
             userProfileModal,
             importExportModal,
-            
+            activeTrainingUnits,
             // ============ DATA STORES ============
             medicalStaff,
             trainingUnits,
