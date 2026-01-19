@@ -5926,7 +5926,7 @@ const PermissionSystem = {
 };
 
 // Create the Vue App
-createApp({
+    const app = createApp({
     setup() {
         // ============ ADVANCED STATE MANAGEMENT ============
         const currentUser = ref(null);
@@ -9112,12 +9112,11 @@ createApp({
             
             // ============ AUDIT LOGGING ============
             logAudit,
-            
-            // ============ TOAST SYSTEM ============
+                  // ============ TOAST SYSTEM ============
             removeToast
         };
     }
-}).mount('#app');
+});
+
+app.mount('#app');
 </script>
-</body>
-</html>
