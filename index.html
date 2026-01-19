@@ -2110,14 +2110,16 @@ input:checked + .permission-toggle-slider-elegant:before {
 }
 </head>
 <body>
+<!-- ============ LUXURY LOGIN SCREEN ============ -->
     <div id="app">
-        <!-- ============ LUXURY LOGIN SCREEN ============ -->
+         <div class="app-wrapper">
         <div v-if="!currentUser" class="login-container">
             <div class="login-card">
                 <div class="login-header">
                     <div class="login-logo">
                         <i class="fas fa-lungs"></i>
                     </div>
+        
                     <h1 class="login-title">PneumoCare</h1>
                     <div class="login-subtitle">ADVANCED PULMONARY MANAGEMENT PLATFORM</div>
                     <div class="login-security-info">
@@ -2279,6 +2281,7 @@ input:checked + .permission-toggle-slider-elegant:before {
                 </div>
             </div>
         </div>
+         </div>---
 
         <!-- ============ MAIN APPLICATION ============ -->
         <div v-else>
