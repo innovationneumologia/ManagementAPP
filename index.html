@@ -4682,7 +4682,7 @@ createApp({
         const permissionFilter = ref([]);
         const userMenuOpen = ref(false);
 
-        // Data stores
+        // Data stores (v2 base + v1 cache)
         const medicalStaff = ref([]);
         const trainingUnits = ref([]);
         const residentRotations = ref([]);
@@ -4696,6 +4696,14 @@ createApp({
         const userNotifications = ref([]);
         const emergencyContacts = ref([]);
         
+        // Cache management from v1
+        const cache = ref({
+            medical_staff: null,
+            training_units: null,
+            resident_rotations: null,
+            last_updated: {}
+        });
+
         const systemStats = ref({
             active_users: 0,
             total_staff: 0,
@@ -4707,7 +4715,7 @@ createApp({
         const toasts = ref([]);
         let toastId = 0;
 
-        // ============ MODAL STATES ============
+        // ============ MODAL STATES (v2 structure) ============
         // Medical Staff Modal
         const medicalStaffModal = ref({
             show: false,
@@ -4725,6 +4733,8 @@ createApp({
                 training_year: null
             }
         });
+
+        // Quick Placement Modal
         const quickPlacementModal = ref({
             show: false,
             form: {
@@ -4827,7 +4837,7 @@ createApp({
             }
         });
 
-        // System Settings Modal
+        // System Settings Modal (v2)
         const systemSettingsModal = ref({
             show: false,
             form: {
@@ -4840,7 +4850,7 @@ createApp({
             }
         });
 
-        // User Profile Modal
+        // User Profile Modal (v2)
         const userProfileModal = ref({
             show: false,
             form: {
@@ -4852,7 +4862,7 @@ createApp({
             }
         });
 
-        // Import/Export Modal
+        // Import/Export Modal (v2)
         const importExportModal = ref({
             show: false,
             mode: 'import', // 'import' or 'export'
@@ -4873,7 +4883,7 @@ createApp({
             search: ''
         });
 
-        // ============ PERMISSION SYSTEM ============
+        // ============ PERMISSION SYSTEM (v2 fixed version) ============
         const userPermissions = ref({});
         const permissionResources = ref(PermissionSystem.resources);
 
@@ -4944,7 +4954,7 @@ createApp({
             return role ? role.level : 'none';
         };
 
-        // FIXED: Permission toggle function that actually works
+        // FIXED: Permission toggle function that actually works (v2)
         const togglePermission = (roleId, resource, action) => {
             if (!hasPermission('system', 'admin')) {
                 showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
@@ -5059,7 +5069,7 @@ createApp({
             }
         };
 
-        // ============ ADVANCED UTILITIES ============
+        // ============ ADVANCED UTILITIES (from v1 + v2) ============
         const showAdvancedToast = (title, message, type = 'info', duration = 5000) => {
             const icons = {
                 info: 'fas fa-info-circle',
@@ -5193,7 +5203,7 @@ createApp({
             return statuses[status] || status;
         };
 
-        // ============ NEW HELPER FUNCTIONS ============
+        // ============ NEW HELPER FUNCTIONS (from v1) ============
         const getResidentName = (residentId) => {
             const resident = medicalStaff.value.find(s => s.id === residentId);
             return resident ? resident.full_name : `Resident ${residentId?.substring(0, 8) || 'Unknown'}`;
@@ -5271,7 +5281,52 @@ createApp({
             });
         };
 
-        // ============ COMPUTED PROPERTIES ============
+        // ============ INPUT VALIDATION FUNCTIONS (from v1) ============
+        const validateEmail = (email) => {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        };
+
+        const validateDateRange = (startDate, endDate) => {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            return start <= end;
+        };
+
+        const validateStaffForm = (form) => {
+            const errors = [];
+            
+            if (!form.full_name?.trim()) errors.push('Full name is required');
+            if (!form.professional_email?.trim()) errors.push('Email is required');
+            if (form.professional_email && !validateEmail(form.professional_email)) errors.push('Invalid email format');
+            if (!form.staff_id?.trim()) errors.push('Staff ID is required');
+            if (form.staff_type === 'medical_resident' && !form.resident_category) errors.push('Resident category is required');
+            
+            return errors;
+        };
+
+        // ============ CACHE MANAGEMENT (from v1) ============
+        const loadWithCache = async (resource, loadFunction) => {
+            const now = Date.now();
+            const fiveMinutes = 5 * 60 * 1000;
+            
+            if (cache.value[resource] && cache.value.last_updated[resource] && 
+                (now - cache.value.last_updated[resource] < fiveMinutes)) {
+                return cache.value[resource];
+            }
+            
+            const data = await loadFunction();
+            cache.value[resource] = data;
+            cache.value.last_updated[resource] = now;
+            return data;
+        };
+
+        const invalidateCache = (resource) => {
+            cache.value[resource] = null;
+            delete cache.value.last_updated[resource];
+        };
+
+        // ============ COMPUTED PROPERTIES (combined v1 + v2) ============
         const stats = computed(() => {
             const residents = medicalStaff.value.filter(s => 
                 s.staff_type === 'medical_resident' && s.employment_status === 'active'
@@ -5427,6 +5482,7 @@ createApp({
             );
         });
 
+        // ============ NEW COMPUTED PROPERTIES (from v2) ============
         const pendingSchedules = computed(() => {
             return residentRotations.value.filter(r => 
                 r.rotation_status === 'pending_approval' || 
@@ -5465,7 +5521,6 @@ createApp({
             };
         });
 
-        // ============ NEW COMPUTED PROPERTIES ============
         const unreadNotifications = computed(() => {
             return userNotifications.value.filter(n => !n.read).length;
         });
@@ -5486,7 +5541,463 @@ createApp({
             return departments;
         });
 
-        // ============ NAVIGATION & UI ============
+        // ============ EXPORT FUNCTIONS (from v1) ============
+        const exportMedicalStaff = async () => {
+            if (!hasPermission('medical_staff', 'export')) {
+                showAdvancedToast('Permission Denied', 'Need export permission', 'permission');
+                return;
+            }
+            
+            try {
+                const headers = ['Name', 'Staff ID', 'Type', 'Status', 'Email', 'Clinic', 'Resident Category', 'Training Year'];
+                const rows = medicalStaff.value.map(staff => [
+                    staff.full_name,
+                    staff.staff_id,
+                    formatStaffType(staff.staff_type),
+                    formatEmploymentStatus(staff.employment_status),
+                    staff.professional_email,
+                    staff.primary_clinic,
+                    formatResidentCategory(staff.resident_category),
+                    staff.training_year || 'N/A'
+                ]);
+                
+                const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `medical-staff-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                
+                showAdvancedToast('Export Successful', 'Medical staff data exported', 'success');
+                logAudit('EXPORT_MEDICAL_STAFF', 'Exported medical staff data to CSV', 'medical_staff');
+            } catch (error) {
+                console.error('Export error:', error);
+                showAdvancedToast('Export Failed', error.message, 'error');
+            }
+        };
+
+        const exportAuditLogsToCSV = async () => {
+            if (!hasPermission('audit', 'export')) {
+                showAdvancedToast('Permission Denied', 'Need export permission', 'permission');
+                return;
+            }
+            
+            try {
+                const headers = ['Timestamp', 'User', 'Role', 'Action', 'Resource', 'Details', 'Resource ID'];
+                const rows = auditLogs.value.map(log => [
+                    formatDateTime(log.timestamp),
+                    log.user_name,
+                    getUserRoleDisplay(log.user_role),
+                    log.action,
+                    log.resource,
+                    log.details,
+                    log.resource_id || 'N/A'
+                ]);
+                
+                const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                
+                showAdvancedToast('Export Successful', 'Audit logs exported', 'success');
+                logAudit('AUDIT_EXPORT_CSV', 'Exported audit logs to CSV', 'audit');
+            } catch (error) {
+                console.error('Export error:', error);
+                showAdvancedToast('Export Failed', error.message, 'error');
+            }
+        };
+
+        const exportTrainingUnits = async () => {
+            if (!hasPermission('training_units', 'assign')) {
+                showAdvancedToast('Permission Denied', 'Need assign permission', 'permission');
+                return;
+            }
+            
+            try {
+                const headers = ['Unit Name', 'Description', 'Status', 'Specialty', 'Max Residents', 'Current Residents', 'Utilization %'];
+                const rows = trainingUnits.value.map(unit => [
+                    unit.unit_name,
+                    unit.unit_description,
+                    unit.unit_status,
+                    unit.specialty,
+                    unit.maximum_residents,
+                    unit.current_residents || 0,
+                    `${Math.round(((unit.current_residents || 0) / unit.maximum_residents) * 100)}%`
+                ]);
+                
+                const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `training-units-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                
+                showAdvancedToast('Export Successful', 'Training units data exported', 'success');
+                logAudit('EXPORT_TRAINING_UNITS', 'Exported training units data to CSV', 'training_units');
+            } catch (error) {
+                console.error('Export error:', error);
+                showAdvancedToast('Export Failed', error.message, 'error');
+            }
+        };
+
+        // ============ CLEAR FUNCTIONS (from v1) ============
+        const clearAuditLogs = async () => {
+            if (!hasPermission('audit', 'clear')) {
+                showAdvancedToast('Permission Denied', 'Need clear permission', 'permission');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to clear all audit logs? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const { error } = await supabaseClient
+                    .from('audit_logs')
+                    .delete()
+                    .lt('timestamp', new Date().toISOString());
+                
+                if (error) throw error;
+                
+                auditLogs.value = [];
+                showAdvancedToast('Audit Logs Cleared', 'All audit logs have been cleared', 'success');
+                logAudit('AUDIT_CLEAR', 'Cleared all audit logs', 'audit');
+            } catch (error) {
+                console.error('Clear audit logs error:', error);
+                showAdvancedToast('Clear Failed', error.message, 'error');
+            }
+        };
+
+        // ============ PUBLISH FUNCTIONS (from v1) ============
+        const publishAnnouncement = async (announcement) => {
+            if (!hasPermission('announcements', 'publish')) {
+                showAdvancedToast('Permission Denied', 'Need publish permission', 'permission');
+                return;
+            }
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('department_announcements')
+                    .update({
+                        status: 'published',
+                        published_at: new Date().toISOString(),
+                        published_by: currentUser.value.id
+                    })
+                    .eq('id', announcement.id)
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                const index = announcements.value.findIndex(a => a.id === data.id);
+                if (index !== -1) announcements.value[index] = data;
+                
+                showAdvancedToast('Published', 'Announcement published to all staff', 'success');
+                logAudit('ANNOUNCEMENT_PUBLISH', `Published: ${announcement.announcement_title}`, 'announcements', announcement.id);
+            } catch (error) {
+                console.error('Publish error:', error);
+                showAdvancedToast('Publish Failed', error.message, 'error');
+            }
+        };
+
+        // ============ BULK OPERATIONS (from v1) ============
+        const bulkApproveLeaveRequests = async (requestIds) => {
+            if (!hasPermission('leave_requests', 'approve')) {
+                showAdvancedToast('Permission Denied', 'Need approve permission', 'permission');
+                return;
+            }
+            
+            if (!confirm(`Approve ${requestIds.length} leave requests?`)) return;
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('leave_requests')
+                    .update({
+                        status: 'approved',
+                        approver_notes: `Bulk approved by ${currentUser.value.full_name}`,
+                        updated_at: new Date().toISOString()
+                    })
+                    .in('id', requestIds)
+                    .select();
+                
+                if (error) throw error;
+                
+                data.forEach(updatedRequest => {
+                    const index = leaveRequests.value.findIndex(r => r.id === updatedRequest.id);
+                    if (index !== -1) leaveRequests.value[index] = updatedRequest;
+                });
+                
+                showAdvancedToast('Bulk Approved', `${requestIds.length} leave requests approved`, 'success');
+                logAudit('LEAVE_BULK_APPROVE', `Bulk approved ${requestIds.length} leave requests`, 'leave_requests');
+            } catch (error) {
+                console.error('Bulk approve error:', error);
+                showAdvancedToast('Bulk Approval Failed', error.message, 'error');
+            }
+        };
+
+        const bulkDeleteRotations = async (rotationIds) => {
+            if (!hasPermission('resident_rotations', 'delete')) {
+                showAdvancedToast('Permission Denied', 'Need delete permission', 'permission');
+                return;
+            }
+            
+            if (!confirm(`Delete ${rotationIds.length} rotations? This cannot be undone.`)) return;
+            
+            try {
+                const { error } = await supabaseClient
+                    .from('resident_rotations')
+                    .delete()
+                    .in('id', rotationIds);
+                
+                if (error) throw error;
+                
+                residentRotations.value = residentRotations.value.filter(
+                    r => !rotationIds.includes(r.id)
+                );
+                
+                showAdvancedToast('Bulk Deleted', `${rotationIds.length} rotations removed`, 'success');
+                logAudit('ROTATION_BULK_DELETE', `Bulk deleted ${rotationIds.length} rotations`, 'resident_rotations');
+            } catch (error) {
+                console.error('Bulk delete error:', error);
+                showAdvancedToast('Bulk Delete Failed', error.message, 'error');
+            }
+        };
+
+        // ============ SCHEDULE CONFLICT DETECTION (from v1) ============
+        const detectScheduleConflicts = (residentId, startDate, endDate) => {
+            const conflicts = residentRotations.value.filter(rotation => 
+                rotation.resident_id === residentId &&
+                rotation.rotation_status !== 'cancelled' &&
+                (
+                    (new Date(startDate) >= new Date(rotation.rotation_start_date) && 
+                     new Date(startDate) <= new Date(rotation.rotation_end_date)) ||
+                    (new Date(endDate) >= new Date(rotation.rotation_start_date) && 
+                     new Date(endDate) <= new Date(rotation.rotation_end_date)) ||
+                    (new Date(startDate) <= new Date(rotation.rotation_start_date) && 
+                     new Date(endDate) >= new Date(rotation.rotation_end_date))
+                )
+            );
+            
+            return conflicts.map(conflict => ({
+                rotation_id: conflict.rotation_id,
+                unit_name: getTrainingUnitName(conflict.training_unit_id),
+                start_date: conflict.rotation_start_date,
+                end_date: conflict.rotation_end_date
+            }));
+        };
+
+        // ============ REPORT GENERATION (from v1) ============
+        const generateMonthlyReport = async (month, year) => {
+            if (!hasPermission('medical_staff', 'export')) {
+                showAdvancedToast('Permission Denied', 'Need export permission', 'permission');
+                return;
+            }
+            
+            try {
+                const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+                const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+                
+                const report = {
+                    period: `${month}/${year}`,
+                    total_staff: medicalStaff.value.length,
+                    active_staff: medicalStaff.value.filter(s => s.employment_status === 'active').length,
+                    leave_requests: leaveRequests.value.filter(r => 
+                        r.start_date >= startDate && r.start_date <= endDate
+                    ).length,
+                    new_rotations: residentRotations.value.filter(r => 
+                        r.rotation_start_date >= startDate && r.rotation_start_date <= endDate
+                    ).length,
+                    completed_rotations: residentRotations.value.filter(r => 
+                        r.rotation_status === 'completed' && 
+                        r.rotation_end_date >= startDate && 
+                        r.rotation_end_date <= endDate
+                    ).length,
+                    training_unit_utilization: trainingUnits.value.map(unit => ({
+                        unit_name: unit.unit_name,
+                        current_residents: unit.current_residents || 0,
+                        max_residents: unit.maximum_residents,
+                        utilization: Math.round(((unit.current_residents || 0) / unit.maximum_residents) * 100)
+                    }))
+                };
+                
+                logAudit('REPORT_GENERATE', `Generated monthly report for ${month}/${year}`, 'system');
+                return report;
+            } catch (error) {
+                console.error('Report generation error:', error);
+                showAdvancedToast('Report Failed', error.message, 'error');
+                return null;
+            }
+        };
+
+        // ============ IMPORT FUNCTIONS (from v1) ============
+        const importMedicalStaffCSV = async (csvFile) => {
+            if (!hasPermission('medical_staff', 'create')) {
+                showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
+                return;
+            }
+            
+            try {
+                const text = await csvFile.text();
+                const rows = text.split('\n').filter(row => row.trim());
+                const headers = rows[0].split(',').map(h => h.trim());
+                
+                const staffRecords = rows.slice(1).map(row => {
+                    const values = row.split(',');
+                    const record = {};
+                    headers.forEach((header, index) => {
+                        record[header] = values[index]?.trim() || '';
+                    });
+                    
+                    return {
+                        full_name: record.Name || '',
+                        staff_id: record['Staff ID'] || `MD-${Date.now().toString().slice(-6)}`,
+                        staff_type: record.Type === 'Medical Resident' ? 'medical_resident' : 
+                                   record.Type === 'Attending Physician' ? 'attending_physician' : 'medical_resident',
+                        employment_status: record.Status === 'Active' ? 'active' : 
+                                          record.Status === 'On Leave' ? 'on_leave' : 'inactive',
+                        professional_email: record.Email || '',
+                        primary_clinic: record.Clinic || '',
+                        resident_category: record['Resident Category'] || null,
+                        training_year: record['Training Year'] ? parseInt(record['Training Year']) : null,
+                        can_supervise_residents: record.Type === 'Attending Physician',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+                }).filter(record => record.full_name);
+                
+                const { data, error } = await supabaseClient
+                    .from('medical_staff')
+                    .insert(staffRecords)
+                    .select();
+                
+                if (error) throw error;
+                
+                medicalStaff.value.push(...data);
+                
+                showAdvancedToast('Import Successful', `Imported ${data.length} staff records`, 'success');
+                logAudit('STAFF_IMPORT', `Imported ${data.length} staff records from CSV`, 'medical_staff');
+                
+            } catch (error) {
+                console.error('Import error:', error);
+                showAdvancedToast('Import Failed', error.message, 'error');
+            }
+        };
+
+        // ============ BACKUP FUNCTIONS (from v1) ============
+        const createBackup = async () => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            try {
+                const backupData = {
+                    timestamp: new Date().toISOString(),
+                    medical_staff: medicalStaff.value,
+                    training_units: trainingUnits.value,
+                    resident_rotations: residentRotations.value,
+                    leave_requests: leaveRequests.value,
+                    announcements: announcements.value,
+                    oncall_schedule: onCallSchedule.value
+                };
+                
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+                a.click();
+                
+                showAdvancedToast('Backup Created', 'System backup downloaded', 'success');
+                logAudit('BACKUP_CREATE', 'Created system backup', 'system');
+            } catch (error) {
+                console.error('Backup error:', error);
+                showAdvancedToast('Backup Failed', error.message, 'error');
+            }
+        };
+
+        // ============ ADVANCED SEARCH (from v1) ============
+        const performAdvancedSearch = (query) => {
+            if (!query.trim()) return null;
+            
+            const results = {
+                medical_staff: [],
+                training_units: [],
+                rotations: [],
+                announcements: []
+            };
+            
+            const searchLower = query.toLowerCase();
+            
+            results.medical_staff = medicalStaff.value.filter(staff =>
+                staff.full_name.toLowerCase().includes(searchLower) ||
+                staff.staff_id.toLowerCase().includes(searchLower) ||
+                staff.professional_email.toLowerCase().includes(searchLower) ||
+                staff.primary_clinic.toLowerCase().includes(searchLower)
+            );
+            
+            results.training_units = trainingUnits.value.filter(unit =>
+                unit.unit_name.toLowerCase().includes(searchLower) ||
+                unit.unit_description.toLowerCase().includes(searchLower) ||
+                unit.specialty.toLowerCase().includes(searchLower)
+            );
+            
+            results.rotations = residentRotations.value.filter(rotation => {
+                const residentName = getResidentName(rotation.resident_id).toLowerCase();
+                const unitName = getTrainingUnitName(rotation.training_unit_id).toLowerCase();
+                return residentName.includes(searchLower) ||
+                       unitName.includes(searchLower) ||
+                       rotation.rotation_id.toLowerCase().includes(searchLower);
+            });
+            
+            results.announcements = announcements.value.filter(ann =>
+                ann.announcement_title.toLowerCase().includes(searchLower) ||
+                ann.announcement_content.toLowerCase().includes(searchLower)
+            );
+            
+            logAudit('ADVANCED_SEARCH', `Searched for: "${query}"`, 'system');
+            return results;
+        };
+
+        // ============ REAL-TIME SUBSCRIPTIONS (from v1) ============
+        const setupRealtimeSubscriptions = () => {
+            const medicalStaffSubscription = supabaseClient
+                .channel('medical-staff-changes')
+                .on('postgres_changes', 
+                    { event: '*', schema: 'public', table: 'medical_staff' },
+                    (payload) => {
+                        console.log('Medical staff change:', payload);
+                        loadMedicalStaff();
+                        showAdvancedToast('Update', 'Medical staff data updated', 'info');
+                    }
+                )
+                .subscribe();
+
+            const onCallSubscription = supabaseClient
+                .channel('oncall-changes')
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'oncall_schedule' },
+                    (payload) => {
+                        console.log('On-call schedule change:', payload);
+                        loadOnCallSchedule();
+                        showAdvancedToast('Schedule Update', 'On-call schedule updated', 'info');
+                    }
+                )
+                .subscribe();
+
+            const subscriptions = [medicalStaffSubscription, onCallSubscription];
+            
+            return () => {
+                subscriptions.forEach(sub => sub.unsubscribe());
+            };
+        };
+
+        // ============ NAVIGATION & UI (combined) ============
         const switchView = async (view) => {
             currentView.value = view;
             closeMobileMenu();
@@ -5563,7 +6074,7 @@ createApp({
             return day.status === 'covered' ? 'status-available' : 'status-critical';
         };
 
-        // ============ AUTHENTICATION ============
+        // ============ AUTHENTICATION (v2 version) ============
         const handleAdvancedLogin = async () => {
             loading.value = true;
             
@@ -5670,7 +6181,7 @@ createApp({
             }
         };
 
-        // ============ DATA LOADING ============
+        // ============ DATA LOADING (combined) ============
         const loadInitialData = async () => {
             loading.value = true;
             try {
@@ -5737,7 +6248,7 @@ createApp({
             }
         };
 
-        // ============ API FUNCTIONS ============
+        // ============ API FUNCTIONS (combined) ============
         const loadMedicalStaff = async () => {
             try {
                 const { data, error } = await supabaseClient
@@ -5747,6 +6258,7 @@ createApp({
                 
                 if (error) throw error;
                 medicalStaff.value = data || [];
+                invalidateCache('medical_staff');
             } catch (error) {
                 console.error('Error loading medical staff:', error);
                 // For demo, create mock data
@@ -5788,6 +6300,7 @@ createApp({
                 
                 if (error) throw error;
                 trainingUnits.value = data || [];
+                invalidateCache('training_units');
             } catch (error) {
                 console.error('Error loading training units:', error);
                 // Mock data
@@ -5823,6 +6336,7 @@ createApp({
                 
                 if (error) throw error;
                 residentRotations.value = data || [];
+                invalidateCache('resident_rotations');
             } catch (error) {
                 console.error('Error loading resident rotations:', error);
                 residentRotations.value = [];
@@ -5933,7 +6447,7 @@ createApp({
             }));
         };
 
-        // ============ NEW DATA LOADING FUNCTIONS ============
+        // ============ NEW DATA LOADING FUNCTIONS (from v2) ============
         const loadSystemSettings = async () => {
             try {
                 // For demo, use default settings
@@ -6030,7 +6544,7 @@ createApp({
             return departmentAnalytics.value;
         };
 
-        // ============ MEDICAL STAFF CRUD ============
+        // ============ MEDICAL STAFF CRUD (combined) ============
         const showAddMedicalStaffModal = () => {
             if (!hasPermission('medical_staff', 'create')) {
                 showAdvancedToast(
@@ -6089,13 +6603,13 @@ createApp({
             
             saving.value = true;
             try {
-                // Validate form
-                if (!medicalStaffModal.value.form.full_name.trim()) {
-                    throw new Error('Full name is required');
+                // Use validation from v1
+                const validationErrors = validateStaffForm(medicalStaffModal.value.form);
+                if (validationErrors.length > 0) {
+                    throw new Error(validationErrors.join(', '));
                 }
                 
                 if (medicalStaffModal.value.mode === 'add') {
-                    // Add new staff
                     const { data, error } = await supabaseClient
                         .from('medical_staff')
                         .insert([{
@@ -6112,7 +6626,6 @@ createApp({
                     showAdvancedToast('Success', 'Medical staff added successfully', 'success');
                     logAudit('STAFF_CREATE', `Added: ${data.full_name}`, 'medical_staff', data.id);
                 } else {
-                    // Update existing staff
                     const { data, error } = await supabaseClient
                         .from('medical_staff')
                         .update({
@@ -6125,7 +6638,6 @@ createApp({
                     
                     if (error) throw error;
                     
-                    // Update in local array
                     const index = medicalStaff.value.findIndex(s => s.id === data.id);
                     if (index !== -1) {
                         medicalStaff.value[index] = data;
@@ -6166,7 +6678,6 @@ createApp({
                 
                 if (error) throw error;
                 
-                // Remove from local array
                 const index = medicalStaff.value.findIndex(s => s.id === staff.id);
                 if (index !== -1) {
                     medicalStaff.value.splice(index, 1);
@@ -6179,8 +6690,8 @@ createApp({
                 showAdvancedToast('Delete Failed', error.message, 'error');
             }
         };
-
-        // ============ ANNOUNCEMENTS MODAL FUNCTIONS ============
+            
+        // ============ ANNOUNCEMENTS MODAL FUNCTIONS (combined) ============
         const showAddAnnouncementModal = () => {
             if (!hasPermission('announcements', 'create')) {
                 showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
@@ -6328,14 +6839,13 @@ createApp({
             }
         };
 
-        // ============ LEAVE REQUESTS MODAL FUNCTIONS ============
+        // ============ LEAVE REQUESTS MODAL FUNCTIONS (combined) ============
         const showAddLeaveRequestModal = () => {
             if (!hasPermission('leave_requests', 'create')) {
                 showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
                 return;
             }
             
-            // Set default dates (next week)
             const nextWeek = new Date();
             nextWeek.setDate(nextWeek.getDate() + 7);
             const startDate = new Date().toISOString().split('T')[0];
@@ -6394,7 +6904,6 @@ createApp({
                 
                 if (error) throw error;
                 
-                // Update local state
                 const index = leaveRequests.value.findIndex(r => r.id === data.id);
                 if (index !== -1) leaveRequests.value[index] = data;
                 
@@ -6429,7 +6938,6 @@ createApp({
                 
                 if (error) throw error;
                 
-                // Update local state
                 const index = leaveRequests.value.findIndex(r => r.id === data.id);
                 if (index !== -1) leaveRequests.value[index] = data;
                 
@@ -6449,8 +6957,12 @@ createApp({
                     throw new Error('Start and end dates are required');
                 }
                 
+                // Use validation from v1
+                if (!validateDateRange(leaveRequestModal.value.form.start_date, leaveRequestModal.value.form.end_date)) {
+                    throw new Error('End date must be after start date');
+                }
+                
                 if (leaveRequestModal.value.mode === 'add') {
-                    // Add new leave request
                     if (!hasPermission('leave_requests', 'create')) {
                         throw new Error('No permission to create leave requests');
                     }
@@ -6478,7 +6990,6 @@ createApp({
                     logAudit('LEAVE_CREATE', `Submitted leave request`, 'leave_requests', data.id);
                     
                 } else {
-                    // Update/review existing request
                     if (!hasPermission('leave_requests', 'update')) {
                         throw new Error('No permission to update leave requests');
                     }
@@ -6496,7 +7007,6 @@ createApp({
                     
                     if (error) throw error;
                     
-                    // Update local state
                     const index = leaveRequests.value.findIndex(r => r.id === data.id);
                     if (index !== -1) leaveRequests.value[index] = data;
                     
@@ -6514,18 +7024,16 @@ createApp({
             }
         };
 
-        // ============ RESIDENT ROTATIONS MODAL FUNCTIONS ============
+        // ============ RESIDENT ROTATIONS MODAL FUNCTIONS (combined with conflict detection) ============
         const showAddRotationModal = () => {
             if (!hasPermission('resident_rotations', 'create')) {
                 showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
                 return;
             }
             
-            // Generate rotation ID
             const date = new Date();
             const rotationId = `ROT-${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}-${Math.floor(Math.random()*1000).toString().padStart(3,'0')}`;
             
-            // Set default dates (next month)
             const startDate = new Date();
             startDate.setDate(startDate.getDate() + 30);
             const endDate = new Date(startDate);
@@ -6581,7 +7089,6 @@ createApp({
                 return;
             }
             
-            // Copy rotation and extend end date by 30 days
             const newEndDate = new Date(rotation.rotation_end_date);
             newEndDate.setDate(newEndDate.getDate() + 30);
             
@@ -6594,7 +7101,7 @@ createApp({
                     resident_id: rotation.resident_id,
                     training_unit_id: rotation.training_unit_id,
                     supervising_attending_id: rotation.supervising_attending_id || '',
-                    rotation_start_date: rotation.rotation_end_date, // Start from previous end date
+                    rotation_start_date: rotation.rotation_end_date,
                     rotation_end_date: newEndDate.toISOString().split('T')[0],
                     rotation_category: rotation.rotation_category,
                     rotation_status: 'scheduled',
@@ -6613,12 +7120,30 @@ createApp({
             
             saving.value = true;
             try {
-                // Validate
                 if (!rotationModal.value.form.rotation_id) throw new Error('Rotation ID required');
                 if (!rotationModal.value.form.resident_id) throw new Error('Resident ID required');
                 if (!rotationModal.value.form.training_unit_id) throw new Error('Training Unit ID required');
                 if (!rotationModal.value.form.rotation_start_date) throw new Error('Start date required');
                 if (!rotationModal.value.form.rotation_end_date) throw new Error('End date required');
+                
+                // Use validation from v1
+                if (!validateDateRange(rotationModal.value.form.rotation_start_date, rotationModal.value.form.rotation_end_date)) {
+                    throw new Error('End date must be after start date');
+                }
+                
+                // Use conflict detection from v1
+                const conflicts = detectScheduleConflicts(
+                    rotationModal.value.form.resident_id,
+                    rotationModal.value.form.rotation_start_date,
+                    rotationModal.value.form.rotation_end_date
+                );
+                
+                if (conflicts.length > 0 && rotationModal.value.mode === 'add') {
+                    const conflictList = conflicts.map(c => `${c.rotation_id} (${c.unit_name})`).join(', ');
+                    if (!confirm(`Resident has ${conflicts.length} schedule conflict(s): ${conflictList}. Continue anyway?`)) {
+                        return;
+                    }
+                }
                 
                 const rotationData = {
                     rotation_id: rotationModal.value.form.rotation_id,
@@ -6637,7 +7162,6 @@ createApp({
                 let result;
                 
                 if (rotationModal.value.mode === 'add') {
-                    // Add new rotation
                     const { data, error } = await supabaseClient
                         .from('resident_rotations')
                         .insert([{
@@ -6655,7 +7179,6 @@ createApp({
                     logAudit('ROTATION_CREATE', `Created rotation ${rotationData.rotation_id}`, 'resident_rotations', result.id);
                     
                 } else {
-                    // Update existing rotation
                     const { data, error } = await supabaseClient
                         .from('resident_rotations')
                         .update(rotationData)
@@ -6666,7 +7189,6 @@ createApp({
                     if (error) throw error;
                     result = data;
                     
-                    // Update local state
                     const index = residentRotations.value.findIndex(r => r.id === result.id);
                     if (index !== -1) residentRotations.value[index] = result;
                     
@@ -6684,7 +7206,7 @@ createApp({
             }
         };
 
-        // Drag & drop placement function
+        // Drag & drop placement function (with conflict detection)
         const handleDragDropPlacement = async (residentId, unitId) => {
             if (!hasPermission('placements', 'drag_drop')) {
                 showAdvancedToast('Permission Denied', 'Need drag & drop permission', 'permission');
@@ -6692,6 +7214,19 @@ createApp({
             }
             
             try {
+                // Use conflict detection from v1
+                const conflicts = detectScheduleConflicts(
+                    residentId,
+                    new Date().toISOString().split('T')[0],
+                    new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString().split('T')[0]
+                );
+                
+                if (conflicts.length > 0) {
+                    if (!confirm(`Resident has ${conflicts.length} schedule conflict(s). Continue anyway?`)) {
+                        return;
+                    }
+                }
+                
                 const rotationId = `PLACEMENT-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(Math.random()*1000)}`;
                 const startDate = new Date().toISOString().split('T')[0];
                 const endDate = new Date();
@@ -6726,7 +7261,7 @@ createApp({
             }
         };
 
-        // ============ TRAINING UNIT FUNCTIONS ============
+        // ============ TRAINING UNIT FUNCTIONS (combined) ============
         const showAddTrainingUnitModal = () => {
             if (!hasPermission('training_units', 'create')) {
                 showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
@@ -6815,7 +7350,7 @@ createApp({
             }
         };
 
-        // ============ ON-CALL SCHEDULE FUNCTIONS ============
+        // ============ ON-CALL SCHEDULE FUNCTIONS (combined) ============
         const showAddOnCallModal = () => {
             if (!hasPermission('oncall_schedule', 'create')) {
                 showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
@@ -6978,7 +7513,7 @@ createApp({
             };
         };
 
-        // ============ DRAG & DROP FUNCTIONS ============
+        // ============ DRAG & DROP FUNCTIONS (combined) ============
         const handleDragStart = (event, resident) => {
             event.dataTransfer.setData('text/plain', resident.id);
             event.dataTransfer.effectAllowed = 'move';
@@ -6998,7 +7533,6 @@ createApp({
             try {
                 await handleDragDropPlacement(residentId, unit.id);
                 
-                // Update unit current residents count
                 const unitIndex = trainingUnits.value.findIndex(u => u.id === unit.id);
                 if (unitIndex !== -1) {
                     trainingUnits.value[unitIndex].current_residents = 
@@ -7026,7 +7560,6 @@ createApp({
             if (!confirm(`Remove ${residentName} from ${unitName}?`)) return;
             
             try {
-                // Find and update the rotation status
                 const rotationIndex = residentRotations.value.findIndex(r => 
                     r.resident_id === residentId && 
                     r.training_unit_id === unitId && 
@@ -7049,10 +7582,8 @@ createApp({
                     
                     if (error) throw error;
                     
-                    // Update local state
                     residentRotations.value[rotationIndex] = data;
                     
-                    // Update unit current residents count
                     const unitIndex = trainingUnits.value.findIndex(u => u.id === unitId);
                     if (unitIndex !== -1) {
                         trainingUnits.value[unitIndex].current_residents = 
@@ -7069,7 +7600,7 @@ createApp({
             }
         };
 
-        // ============ QUICK PLACEMENT MODAL FUNCTIONS ============
+        // ============ QUICK PLACEMENT MODAL FUNCTIONS (combined with conflict detection) ============
         const showQuickPlacementModal = () => {
             if (!hasPermission('placements', 'create')) {
                 showAdvancedToast('Permission Denied', 'Need create permission for placements', 'permission');
@@ -7098,11 +7629,25 @@ createApp({
                     throw new Error('Please select both resident and unit');
                 }
                 
-                // Create a new rotation
-                const rotationId = `PLACEMENT-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(Math.random()*1000)}`;
                 const startDate = new Date().toISOString().split('T')[0];
                 const endDate = new Date();
                 endDate.setDate(endDate.getDate() + (quickPlacementModal.value.form.duration * 7));
+                
+                // Use conflict detection from v1
+                const conflicts = detectScheduleConflicts(
+                    quickPlacementModal.value.form.resident_id,
+                    startDate,
+                    endDate.toISOString().split('T')[0]
+                );
+                
+                if (conflicts.length > 0) {
+                    const conflictList = conflicts.map(c => `${c.rotation_id} (${c.unit_name})`).join(', ');
+                    if (!confirm(`Resident has ${conflicts.length} schedule conflict(s): ${conflictList}. Continue anyway?`)) {
+                        return;
+                    }
+                }
+                
+                const rotationId = `PLACEMENT-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(Math.random()*1000)}`;
                 
                 const { data, error } = await supabaseClient
                     .from('resident_rotations')
@@ -7123,10 +7668,8 @@ createApp({
                 
                 if (error) throw error;
                 
-                // Add to local state
                 residentRotations.value.unshift(data);
                 
-                // Update unit current residents count
                 const unitIndex = trainingUnits.value.findIndex(u => u.id === quickPlacementModal.value.form.unit_id);
                 if (unitIndex !== -1) {
                     trainingUnits.value[unitIndex].current_residents = 
@@ -7146,7 +7689,7 @@ createApp({
             }
         };
 
-        // ============ DELETE ROTATION FUNCTION ============
+        // ============ DELETE ROTATION FUNCTION (combined) ============
         const deleteRotation = async (rotation) => {
             if (!hasPermission('resident_rotations', 'delete')) {
                 showAdvancedToast('Permission Denied', 'Need delete permission', 'permission');
@@ -7165,7 +7708,6 @@ createApp({
                 
                 if (error) throw error;
                 
-                // Remove from local array
                 const index = residentRotations.value.findIndex(r => r.id === rotation.id);
                 if (index !== -1) {
                     residentRotations.value.splice(index, 1);
@@ -7179,7 +7721,7 @@ createApp({
             }
         };
 
-        // ============ ROLE MANAGEMENT ============
+        // ============ ROLE MANAGEMENT (v2 version - fixed) ============
         const showAddRoleModal = () => {
             if (!hasPermission('system', 'admin')) {
                 showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
@@ -7270,7 +7812,6 @@ createApp({
                     permissions: {}
                 };
                 
-                // Copy permissions from a similar role
                 const templateRole = PermissionSystem.roles[addRoleModal.value.form.level === 'full' ? 'system_admin' : 'resident_manager'];
                 if (templateRole) {
                     newRole.permissions = { ...templateRole.permissions };
@@ -7298,7 +7839,7 @@ createApp({
             }
         };
 
-        // ============ SYSTEM SETTINGS FUNCTIONS ============
+        // ============ SYSTEM SETTINGS FUNCTIONS (from v2) ============
         const showSystemSettingsModal = () => {
             if (!hasPermission('system', 'read')) {
                 showAdvancedToast('Permission Denied', 'Need read permission for system settings', 'permission');
@@ -7319,8 +7860,6 @@ createApp({
             
             saving.value = true;
             try {
-                // In a real app, save to database
-                // For demo, update local state
                 systemSettings.value = { ...systemSettingsModal.value.form };
                 
                 showAdvancedToast('Settings Saved', 'System settings updated successfully', 'success');
@@ -7335,7 +7874,7 @@ createApp({
             }
         };
 
-        // ============ USER PROFILE FUNCTIONS ============
+        // ============ USER PROFILE FUNCTIONS (from v2) ============
         const showUserProfileModal = () => {
             userProfileModal.value = {
                 show: true,
@@ -7353,7 +7892,6 @@ createApp({
         const saveUserProfile = async () => {
             saving.value = true;
             try {
-                // Update current user
                 currentUser.value = {
                     ...currentUser.value,
                     ...userProfileModal.value.form
@@ -7371,7 +7909,7 @@ createApp({
             }
         };
 
-        // ============ IMPORT/EXPORT FUNCTIONS ============
+        // ============ IMPORT/EXPORT FUNCTIONS (from v2) ============
         const showImportExportModal = (mode = 'export', table = null) => {
             if (mode === 'export' && !hasPermission('audit', 'export')) {
                 showAdvancedToast('Permission Denied', 'Need export permission', 'permission');
@@ -7428,7 +7966,6 @@ createApp({
                     throw new Error('No data to export');
                 }
                 
-                // Convert to CSV
                 const headers = Object.keys(data[0]).join(',');
                 const rows = data.map(row => 
                     Object.values(row).map(value => 
@@ -7491,7 +8028,6 @@ createApp({
                                     let value = values[index] || '';
                                     value = value.trim().replace(/^"|"$/g, '');
                                     
-                                    // Parse numbers and booleans
                                     if (!isNaN(value) && value !== '') {
                                         value = Number(value);
                                     } else if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
@@ -7503,14 +8039,12 @@ createApp({
                                 return obj;
                             });
                         
-                        // Insert data into database
                         const { error } = await supabaseClient
                             .from(importExportModal.value.selectedTable)
                             .insert(data);
                         
                         if (error) throw error;
                         
-                        // Reload the data
                         await loadViewData(importExportModal.value.selectedTable.replace('_', ''));
                         
                         showAdvancedToast('Import Successful', `${data.length} records imported`, 'success');
@@ -7536,7 +8070,7 @@ createApp({
             importExportModal.value.importFile = event.target.files[0];
         };
 
-        // ============ NOTIFICATION FUNCTIONS ============
+        // ============ NOTIFICATION FUNCTIONS (from v2) ============
         const markNotificationAsRead = (notificationId) => {
             const index = userNotifications.value.findIndex(n => n.id === notificationId);
             if (index !== -1) {
@@ -7549,7 +8083,7 @@ createApp({
             showAdvancedToast('Notifications Cleared', 'All notifications marked as read', 'success');
         };
 
-        // ============ ACTION HANDLERS ============
+        // ============ ACTION HANDLERS (combined) ============
         const viewStaffSchedule = (staff) => {
             showAdvancedToast('Info', `Viewing schedule for ${staff.full_name}`, 'info');
             logAudit('SCHEDULE_VIEW', `Viewed schedule for ${staff.full_name}`, 'schedules', staff.id);
@@ -7608,9 +8142,8 @@ createApp({
             showAdvancedToast('Info', 'Add staff modal would open here', 'info');
         };
 
-        // ============ INITIALIZATION ============
+        // ============ INITIALIZATION (with real-time subscriptions from v1) ============
         onMounted(() => {
-            // Check for existing session
             supabaseClient.auth.getSession().then(({ data: { session } }) => {
                 if (session) {
                     console.log('Existing session found');
@@ -7619,14 +8152,19 @@ createApp({
                 console.error('Error getting session:', error);
             });
             
-            // Load system roles
             loadSystemRoles();
+            
+            // Add real-time subscriptions from v1
+            const cleanup = setupRealtimeSubscriptions();
+            
+            return () => {
+                if (cleanup) cleanup();
+            };
         });
 
-        // ============ RETURN ============
+        // ============ RETURN (Complete merged version) ============
         return {
             // ============ STATE ============
-            // User & Auth
             currentUser,
             loginForm,
             loading,
@@ -7634,7 +8172,6 @@ createApp({
             permissionLoading,
             savingPermissions,
             
-            // Navigation
             currentView,
             sidebarCollapsed,
             mobileMenuOpen,
@@ -7670,6 +8207,7 @@ createApp({
             userNotifications,
             emergencyContacts,
             systemStats,
+            cache,
             
             // ============ FILTER & SEARCH ============
             staffSearch,
@@ -7752,6 +8290,48 @@ createApp({
             formatAudience,
             formatDateShort,
             
+            // ============ VALIDATION FUNCTIONS (from v1) ============
+            validateEmail,
+            validateDateRange,
+            validateStaffForm,
+            
+            // ============ CACHE MANAGEMENT (from v1) ============
+            loadWithCache,
+            invalidateCache,
+            
+            // ============ EXPORT FUNCTIONS (from v1) ============
+            exportMedicalStaff,
+            exportAuditLogsToCSV,
+            exportTrainingUnits,
+            
+            // ============ CLEAR FUNCTIONS (from v1) ============
+            clearAuditLogs,
+            
+            // ============ PUBLISH FUNCTIONS (from v1) ============
+            publishAnnouncement,
+            
+            // ============ BULK OPERATIONS (from v1) ============
+            bulkApproveLeaveRequests,
+            bulkDeleteRotations,
+            
+            // ============ CONFLICT DETECTION (from v1) ============
+            detectScheduleConflicts,
+            
+            // ============ REPORT GENERATION (from v1) ============
+            generateMonthlyReport,
+            
+            // ============ IMPORT FUNCTIONS (from v1) ============
+            importMedicalStaffCSV,
+            
+            // ============ BACKUP FUNCTIONS (from v1) ============
+            createBackup,
+            
+            // ============ ADVANCED SEARCH (from v1) ============
+            performAdvancedSearch,
+            
+            // ============ REAL-TIME SUBSCRIPTIONS (from v1) ============
+            setupRealtimeSubscriptions,
+            
             // ============ MEDICAL STAFF ============
             showAddMedicalStaffModal,
             editMedicalStaff,
@@ -7808,21 +8388,21 @@ createApp({
             showQuickPlacementModal,
             saveQuickPlacement,
             
-            // ============ SYSTEM SETTINGS ============
+            // ============ SYSTEM SETTINGS (v2) ============
             showSystemSettingsModal,
             saveSystemSettings,
             
-            // ============ USER PROFILE ============
+            // ============ USER PROFILE (v2) ============
             showUserProfileModal,
             saveUserProfile,
             
-            // ============ IMPORT/EXPORT ============
+            // ============ IMPORT/EXPORT (v2) ============
             showImportExportModal,
             exportData,
             importData,
             handleFileSelect,
             
-            // ============ NOTIFICATIONS ============
+            // ============ NOTIFICATIONS (v2) ============
             markNotificationAsRead,
             markAllNotificationsAsRead,
             
