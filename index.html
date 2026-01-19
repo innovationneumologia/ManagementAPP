@@ -4547,10 +4547,11 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
     auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: true
+        detectSessionInUrl: false,
+        storage: window.localStorage
     }
 });
-    
+
 // Advanced DRBA Permission System
 const PermissionSystem = {
     resources: {
@@ -5677,176 +5678,112 @@ const availableAttendings = computed(() => {
         };
 
         // ============ AUTHENTICATION ============
-        // ============ AUTHENTICATION ============
-const handleAdvancedLogin = async () => {
-    loading.value = true;
-    
-    try {
-        const email = loginForm.value.email.trim().toLowerCase();
-        const password = loginForm.value.password;
-        const selectedRole = loginForm.value.user_role;
-        
-        if (!email || !password || !selectedRole) {
-            throw new Error('Please fill in all fields');
-        }
-        
-        // 1. First try Supabase Auth (REAL authentication)
-        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-        
-        let userData;
-        
-        if (authError) {
-            // If auth fails, check if it's a "user not found" error
-            if (authError.message.includes('Invalid login credentials')) {
-                // For demo/testing: Create user if doesn't exist
-                const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: {
-                        data: {
-                            user_role: selectedRole,
-                            full_name: email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                        }
-                    }
-                });
-                
-                if (signUpError) throw signUpError;
-                
-                userData = {
-                    id: signUpData.user.id,
-                    email: signUpData.user.email,
-                    full_name: signUpData.user.user_metadata?.full_name || email.split('@')[0],
-                    user_role: signUpData.user.user_metadata?.user_role || selectedRole,
-                    account_status: 'active'
-                };
-            } else {
-                throw authError;
-            }
-        } else {
-            // Auth successful - get user from app_users table
-            userData = {
-                id: authData.user.id,
-                email: authData.user.email,
-                full_name: authData.user.user_metadata?.full_name || email.split('@')[0],
-                user_role: authData.user.user_metadata?.user_role || selectedRole,
-                account_status: 'active'
-            };
-        }
-        
-        // 2. Ensure user exists in app_users table (for RLS policies)
-        const { data: existingUser } = await supabaseClient
-            .from('app_users')
-            .select('*')
-            .eq('email', email)
-            .maybeSingle();
-        
-        if (!existingUser) {
-            // Create user in app_users table
-            await supabaseClient.from('app_users').insert([{
-                id: userData.id,
-                email: userData.email,
-                full_name: userData.full_name,
-                user_role: selectedRole,
-                account_status: 'active',
-                last_login: new Date().toISOString(),
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            }]);
-        } else {
-            // Update last login
-            await supabaseClient
-                .from('app_users')
-                .update({
-                    last_login: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', existingUser.id);
+        const handleAdvancedLogin = async () => {
+            loading.value = true;
             
-            userData.user_role = existingUser.user_role;
-            userData.full_name = existingUser.full_name;
-        }
-        
-        // 3. Set current user
-        currentUser.value = userData;
-        initializePermissions(userData.user_role);
-        
-        // 4. Load user data
-        await loadCurrentUserProfile();
-        await loadUserNotifications();
-        
-        showAdvancedToast(
-            'Login Successful',
-            `Welcome ${userData.full_name}!`,
-            'success'
-        );
-        
-        logAudit('LOGIN_SUCCESS', `User logged in as ${userData.user_role}`, 'auth', userData.id);
-        
-        // 5. Load initial data
-        await loadInitialData();
-        
-        // 6. Set initial view
-        if (hasPermission('daily_operations', 'read')) {
-            currentView.value = 'daily_operations';
-        } else if (hasPermission('medical_staff', 'read')) {
-            currentView.value = 'medical_staff';
-        } else {
-            currentView.value = 'daily_operations';
-        }
-        
-    } catch (error) {
-        console.error('Login error:', error);
-        showAdvancedToast(
-            'Login Failed',
-            error.message || 'Invalid credentials',
-            'error'
-        );
-        logAudit('LOGIN_FAILED', `Failed login attempt: ${error.message}`, 'auth');
-    } finally {
-        loading.value = false;
-    }
-};
-
-const handleLogout = async () => {
-    try {
-        await supabaseClient.auth.signOut();
-        logAudit('LOGOUT', 'User logged out', 'auth');
-        currentUser.value = null;
-        currentView.value = 'login';
-        userMenuOpen.value = false;
-        showAdvancedToast('Logged Out', 'You have been successfully logged out', 'info');
-    } catch (error) {
-        console.error('Logout error:', error);
-    }
-};
-
-// Check for existing session on page load
-supabaseClient.auth.getSession().then(({ data: { session } }) => {
-    if (session) {
-        // Auto-login if session exists
-        supabaseClient
-            .from('app_users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
-            .then(({ data: user }) => {
-                if (user) {
-                    currentUser.value = user;
-                    initializePermissions(user.user_role);
-                    loadInitialData();
+            try {
+                const email = loginForm.value.email.trim().toLowerCase();
+                const password = loginForm.value.password;
+                const selectedRole = loginForm.value.user_role;
+                
+                if (!email || !password || !selectedRole) {
+                    throw new Error('Please fill in all fields');
+                }
+                
+                // For demo purposes, we'll use mock authentication
+                const mockUsers = {
+                    'admin@hospital.org': { role: 'system_admin', name: 'System Administrator' },
+                    'head@hospital.org': { role: 'department_head', name: 'Department Head' },
+                    'manager@hospital.org': { role: 'resident_manager', name: 'Resident Manager' },
+                    'doctor@hospital.org': { role: 'viewing_doctor', name: 'Viewing Doctor' }
+                };
+                
+                let userData;
+                
+                if (email in mockUsers && password === 'password123') {
+                    userData = {
+                        id: generateUUID(),
+                        email: email,
+                        full_name: mockUsers[email].name,
+                        user_role: mockUsers[email].role,
+                        account_status: 'active'
+                    };
+                } else {
+                    // Try to get from app_users table
+                    const { data: existingUser } = await supabaseClient
+                        .from('app_users')
+                        .select('*')
+                        .eq('email', email)
+                        .maybeSingle();
                     
-                    if (hasPermission('daily_operations', 'read')) {
-                        currentView.value = 'daily_operations';
-                    } else if (hasPermission('medical_staff', 'read')) {
-                        currentView.value = 'medical_staff';
+                    if (existingUser) {
+                        userData = existingUser;
+                    } else {
+                        // Create new user for demo
+                        userData = {
+                            id: generateUUID(),
+                            email: email,
+                            full_name: email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                            user_role: selectedRole,
+                            account_status: 'active'
+                        };
+                        
+                        // Save to database
+                        await supabaseClient.from('app_users').insert([userData]);
                     }
                 }
-            });
-    }
-});
+                
+                currentUser.value = userData;
+                initializePermissions(userData.user_role);
+                
+                // Load user-specific data
+                await loadCurrentUserProfile();
+                await loadUserNotifications();
+                
+                showAdvancedToast(
+                    'Login Successful',
+                    `Welcome ${userData.full_name}!`,
+                    'success'
+                );
+                
+                logAudit('LOGIN_SUCCESS', `User logged in as ${userData.user_role}`, 'auth', userData.id);
+                
+                await loadInitialData();
+                
+                // Set initial view based on permissions
+                if (hasPermission('daily_operations', 'read')) {
+                    currentView.value = 'daily_operations';
+                } else if (hasPermission('medical_staff', 'read')) {
+                    currentView.value = 'medical_staff';
+                } else {
+                    currentView.value = 'daily_operations';
+                }
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                showAdvancedToast(
+                    'Login Failed',
+                    error.message || 'Invalid credentials',
+                    'error'
+                );
+                logAudit('LOGIN_FAILED', `Failed login attempt: ${error.message}`, 'auth');
+            } finally {
+                loading.value = false;
+            }
+        };
+
+        const handleLogout = async () => {
+            try {
+                logAudit('LOGOUT', 'User logged out', 'auth');
+                currentUser.value = null;
+                currentView.value = 'login';
+                userMenuOpen.value = false;
+                showAdvancedToast('Logged Out', 'You have been successfully logged out', 'info');
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        };
+
         // ============ DATA LOADING ============
         const loadInitialData = async () => {
             loading.value = true;
