@@ -4692,6 +4692,9 @@ createApp({
         const announcements = ref([]);
         const auditLogs = ref([]);
         const systemRoles = ref([]);
+        const systemSettings = ref({});
+        const userNotifications = ref([]);
+        const emergencyContacts = ref([]);
         
         const systemStats = ref({
             active_users: 0,
@@ -4722,8 +4725,6 @@ createApp({
                 training_year: null
             }
         });
-
-        // Quick Placement Modal
         const quickPlacementModal = ref({
             show: false,
             form: {
@@ -4826,6 +4827,40 @@ createApp({
             }
         });
 
+        // System Settings Modal
+        const systemSettingsModal = ref({
+            show: false,
+            form: {
+                hospital_name: 'PneumoCare Hospital',
+                department_name: 'Pulmonary Medicine',
+                max_residents_per_unit: 10,
+                enable_audit_logging: true,
+                require_mfa: false,
+                maintenance_mode: false
+            }
+        });
+
+        // User Profile Modal
+        const userProfileModal = ref({
+            show: false,
+            form: {
+                full_name: '',
+                email: '',
+                phone: '',
+                department: '',
+                notifications_enabled: true
+            }
+        });
+
+        // Import/Export Modal
+        const importExportModal = ref({
+            show: false,
+            mode: 'import', // 'import' or 'export'
+            selectedTable: 'medical_staff',
+            importFile: null,
+            exportFormat: 'csv'
+        });
+
         // Filter states
         const staffSearch = ref('');
         const staffFilter = ref({
@@ -4851,7 +4886,7 @@ createApp({
             logAudit('PERMISSION_INIT', `Permissions initialized for ${userRole}`, 'system');
         };
 
-        // Fixed hasPermission function
+        // FIXED: hasPermission function - now properly checks permissions
         const hasPermission = (resource, action) => {
             if (!currentUser.value) return false;
             
@@ -4907,6 +4942,93 @@ createApp({
             if (!currentUser.value) return 'none';
             const role = PermissionSystem.roles[currentUser.value.user_role];
             return role ? role.level : 'none';
+        };
+
+        // FIXED: Permission toggle function that actually works
+        const togglePermission = (roleId, resource, action) => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            const roleIndex = systemRoles.value.findIndex(r => r.id === roleId);
+            if (roleIndex === -1) return;
+            
+            const currentState = systemRoles.value[roleIndex].permissions[resource]?.[action] || false;
+            const newState = !currentState;
+            
+            // Update the role's permissions
+            if (!systemRoles.value[roleIndex].permissions[resource]) {
+                systemRoles.value[roleIndex].permissions[resource] = {};
+            }
+            systemRoles.value[roleIndex].permissions[resource][action] = newState;
+            
+            showAdvancedToast(
+                'Permission Updated',
+                `${action} permission for ${resource} ${newState ? 'granted' : 'revoked'}`,
+                'permission'
+            );
+            
+            logAudit('PERMISSION_TOGGLE', 
+                `Toggled ${action} permission for ${resource} in role ${roleId} to ${newState}`, 
+                'system'
+            );
+        };
+
+        // Save permission changes to backend
+        const savePermissionChanges = async () => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            savingPermissions.value = true;
+            try {
+                // In a real implementation, save to database
+                // For demo, simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                showAdvancedToast(
+                    'Permissions Saved',
+                    'All permission changes have been saved',
+                    'success'
+                );
+                logAudit('PERMISSIONS_SAVED', 'Updated system permissions', 'system');
+            } catch (error) {
+                console.error('Error saving permissions:', error);
+                showAdvancedToast('Save Failed', 'Failed to save permission changes', 'error');
+            } finally {
+                savingPermissions.value = false;
+                showPermissionManager.value = false;
+            }
+        };
+
+        const getResourcePermissionLevel = (resource) => {
+            if (!currentUser.value) return 'none';
+            return PermissionSystem.getPermissionLevel(currentUser.value.user_role, resource);
+        };
+
+        const getPermissionDescription = (resource, action) => {
+            const descriptions = {
+                create: 'Create new records',
+                read: 'View records',
+                update: 'Edit existing records',
+                delete: 'Remove records',
+                export: 'Export data',
+                approve: 'Approve requests',
+                override: 'Override restrictions'
+            };
+            return descriptions[action] || action;
+        };
+
+        const formatActionName = (action) => {
+            return action.charAt(0).toUpperCase() + action.slice(1);
+        };
+
+        const formatResourceName = (resource) => {
+            return resource.split('_').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ');
         };
 
         // ============ AUDIT LOGGING SYSTEM ============
@@ -5236,10 +5358,13 @@ createApp({
         });
 
         const departmentStats = computed(() => {
+            const activeStaff = medicalStaff.value.filter(s => s.employment_status === 'active').length;
+            const activeUnits = trainingUnits.value.filter(u => u.unit_status === 'active').length;
+            
             return {
                 totalStaff: medicalStaff.value.length,
-                activeUnits: trainingUnits.value.filter(u => u.unit_status === 'active').length,
-                coverageRate: Math.round((medicalStaff.value.filter(s => s.employment_status === 'active').length / medicalStaff.value.length) * 100),
+                activeUnits: activeUnits,
+                coverageRate: medicalStaff.value.length > 0 ? Math.round((activeStaff / medicalStaff.value.length) * 100) : 0,
                 pendingApprovals: leaveRequests.value.filter(r => r.status === 'pending').length
             };
         });
@@ -5302,6 +5427,65 @@ createApp({
             );
         });
 
+        const pendingSchedules = computed(() => {
+            return residentRotations.value.filter(r => 
+                r.rotation_status === 'pending_approval' || 
+                (r.approval_status && r.approval_status === 'pending')
+            );
+        });
+
+        const departmentAnalytics = computed(() => {
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today);
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            
+            const recentRotations = residentRotations.value.filter(r => 
+                new Date(r.rotation_start_date) >= thirtyDaysAgo
+            );
+            
+            const activeStaff = medicalStaff.value.filter(s => 
+                s.employment_status === 'active'
+            ).length;
+            
+            // Calculate occupancy rate
+            let totalCapacity = 0;
+            let totalOccupied = 0;
+            trainingUnits.value.forEach(unit => {
+                totalCapacity += unit.maximum_residents || 0;
+                totalOccupied += unit.current_residents || 0;
+            });
+            
+            const occupancyRate = totalCapacity > 0 ? Math.round((totalOccupied / totalCapacity) * 100) : 0;
+            
+            return {
+                recentRotations: recentRotations.length,
+                activeStaff: activeStaff,
+                occupancyRate: occupancyRate,
+                complianceRate: 95 // Mock data
+            };
+        });
+
+        // ============ NEW COMPUTED PROPERTIES ============
+        const unreadNotifications = computed(() => {
+            return userNotifications.value.filter(n => !n.read).length;
+        });
+
+        const criticalAlerts = computed(() => {
+            return emergencyAlerts.value.filter(a => a.priority === 'high' || a.priority === 'urgent');
+        });
+
+        const staffByDepartment = computed(() => {
+            const departments = {};
+            medicalStaff.value.forEach(staff => {
+                const dept = staff.primary_clinic || 'Unassigned';
+                if (!departments[dept]) {
+                    departments[dept] = [];
+                }
+                departments[dept].push(staff);
+            });
+            return departments;
+        });
+
         // ============ NAVIGATION & UI ============
         const switchView = async (view) => {
             currentView.value = view;
@@ -5322,7 +5506,9 @@ createApp({
                 leave_requests: 'Leave Requests',
                 department_overview: 'Department Overview',
                 staff_management: 'Staff Management',
-                schedule_approval: 'Schedule Approval'
+                schedule_approval: 'Schedule Approval',
+                system_settings: 'System Settings',
+                user_profile: 'User Profile'
             };
             return titles[currentView.value] || 'PneumoCare';
         };
@@ -5334,7 +5520,9 @@ createApp({
                 permission_management: 'Configure system permissions and roles',
                 audit_logs: 'Track all system activities and changes',
                 oncall_schedule: 'Manage on-call duties and coverage',
-                leave_requests: 'Review and approve leave requests'
+                leave_requests: 'Review and approve leave requests',
+                department_overview: 'Department analytics and insights',
+                system_settings: 'Configure system-wide settings'
             };
             return subtitles[currentView.value] || 'Advanced DRBA Hospital Management System';
         };
@@ -5343,7 +5531,9 @@ createApp({
             const placeholders = {
                 medical_staff: 'Search medical staff by name, ID, or department...',
                 daily_operations: 'Search assignments, alerts, or announcements...',
-                audit_logs: 'Search audit logs by user, action, or resource...'
+                audit_logs: 'Search audit logs by user, action, or resource...',
+                training_units: 'Search training units by name or specialty...',
+                resident_rotations: 'Search rotations by resident, unit, or ID...'
             };
             return placeholders[currentView.value] || 'Search...';
         };
@@ -5360,6 +5550,7 @@ createApp({
             showPermissionManager.value = !showPermissionManager.value;
             userMenuOpen.value = false;
             if (showPermissionManager.value) {
+                loadSystemRoles();
                 logAudit('PERMISSION_MANAGER_OPEN', 'Opened permission manager', 'system');
             }
         };
@@ -5386,7 +5577,6 @@ createApp({
                 }
                 
                 // For demo purposes, we'll use mock authentication
-                // In production, you would verify against Supabase
                 const mockUsers = {
                     'admin@hospital.org': { role: 'system_admin', name: 'System Administrator' },
                     'head@hospital.org': { role: 'department_head', name: 'Department Head' },
@@ -5431,6 +5621,10 @@ createApp({
                 
                 currentUser.value = userData;
                 initializePermissions(userData.user_role);
+                
+                // Load user-specific data
+                await loadCurrentUserProfile();
+                await loadUserNotifications();
                 
                 showAdvancedToast(
                     'Login Successful',
@@ -5489,7 +5683,9 @@ createApp({
                     loadOnCallSchedule(),
                     loadAnnouncements(),
                     loadAuditLogs(),
-                    loadSystemStats()
+                    loadSystemStats(),
+                    loadEmergencyContacts(),
+                    loadSystemSettings()
                 ]);
                 
                 showAdvancedToast('System Ready', 'All data loaded successfully', 'success');
@@ -5525,6 +5721,15 @@ createApp({
                         break;
                     case 'oncall_schedule':
                         await loadOnCallSchedule();
+                        break;
+                    case 'resident_rotations':
+                        await loadResidentRotations();
+                        break;
+                    case 'department_overview':
+                        await loadDepartmentAnalytics();
+                        break;
+                    case 'system_settings':
+                        await loadSystemSettings();
                         break;
                 }
             } catch (error) {
@@ -5669,12 +5874,6 @@ createApp({
                 }
                 
                 console.log('✅ Loaded on-call schedule data:', data);
-                
-                // Log each item's date format
-                data.forEach(item => {
-                    console.log(`📅 Schedule: ${item.schedule_id}, Date: ${item.duty_date}, Type: ${typeof item.duty_date}`);
-                });
-                
                 onCallSchedule.value = data || [];
                 
             } catch (error) {
@@ -5732,6 +5931,103 @@ createApp({
                 id,
                 ...role
             }));
+        };
+
+        // ============ NEW DATA LOADING FUNCTIONS ============
+        const loadSystemSettings = async () => {
+            try {
+                // For demo, use default settings
+                systemSettings.value = {
+                    hospital_name: 'PneumoCare Hospital',
+                    department_name: 'Pulmonary Medicine',
+                    max_residents_per_unit: 10,
+                    enable_audit_logging: true,
+                    require_mfa: false,
+                    maintenance_mode: false,
+                    email_notifications: true,
+                    sms_alerts: false
+                };
+            } catch (error) {
+                console.error('Error loading system settings:', error);
+                systemSettings.value = {};
+            }
+        };
+
+        const loadCurrentUserProfile = async () => {
+            if (!currentUser.value) return;
+            
+            try {
+                // In a real app, load from database
+                // For demo, just set basic info
+                if (!currentUser.value.phone) {
+                    currentUser.value.phone = '+1 (555) 123-4567';
+                }
+                if (!currentUser.value.department) {
+                    currentUser.value.department = 'Pulmonary Medicine';
+                }
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+            }
+        };
+
+        const loadUserNotifications = async () => {
+            try {
+                // For demo, create mock notifications
+                userNotifications.value = [
+                    {
+                        id: '1',
+                        title: 'New Rotation Assigned',
+                        message: 'You have been assigned to ICU rotation starting next week',
+                        type: 'info',
+                        read: false,
+                        created_at: new Date().toISOString()
+                    },
+                    {
+                        id: '2',
+                        title: 'Leave Request Approved',
+                        message: 'Your vacation request for Dec 15-22 has been approved',
+                        type: 'success',
+                        read: true,
+                        created_at: new Date(Date.now() - 86400000).toISOString()
+                    }
+                ];
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+                userNotifications.value = [];
+            }
+        };
+
+        const loadEmergencyContacts = async () => {
+            try {
+                // For demo, create mock contacts
+                emergencyContacts.value = [
+                    {
+                        id: '1',
+                        contact_name: 'Hospital Security',
+                        phone: '+1 (555) 911-0000',
+                        email: 'security@hospital.org',
+                        department: 'Security',
+                        emergency_type: 'security'
+                    },
+                    {
+                        id: '2',
+                        contact_name: 'IT Support',
+                        phone: '+1 (555) 555-1234',
+                        email: 'it-support@hospital.org',
+                        department: 'IT',
+                        emergency_type: 'technical'
+                    }
+                ];
+            } catch (error) {
+                console.error('Error loading emergency contacts:', error);
+                emergencyContacts.value = [];
+            }
+        };
+
+        const loadDepartmentAnalytics = async () => {
+            // This would normally load analytics from the database
+            // For demo, use computed properties
+            return departmentAnalytics.value;
         };
 
         // ============ MEDICAL STAFF CRUD ============
@@ -5883,7 +6179,8 @@ createApp({
                 showAdvancedToast('Delete Failed', error.message, 'error');
             }
         };
-            
+
+        // ============ ANNOUNCEMENTS MODAL FUNCTIONS ============
         const showAddAnnouncementModal = () => {
             if (!hasPermission('announcements', 'create')) {
                 showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
@@ -6681,244 +6978,6 @@ createApp({
             };
         };
 
-        // ============ PERMISSION MANAGEMENT ============
-        const togglePermission = (resource, action) => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            showAdvancedToast(
-                'Permission Updated',
-                `${action} permission for ${resource} toggled`,
-                'permission'
-            );
-        };
-
-        const savePermissionChanges = async () => {
-            savingPermissions.value = true;
-            try {
-                showAdvancedToast(
-                    'Permissions Saved',
-                    'All permission changes have been saved',
-                    'success'
-                );
-                logAudit('PERMISSIONS_SAVED', 'Updated system permissions', 'system');
-            } catch (error) {
-                console.error('Error saving permissions:', error);
-                showAdvancedToast('Save Failed', 'Failed to save permission changes', 'error');
-            } finally {
-                savingPermissions.value = false;
-                showPermissionManager.value = false;
-            }
-        };
-
-        const getResourcePermissionLevel = (resource) => {
-            return PermissionSystem.getPermissionLevel(currentUser.value?.user_role, resource);
-        };
-
-        const getPermissionDescription = (resource, action) => {
-            const descriptions = {
-                create: 'Create new records',
-                read: 'View records',
-                update: 'Edit existing records',
-                delete: 'Remove records',
-                export: 'Export data',
-                approve: 'Approve requests',
-                override: 'Override restrictions'
-            };
-            return descriptions[action] || action;
-        };
-
-        const formatActionName = (action) => {
-            return action.charAt(0).toUpperCase() + action.slice(1);
-        };
-
-        const formatResourceName = (resource) => {
-            return resource.split('_').map(word => 
-                word.charAt(0).toUpperCase() + word.slice(1)
-            ).join(' ');
-        };
-
-        // ============ ROLE MANAGEMENT ============
-        const showAddRoleModal = () => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            addRoleModal.value = {
-                show: true,
-                mode: 'add',
-                role: null,
-                form: {
-                    name: '',
-                    description: '',
-                    level: 'read'
-                }
-            };
-        };
-
-        const editRole = (role) => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            addRoleModal.value = {
-                show: true,
-                mode: 'edit',
-                role: role,
-                form: {
-                    name: role.name,
-                    description: role.description,
-                    level: role.level
-                }
-            };
-        };
-
-        const cloneRole = (role) => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            addRoleModal.value = {
-                show: true,
-                mode: 'add',
-                role: null,
-                form: {
-                    name: `${role.name} (Copy)`,
-                    description: role.description,
-                    level: role.level
-                }
-            };
-        };
-
-        const deleteRole = (role) => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            if (role.id === 'system_admin') {
-                showAdvancedToast('Cannot Delete', 'System Admin role cannot be deleted', 'error');
-                return;
-            }
-            
-            if (confirm(`Are you sure you want to delete the "${role.name}" role?`)) {
-                systemRoles.value = systemRoles.value.filter(r => r.id !== role.id);
-                showAdvancedToast('Role Deleted', `${role.name} has been removed`, 'success');
-                logAudit('ROLE_DELETE', `Deleted role: ${role.name}`, 'system');
-            }
-        };
-
-        const saveRole = async () => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            saving.value = true;
-            try {
-                const newRole = {
-                    id: addRoleModal.value.mode === 'add' ? 
-                        addRoleModal.value.form.name.toLowerCase().replace(/\s+/g, '_') : 
-                        addRoleModal.value.role.id,
-                    name: addRoleModal.value.form.name,
-                    description: addRoleModal.value.form.description,
-                    level: addRoleModal.value.form.level,
-                    permissions: {}
-                };
-                
-                // Copy permissions from a similar role
-                const templateRole = PermissionSystem.roles[addRoleModal.value.form.level === 'full' ? 'system_admin' : 'resident_manager'];
-                if (templateRole) {
-                    newRole.permissions = { ...templateRole.permissions };
-                }
-                
-                if (addRoleModal.value.mode === 'add') {
-                    systemRoles.value.push(newRole);
-                    showAdvancedToast('Success', 'New role created successfully', 'success');
-                    logAudit('ROLE_CREATE', `Created role: ${newRole.name}`, 'system');
-                } else {
-                    const index = systemRoles.value.findIndex(r => r.id === newRole.id);
-                    if (index !== -1) {
-                        systemRoles.value[index] = newRole;
-                    }
-                    showAdvancedToast('Success', 'Role updated successfully', 'success');
-                    logAudit('ROLE_UPDATE', `Updated role: ${newRole.name}`, 'system');
-                }
-                
-                addRoleModal.value.show = false;
-            } catch (error) {
-                console.error('Error saving role:', error);
-                showAdvancedToast('Save Failed', error.message, 'error');
-            } finally {
-                saving.value = false;
-            }
-        };
-
-        // ============ ACTION HANDLERS ============
-        const viewStaffSchedule = (staff) => {
-            showAdvancedToast('Info', `Viewing schedule for ${staff.full_name}`, 'info');
-            logAudit('SCHEDULE_VIEW', `Viewed schedule for ${staff.full_name}`, 'schedules', staff.id);
-        };
-
-        const quickAssignToUnit = (alert) => {
-            if (!hasPermission('placements', 'create')) {
-                showAdvancedToast(
-                    'Permission Denied',
-                    'You need create permission to assign residents',
-                    'permission'
-                );
-                return;
-            }
-            
-            showAdvancedToast('Assign', `Assigning residents to ${alert.unit_name}`, 'info');
-            logAudit('QUICK_ASSIGN', `Quick assigning to unit: ${alert.unit_name}`, 'placements', alert.id);
-        };
-
-        const exportAuditLogs = () => {
-            if (!hasPermission('audit', 'export')) {
-                showAdvancedToast(
-                    'Permission Denied',
-                    'You need export permission to download audit logs',
-                    'permission'
-                );
-                return;
-            }
-            
-            showAdvancedToast('Export', 'Audit logs exported successfully', 'success');
-            logAudit('AUDIT_EXPORT', 'Exported audit logs', 'audit');
-        };
-
-        const handleAdvancedSearch = () => {
-            logAudit('SEARCH', `Searched for: ${searchQuery.value}`, 'system');
-        };
-
-        const togglePermissionFilter = (level) => {
-            const index = permissionFilter.value.indexOf(level);
-            if (index > -1) {
-                permissionFilter.value.splice(index, 1);
-            } else {
-                permissionFilter.value.push(level);
-            }
-        };
-
-        const showUserProfile = () => {
-            userMenuOpen.value = false;
-            showAdvancedToast('Profile', 'User profile would open here', 'info');
-        };
-
-        const assignResidentsToUnit = (unit) => {
-            showAdvancedToast('Info', `Assigning residents to ${unit.unit_name}`, 'info');
-        };
-
-        const showAddStaffModal = () => {
-            showAdvancedToast('Info', 'Add staff modal would open here', 'info');
-        };
-
         // ============ DRAG & DROP FUNCTIONS ============
         const handleDragStart = (event, resident) => {
             event.dataTransfer.setData('text/plain', resident.id);
@@ -7120,6 +7179,435 @@ createApp({
             }
         };
 
+        // ============ ROLE MANAGEMENT ============
+        const showAddRoleModal = () => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            addRoleModal.value = {
+                show: true,
+                mode: 'add',
+                role: null,
+                form: {
+                    name: '',
+                    description: '',
+                    level: 'read'
+                }
+            };
+        };
+
+        const editRole = (role) => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            addRoleModal.value = {
+                show: true,
+                mode: 'edit',
+                role: role,
+                form: {
+                    name: role.name,
+                    description: role.description,
+                    level: role.level
+                }
+            };
+        };
+
+        const cloneRole = (role) => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            addRoleModal.value = {
+                show: true,
+                mode: 'add',
+                role: null,
+                form: {
+                    name: `${role.name} (Copy)`,
+                    description: role.description,
+                    level: role.level
+                }
+            };
+        };
+
+        const deleteRole = (role) => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            if (role.id === 'system_admin') {
+                showAdvancedToast('Cannot Delete', 'System Admin role cannot be deleted', 'error');
+                return;
+            }
+            
+            if (confirm(`Are you sure you want to delete the "${role.name}" role?`)) {
+                systemRoles.value = systemRoles.value.filter(r => r.id !== role.id);
+                showAdvancedToast('Role Deleted', `${role.name} has been removed`, 'success');
+                logAudit('ROLE_DELETE', `Deleted role: ${role.name}`, 'system');
+            }
+        };
+
+        const saveRole = async () => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            saving.value = true;
+            try {
+                const newRole = {
+                    id: addRoleModal.value.mode === 'add' ? 
+                        addRoleModal.value.form.name.toLowerCase().replace(/\s+/g, '_') : 
+                        addRoleModal.value.role.id,
+                    name: addRoleModal.value.form.name,
+                    description: addRoleModal.value.form.description,
+                    level: addRoleModal.value.form.level,
+                    permissions: {}
+                };
+                
+                // Copy permissions from a similar role
+                const templateRole = PermissionSystem.roles[addRoleModal.value.form.level === 'full' ? 'system_admin' : 'resident_manager'];
+                if (templateRole) {
+                    newRole.permissions = { ...templateRole.permissions };
+                }
+                
+                if (addRoleModal.value.mode === 'add') {
+                    systemRoles.value.push(newRole);
+                    showAdvancedToast('Success', 'New role created successfully', 'success');
+                    logAudit('ROLE_CREATE', `Created role: ${newRole.name}`, 'system');
+                } else {
+                    const index = systemRoles.value.findIndex(r => r.id === newRole.id);
+                    if (index !== -1) {
+                        systemRoles.value[index] = newRole;
+                    }
+                    showAdvancedToast('Success', 'Role updated successfully', 'success');
+                    logAudit('ROLE_UPDATE', `Updated role: ${newRole.name}`, 'system');
+                }
+                
+                addRoleModal.value.show = false;
+            } catch (error) {
+                console.error('Error saving role:', error);
+                showAdvancedToast('Save Failed', error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+
+        // ============ SYSTEM SETTINGS FUNCTIONS ============
+        const showSystemSettingsModal = () => {
+            if (!hasPermission('system', 'read')) {
+                showAdvancedToast('Permission Denied', 'Need read permission for system settings', 'permission');
+                return;
+            }
+            
+            systemSettingsModal.value = {
+                show: true,
+                form: { ...systemSettings.value }
+            };
+        };
+
+        const saveSystemSettings = async () => {
+            if (!hasPermission('system', 'update')) {
+                showAdvancedToast('Permission Denied', 'Need update permission for system settings', 'permission');
+                return;
+            }
+            
+            saving.value = true;
+            try {
+                // In a real app, save to database
+                // For demo, update local state
+                systemSettings.value = { ...systemSettingsModal.value.form };
+                
+                showAdvancedToast('Settings Saved', 'System settings updated successfully', 'success');
+                logAudit('SETTINGS_UPDATE', 'Updated system settings', 'system');
+                
+                systemSettingsModal.value.show = false;
+            } catch (error) {
+                console.error('Error saving system settings:', error);
+                showAdvancedToast('Save Failed', error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+
+        // ============ USER PROFILE FUNCTIONS ============
+        const showUserProfileModal = () => {
+            userProfileModal.value = {
+                show: true,
+                form: {
+                    full_name: currentUser.value?.full_name || '',
+                    email: currentUser.value?.email || '',
+                    phone: currentUser.value?.phone || '',
+                    department: currentUser.value?.department || '',
+                    notifications_enabled: true
+                }
+            };
+            userMenuOpen.value = false;
+        };
+
+        const saveUserProfile = async () => {
+            saving.value = true;
+            try {
+                // Update current user
+                currentUser.value = {
+                    ...currentUser.value,
+                    ...userProfileModal.value.form
+                };
+                
+                showAdvancedToast('Profile Updated', 'Your profile has been updated', 'success');
+                logAudit('PROFILE_UPDATE', 'Updated user profile', 'user_profile');
+                
+                userProfileModal.value.show = false;
+            } catch (error) {
+                console.error('Error saving profile:', error);
+                showAdvancedToast('Save Failed', error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+
+        // ============ IMPORT/EXPORT FUNCTIONS ============
+        const showImportExportModal = (mode = 'export', table = null) => {
+            if (mode === 'export' && !hasPermission('audit', 'export')) {
+                showAdvancedToast('Permission Denied', 'Need export permission', 'permission');
+                return;
+            }
+            
+            if (mode === 'import' && !hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required for import', 'permission');
+                return;
+            }
+            
+            importExportModal.value = {
+                show: true,
+                mode: mode,
+                selectedTable: table || 'medical_staff',
+                importFile: null,
+                exportFormat: 'csv'
+            };
+        };
+
+        const exportData = async () => {
+            if (!hasPermission('audit', 'export')) {
+                showAdvancedToast('Permission Denied', 'Need export permission', 'permission');
+                return;
+            }
+            
+            saving.value = true;
+            try {
+                let data = [];
+                let filename = '';
+                
+                switch (importExportModal.value.selectedTable) {
+                    case 'medical_staff':
+                        data = medicalStaff.value;
+                        filename = 'medical_staff';
+                        break;
+                    case 'training_units':
+                        data = trainingUnits.value;
+                        filename = 'training_units';
+                        break;
+                    case 'resident_rotations':
+                        data = residentRotations.value;
+                        filename = 'resident_rotations';
+                        break;
+                    case 'audit_logs':
+                        data = auditLogs.value;
+                        filename = 'audit_logs';
+                        break;
+                    default:
+                        throw new Error('Invalid table selected');
+                }
+                
+                if (data.length === 0) {
+                    throw new Error('No data to export');
+                }
+                
+                // Convert to CSV
+                const headers = Object.keys(data[0]).join(',');
+                const rows = data.map(row => 
+                    Object.values(row).map(value => 
+                        typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value
+                    ).join(',')
+                );
+                
+                const csvContent = [headers, ...rows].join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                
+                a.href = url;
+                a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                showAdvancedToast('Export Complete', `${data.length} records exported`, 'success');
+                logAudit('DATA_EXPORT', `Exported ${filename} data`, 'export');
+                
+                importExportModal.value.show = false;
+            } catch (error) {
+                console.error('Error exporting data:', error);
+                showAdvancedToast('Export Failed', error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+
+        const importData = async () => {
+            if (!hasPermission('system', 'admin')) {
+                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+                return;
+            }
+            
+            if (!importExportModal.value.importFile) {
+                showAdvancedToast('Import Failed', 'Please select a file', 'error');
+                return;
+            }
+            
+            saving.value = true;
+            try {
+                const file = importExportModal.value.importFile;
+                const reader = new FileReader();
+                
+                reader.onload = async (e) => {
+                    try {
+                        const csv = e.target.result;
+                        const lines = csv.split('\n');
+                        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                        
+                        const data = lines.slice(1)
+                            .filter(line => line.trim())
+                            .map(line => {
+                                const values = line.split(',');
+                                const obj = {};
+                                headers.forEach((header, index) => {
+                                    let value = values[index] || '';
+                                    value = value.trim().replace(/^"|"$/g, '');
+                                    
+                                    // Parse numbers and booleans
+                                    if (!isNaN(value) && value !== '') {
+                                        value = Number(value);
+                                    } else if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
+                                        value = value.toLowerCase() === 'true';
+                                    }
+                                    
+                                    obj[header] = value;
+                                });
+                                return obj;
+                            });
+                        
+                        // Insert data into database
+                        const { error } = await supabaseClient
+                            .from(importExportModal.value.selectedTable)
+                            .insert(data);
+                        
+                        if (error) throw error;
+                        
+                        // Reload the data
+                        await loadViewData(importExportModal.value.selectedTable.replace('_', ''));
+                        
+                        showAdvancedToast('Import Successful', `${data.length} records imported`, 'success');
+                        logAudit('DATA_IMPORT', `Imported ${data.length} records to ${importExportModal.value.selectedTable}`, 'import');
+                        
+                        importExportModal.value.show = false;
+                    } catch (error) {
+                        console.error('Error processing import:', error);
+                        showAdvancedToast('Import Failed', error.message, 'error');
+                    }
+                };
+                
+                reader.readAsText(file);
+            } catch (error) {
+                console.error('Error importing data:', error);
+                showAdvancedToast('Import Failed', error.message, 'error');
+            } finally {
+                saving.value = false;
+            }
+        };
+
+        const handleFileSelect = (event) => {
+            importExportModal.value.importFile = event.target.files[0];
+        };
+
+        // ============ NOTIFICATION FUNCTIONS ============
+        const markNotificationAsRead = (notificationId) => {
+            const index = userNotifications.value.findIndex(n => n.id === notificationId);
+            if (index !== -1) {
+                userNotifications.value[index].read = true;
+            }
+        };
+
+        const markAllNotificationsAsRead = () => {
+            userNotifications.value.forEach(n => n.read = true);
+            showAdvancedToast('Notifications Cleared', 'All notifications marked as read', 'success');
+        };
+
+        // ============ ACTION HANDLERS ============
+        const viewStaffSchedule = (staff) => {
+            showAdvancedToast('Info', `Viewing schedule for ${staff.full_name}`, 'info');
+            logAudit('SCHEDULE_VIEW', `Viewed schedule for ${staff.full_name}`, 'schedules', staff.id);
+        };
+
+        const quickAssignToUnit = (alert) => {
+            if (!hasPermission('placements', 'create')) {
+                showAdvancedToast(
+                    'Permission Denied',
+                    'You need create permission to assign residents',
+                    'permission'
+                );
+                return;
+            }
+            
+            showAdvancedToast('Assign', `Assigning residents to ${alert.unit_name}`, 'info');
+            logAudit('QUICK_ASSIGN', `Quick assigning to unit: ${alert.unit_name}`, 'placements', alert.id);
+        };
+
+        const exportAuditLogs = () => {
+            if (!hasPermission('audit', 'export')) {
+                showAdvancedToast(
+                    'Permission Denied',
+                    'You need export permission to download audit logs',
+                    'permission'
+                );
+                return;
+            }
+            
+            showImportExportModal('export', 'audit_logs');
+        };
+
+        const handleAdvancedSearch = () => {
+            logAudit('SEARCH', `Searched for: ${searchQuery.value}`, 'system');
+        };
+
+        const togglePermissionFilter = (level) => {
+            const index = permissionFilter.value.indexOf(level);
+            if (index > -1) {
+                permissionFilter.value.splice(index, 1);
+            } else {
+                permissionFilter.value.push(level);
+            }
+        };
+
+        const showUserProfile = () => {
+            userMenuOpen.value = false;
+            showUserProfileModal();
+        };
+
+        const assignResidentsToUnit = (unit) => {
+            showAdvancedToast('Info', `Assigning residents to ${unit.unit_name}`, 'info');
+        };
+
+        const showAddStaffModal = () => {
+            showAdvancedToast('Info', 'Add staff modal would open here', 'info');
+        };
+
         // ============ INITIALIZATION ============
         onMounted(() => {
             // Check for existing session
@@ -7163,6 +7651,10 @@ createApp({
             leaveRequestModal,
             trainingUnitModal,
             rotationModal,
+            quickPlacementModal,
+            systemSettingsModal,
+            userProfileModal,
+            importExportModal,
             
             // ============ DATA STORES ============
             medicalStaff,
@@ -7174,13 +7666,15 @@ createApp({
             announcements,
             auditLogs,
             systemRoles,
+            systemSettings,
+            userNotifications,
+            emergencyContacts,
             systemStats,
             
             // ============ FILTER & SEARCH ============
             staffSearch,
             staffFilter,
             rotationFilter,
-            quickPlacementModal,
             
             // ============ UI STATES ============
             toasts,
@@ -7198,6 +7692,11 @@ createApp({
             nextSevenDays,
             filteredRotations,
             availableResidents,
+            pendingSchedules,
+            departmentAnalytics,
+            unreadNotifications,
+            criticalAlerts,
+            staffByDepartment,
             
             // ============ PERMISSION SYSTEM ============
             hasPermission,
@@ -7209,6 +7708,8 @@ createApp({
             formatActionName,
             formatResourceName,
             userPermissions,
+            togglePermission,
+            savePermissionChanges,
             
             // ============ NAVIGATION ============
             switchView,
@@ -7298,6 +7799,33 @@ createApp({
             handleDragDropPlacement,
             deleteRotation,
             
+            // ============ DRAG & DROP ============
+            handleDragStart,
+            handleDrop,
+            removePlacement,
+            
+            // ============ QUICK PLACEMENT ============
+            showQuickPlacementModal,
+            saveQuickPlacement,
+            
+            // ============ SYSTEM SETTINGS ============
+            showSystemSettingsModal,
+            saveSystemSettings,
+            
+            // ============ USER PROFILE ============
+            showUserProfileModal,
+            saveUserProfile,
+            
+            // ============ IMPORT/EXPORT ============
+            showImportExportModal,
+            exportData,
+            importData,
+            handleFileSelect,
+            
+            // ============ NOTIFICATIONS ============
+            markNotificationAsRead,
+            markAllNotificationsAsRead,
+            
             // ============ ACTIONS ============
             quickAssignToUnit,
             exportAuditLogs,
@@ -7308,10 +7836,6 @@ createApp({
             // ============ STAFF MANAGEMENT ============
             showAddStaffModal,
             
-            // ============ PERMISSION MANAGEMENT ============
-            togglePermission,
-            savePermissionChanges,
-            
             // ============ DATA LOADING ============
             loadInitialData,
             loadViewData,
@@ -7320,16 +7844,7 @@ createApp({
             logAudit,
             
             // ============ TOAST SYSTEM ============
-            removeToast,
-            
-            // ============ DRAG & DROP ============
-            handleDragStart,
-            handleDrop,
-            removePlacement,
-            
-            // ============ QUICK PLACEMENT ============
-            showQuickPlacementModal,
-            saveQuickPlacement
+            removeToast
         };
     }
 }).mount('#app');
