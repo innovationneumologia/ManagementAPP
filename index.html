@@ -4374,64 +4374,87 @@
             </div>
         </div>
         
-        <!-- Training Units Modal -->
-        <div v-if="trainingUnitModal.show" class="modal-overlay-advanced">
-            <div class="modal-advanced" style="max-width: 600px;">
-                <div class="modal-header-advanced">
-                    <div class="modal-title-advanced">
-                        <div class="modal-title-icon">
-                            <i class="fas fa-hospital-alt"></i>
-                        </div>
-                        {{ trainingUnitModal.mode === 'add' ? 'Add Training Unit' : 'Edit Training Unit' }}
-                    </div>
-                    <button class="modal-close-advanced" @click="trainingUnitModal.show = false">
-                        <i class="fas fa-times"></i>
-                    </button>
+    <!-- Training Units Modal -->
+<div v-if="trainingUnitModal.show" class="modal-overlay-advanced">
+    <div class="modal-advanced" style="max-width: 600px;">
+        <div class="modal-header-advanced">
+            <div class="modal-title-advanced">
+                <div class="modal-title-icon">
+                    <i class="fas fa-hospital-alt"></i>
+                </div>
+                {{ trainingUnitModal.mode === 'add' ? 'Add Training Unit' : 'Edit Training Unit' }}
+            </div>
+            <button class="modal-close-advanced" @click="trainingUnitModal.show = false">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form @submit.prevent="saveTrainingUnit">
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Unit Name *</label>
+                <input type="text" class="form-input-advanced" v-model="trainingUnitModal.form.unit_name" required>
+            </div>
+            
+            <!-- ADDED: Unit Code Field (REQUIRED) -->
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Unit Code *</label>
+                <input type="text" 
+                       class="form-input-advanced" 
+                       v-model="trainingUnitModal.form.unit_code" 
+                       required
+                       placeholder="e.g., ICU-PULM-1">
+                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                    Unique code for this unit
+                </div>
+            </div>
+            
+            <!-- ADDED: Department Name Field (REQUIRED) -->
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Department Name *</label>
+                <input type="text" 
+                       class="form-input-advanced" 
+                       v-model="trainingUnitModal.form.department_name" 
+                       required
+                       placeholder="e.g., Pulmonology">
+            </div>
+            
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Description</label>
+                <textarea class="form-textarea-advanced" v-model="trainingUnitModal.form.unit_description"></textarea>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Status *</label>
+                    <select class="form-select-advanced" v-model="trainingUnitModal.form.unit_status" required>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
                 </div>
                 
-                <form @submit.prevent="saveTrainingUnit">
-                    <div class="form-group-advanced">
-                        <label class="form-label-advanced">Unit Name *</label>
-                        <input type="text" class="form-input-advanced" v-model="trainingUnitModal.form.unit_name" required>
-                    </div>
-                    
-                    <div class="form-group-advanced">
-                        <label class="form-label-advanced">Description</label>
-                        <textarea class="form-textarea-advanced" v-model="trainingUnitModal.form.unit_description"></textarea>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="form-group-advanced">
-                            <label class="form-label-advanced">Status *</label>
-                            <select class="form-select-advanced" v-model="trainingUnitModal.form.unit_status" required>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group-advanced">
-                            <label class="form-label-advanced">Max Residents *</label>
-                            <input type="number" class="form-input-advanced" v-model="trainingUnitModal.form.maximum_residents" min="1" max="50" required>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group-advanced">
-                        <label class="form-label-advanced">Specialty</label>
-                        <input type="text" class="form-input-advanced" v-model="trainingUnitModal.form.specialty">
-                    </div>
-                    
-                    <div class="form-actions-advanced">
-                        <button type="button" class="btn-advanced btn-outline-advanced" @click="trainingUnitModal.show = false">
-                            Cancel
-                        </button>
-                        <button type="submit" class="btn-advanced" :disabled="saving">
-                            <i class="fas fa-save"></i>
-                            {{ saving ? 'Saving...' : (trainingUnitModal.mode === 'add' ? 'Add Unit' : 'Update Unit') }}
-                        </button>
-                    </div>
-                </form>
+                <div class="form-group-advanced">
+                    <label class="form-label-advanced">Max Residents *</label>
+                    <input type="number" class="form-input-advanced" v-model="trainingUnitModal.form.maximum_residents" min="1" max="50" required>
+                </div>
             </div>
-        </div>
+            
+            <div class="form-group-advanced">
+                <label class="form-label-advanced">Specialty</label>
+                <input type="text" class="form-input-advanced" v-model="trainingUnitModal.form.specialty">
+            </div>
+            
+            <div class="form-actions-advanced">
+                <button type="button" class="btn-advanced btn-outline-advanced" @click="trainingUnitModal.show = false">
+                    Cancel
+                </button>
+                <button type="submit" class="btn-advanced" :disabled="saving">
+                    <i class="fas fa-save"></i>
+                    {{ saving ? 'Saving...' : (trainingUnitModal.mode === 'add' ? 'Add Unit' : 'Update Unit') }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
         <!-- Quick Placement Modal -->
         <div v-if="quickPlacementModal.show" class="modal-overlay-advanced">
@@ -6829,25 +6852,27 @@ const { data, error } = await supabaseClient
         };
 
         // ============ TRAINING UNIT FUNCTIONS ============
-        const showAddTrainingUnitModal = () => {
-            if (!hasPermission('training_units', 'create')) {
-                showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
-                return;
-            }
-            trainingUnitModal.value = {
-                show: true,
-                mode: 'add',
-                unit: null,
-                form: {
-                    unit_name: '',
-                    unit_description: '',
-                    unit_status: 'active',
-                    maximum_residents: 10,
-                    specialty: '',
-                    current_residents: 0
-                }
-            };
-        };
+       const showAddTrainingUnitModal = () => {
+    if (!hasPermission('training_units', 'create')) {
+        showAdvancedToast('Permission Denied', 'Need create permission', 'permission');
+        return;
+    }
+    trainingUnitModal.value = {
+        show: true,
+        mode: 'add',
+        unit: null,
+        form: {
+            unit_name: '',
+            unit_code: '',                    // REQUIRED: Unique unit code
+            department_name: 'Pulmonology',   // REQUIRED: Department name
+            unit_description: '',
+            unit_status: 'active',
+            maximum_residents: 10,
+            specialty: '',
+            current_residents: 0
+        }
+    };
+};
 
         const editTrainingUnit = (unit) => {
             if (!hasPermission('training_units', 'update')) {
