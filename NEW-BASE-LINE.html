@@ -4944,36 +4944,51 @@ createApp({
             return role ? role.level : 'none';
         };
 
-        // FIXED: Permission toggle function that actually works
-        const togglePermission = (roleId, resource, action) => {
-            if (!hasPermission('system', 'admin')) {
-                showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
-                return;
-            }
-            
-            const roleIndex = systemRoles.value.findIndex(r => r.id === roleId);
-            if (roleIndex === -1) return;
-            
-            const currentState = systemRoles.value[roleIndex].permissions[resource]?.[action] || false;
-            const newState = !currentState;
-            
-            // Update the role's permissions
-            if (!systemRoles.value[roleIndex].permissions[resource]) {
-                systemRoles.value[roleIndex].permissions[resource] = {};
-            }
-            systemRoles.value[roleIndex].permissions[resource][action] = newState;
-            
-            showAdvancedToast(
-                'Permission Updated',
-                `${action} permission for ${resource} ${newState ? 'granted' : 'revoked'}`,
-                'permission'
-            );
-            
-            logAudit('PERMISSION_TOGGLE', 
-                `Toggled ${action} permission for ${resource} in role ${roleId} to ${newState}`, 
-                'system'
-            );
-        };
+        =// Replace the togglePermission function with this:
+const togglePermission = (resource, action) => {
+    if (!hasPermission('system', 'admin')) {
+        showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+        return;
+    }
+    
+    const currentUserRole = currentUser.value.user_role;
+    const role = PermissionSystem.roles[currentUserRole];
+    
+    if (!role) return;
+    
+    // Clone the permissions to avoid mutation issues
+    const updatedPermissions = { ...userPermissions.value };
+    
+    if (!updatedPermissions[resource]) {
+        updatedPermissions[resource] = {};
+    }
+    
+    // Toggle the specific action
+    const currentState = updatedPermissions[resource][action] || false;
+    updatedPermissions[resource][action] = !currentState;
+    
+    // Update the user's permissions
+    userPermissions.value = updatedPermissions;
+    
+    // Also update the system roles for the manager
+    const roleIndex = systemRoles.value.findIndex(r => r.id === currentUserRole);
+    if (roleIndex !== -1) {
+        systemRoles.value[roleIndex].permissions[resource][action] = !currentState;
+    }
+    
+    showAdvancedToast(
+        'Permission Updated',
+        `${action} permission for ${resource} ${!currentState ? 'granted' : 'revoked'}`,
+        'permission'
+    );
+    
+    logAudit('PERMISSION_TOGGLE', 
+        `Toggled ${action} permission for ${resource} to ${!currentState}`, 
+        'system'
+    );
+};
+
+// Also update the HTML template for the toggle
 
         // Save permission changes to backend
         const savePermissionChanges = async () => {
