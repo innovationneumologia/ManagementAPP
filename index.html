@@ -5540,13 +5540,6 @@ createApp({
             });
             return departments;
         });
-        // Add to your computed properties
-const availableResidents = computed(() => {
-    return medicalStaff.value.filter(staff => 
-        staff.staff_type === 'medical_resident' && 
-        staff.employment_status === 'active'
-    );
-});
 
 const activeTrainingUnits = computed(() => {
     return trainingUnits.value.filter(unit => 
