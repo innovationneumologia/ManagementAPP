@@ -3471,14 +3471,15 @@
                                             </span>
                                         </div>
                                         <div v-if="day.schedule" style="display: grid; gap: 0.75rem;">
-                                            <div class="unit-resident-advanced">
-                                                <div style="font-weight: 600; color: var(--text-primary);">
-                                                    {{ day.schedule.primary_name }}
-                                                </div>
-                                                <div style="font-size: 0.8rem; color: var(--text-secondary);">
-                                                    Primary • {{ day.schedule.shift_type }}
-                                                </div>
-                                            </div>
+    <div class="unit-resident-advanced">
+        <div style="font-weight: 600; color: var(--text-primary);">
+            {{ getPhysicianName(day.schedule.primary_physician_id) }}
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-secondary);">
+            Primary • {{ day.schedule.shift_type }}
+        </div>
+    </div>
+                                        
                                             <div v-if="day.schedule.backup_name" class="unit-resident-advanced">
                                                 <div style="font-weight: 600; color: var(--text-primary);">
                                                     {{ day.schedule.backup_name }}
@@ -5070,6 +5071,11 @@ const mapLeaveRequestToDB = (form, user) => {
                 'system'
             );
         };
+
+        const getPhysicianName = (physicianId) => {
+    const physician = medicalStaff.value.find(staff => staff.id === physicianId);
+    return physician ? physician.full_name : 'Unknown Physician';
+};
 
         // Save permission changes to backend
         const savePermissionChanges = async () => {
