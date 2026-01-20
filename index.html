@@ -7112,6 +7112,163 @@ const app = createApp({
                 saving.value = false;
             }
         };
+        // ============ ROLE MANAGEMENT FUNCTIONS ============
+const showAddRoleModal = () => {
+    if (!hasPermission('system', 'admin')) {
+        showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+        return;
+    }
+    
+    addRoleModal.value = {
+        show: true,
+        mode: 'add',
+        role: null,
+        form: {
+            name: '',
+            description: '',
+            level: 'read'
+        }
+    };
+    
+    logAudit('ROLE_MODAL_OPEN', 'Opened add role modal', 'system');
+};
+
+const editRole = (role) => {
+    if (!hasPermission('system', 'admin')) {
+        showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+        return;
+    }
+    
+    addRoleModal.value = {
+        show: true,
+        mode: 'edit',
+        role: role,
+        form: { ...role }
+    };
+    
+    logAudit('ROLE_EDIT', `Editing role: ${role.name}`, 'system', role.id);
+};
+
+const cloneRole = (role) => {
+    if (!hasPermission('system', 'admin')) {
+        showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+        return;
+    }
+    
+    const newRole = {
+        ...role,
+        id: `role_${Date.now()}`,
+        name: `${role.name} (Copy)`
+    };
+    
+    systemRoles.value.push(newRole);
+    
+    showAdvancedToast('Role Cloned', `${role.name} cloned successfully`, 'success');
+    logAudit('ROLE_CLONE', `Cloned role: ${role.name}`, 'system');
+};
+
+const deleteRole = async (role) => {
+    if (!hasPermission('system', 'admin')) {
+        showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+        return;
+    }
+    
+    if (!confirm(`Delete role "${role.name}"? This cannot be undone.`)) {
+        return;
+    }
+    
+    if (role.id === 'admin') {
+        showAdvancedToast('Cannot Delete', 'Admin role cannot be deleted', 'error');
+        return;
+    }
+    
+    try {
+        const { error } = await supabaseClient
+            .from('system_roles')
+            .delete()
+            .eq('id', role.id);
+        
+        if (error) throw error;
+        
+        systemRoles.value = systemRoles.value.filter(r => r.id !== role.id);
+        
+        showAdvancedToast('Deleted', `Role "${role.name}" deleted`, 'success');
+        logAudit('ROLE_DELETE', `Deleted role: ${role.name}`, 'system', role.id);
+        
+    } catch (error) {
+        console.error('Error deleting role:', error);
+        showAdvancedToast('Delete Failed', error.message, 'error');
+    }
+};
+
+const saveRole = async () => {
+    if (!hasPermission('system', 'admin')) {
+        showAdvancedToast('Permission Denied', 'Admin access required', 'permission');
+        return;
+    }
+    
+    saving.value = true;
+    try {
+        if (!addRoleModal.value.form.name.trim()) {
+            throw new Error('Role name is required');
+        }
+        
+        const roleData = {
+            ...addRoleModal.value.form,
+            updated_at: new Date().toISOString(),
+            permissions: addRoleModal.value.form.permissions || {}
+        };
+        
+        let result;
+        
+        if (addRoleModal.value.mode === 'add') {
+            // Add new role
+            roleData.id = `role_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            roleData.created_at = new Date().toISOString();
+            
+            const { data, error } = await supabaseClient
+                .from('system_roles')
+                .insert([roleData])
+                .select()
+                .single();
+            
+            if (error) throw error;
+            result = data;
+            
+            systemRoles.value.unshift(result);
+            showAdvancedToast('Success', 'Role created successfully', 'success');
+            logAudit('ROLE_CREATE', `Created role: ${result.name}`, 'system', result.id);
+            
+        } else {
+            // Update existing role
+            const { data, error } = await supabaseClient
+                .from('system_roles')
+                .update(roleData)
+                .eq('id', addRoleModal.value.role.id)
+                .select()
+                .single();
+            
+            if (error) throw error;
+            result = data;
+            
+            const index = systemRoles.value.findIndex(r => r.id === result.id);
+            if (index !== -1) {
+                systemRoles.value[index] = result;
+            }
+            
+            showAdvancedToast('Success', 'Role updated successfully', 'success');
+            logAudit('ROLE_UPDATE', `Updated role: ${result.name}`, 'system', result.id);
+        }
+        
+        addRoleModal.value.show = false;
+        
+    } catch (error) {
+        console.error('Error saving role:', error);
+        showAdvancedToast('Save Failed', error.message, 'error');
+    } finally {
+        saving.value = false;
+    }
+};
 
         // ============ INITIALIZATION ============
         onMounted(() => {
