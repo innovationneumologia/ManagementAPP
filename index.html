@@ -5112,23 +5112,6 @@ const formatScheduleTime = (schedule) => {
     return `${schedule.start_time.slice(0,5)}-${schedule.end_time.slice(0,5)}`;
 };
 // ============ END STAFF ACTIVITY FUNCTIONS ============
-   
-  return {
-    request_id: `LEAVE-${dateStr}-${random}`,
-    staff_member_id: user.id,
-    leave_category: form.leave_type,
-    leave_start_date: form.start_date,
-    leave_end_date: form.end_date,
-    total_days: days,
-    leave_reason: form.reason,
-    approval_status: 'pending',
-    coverage_required: true,
-    coverage_assigned: false,
-    created_at: date.toISOString(),
-    updated_at: date.toISOString()
-  };
-}
-
         // Add Role Modal
         const addRoleModal = ref({
             show: false,
@@ -5627,6 +5610,22 @@ const mapLeaveRequestToDB = (form, user) => {
   const start = new Date(form.start_date);
   const end = new Date(form.end_date);
   const days = Math.ceil((end - start)/(1000*60*60*24)) + 1;
+      return {
+    request_id: `LEAVE-${dateStr}-${random}`,
+    staff_member_id: user.id,
+    leave_category: form.leave_type,
+    leave_start_date: form.start_date,
+    leave_end_date: form.end_date,
+    total_days: days,
+    leave_reason: form.reason,
+    approval_status: 'pending',
+    coverage_required: true,
+    coverage_assigned: false,
+    created_at: date.toISOString(),
+    updated_at: date.toISOString()
+  };
+}
+
   
         const formatRotationCategory = (category) => {
             const categories = {
