@@ -6205,12 +6205,6 @@ const availableAttendings = computed(() => {
                 ];
             }
         };
-const getTodaysSchedule = (staffId) => {
-    const today = new Date().toISOString().split('T')[0];
-    return onCallSchedule.value.find(o => 
-        o.primary_physician_id === staffId && o.duty_date === today
-    );
-};
 
 const getUpcomingOnCall = (staffId) => {
     const today = new Date().toISOString().split('T')[0];
