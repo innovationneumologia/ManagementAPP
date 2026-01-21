@@ -6205,23 +6205,7 @@ const availableAttendings = computed(() => {
                 ];
             }
         };
-
-const getUpcomingOnCall = (staffId) => {
-    const today = new Date().toISOString().split('T')[0];
-    return onCallSchedule.value.find(o => 
-        o.primary_physician_id === staffId && o.duty_date >= today
-    );
-};
-
-const getActivityIcon = (type) => {
-    return type === 'oncall' ? 'fas fa-phone-alt' : 'fas fa-tasks';
-};
-
-const formatScheduleTime = (schedule) => {
-    if (!schedule) return '';
-    return `${schedule.start_time.slice(0,5)}-${schedule.end_time.slice(0,5)}`;
-};
-        
+    
 
         const loadTrainingUnits = async () => {
             try {
