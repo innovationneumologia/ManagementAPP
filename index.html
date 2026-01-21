@@ -6204,46 +6204,7 @@ const availableAttendings = computed(() => {
                     }
                 ];
             }
-        };const loadStaffDailyActivities = async (staffId) => {
-    expandedStaffId.value = expandedStaffId.value === staffId ? null : staffId;
-    
-    if (expandedStaffId.value === staffId) {
-        // Load today's activities
-        const today = new Date().toISOString().split('T')[0];
-        
-        // Fetch assignments
-        const { data: assignments } = await supabaseClient
-            .from('daily_assignments')
-            .select('*')
-            .eq('staff_id', staffId)
-            .eq('assignment_date', today);
-        
-        // Fetch on-call
-        const { data: oncall } = await supabaseClient
-            .from('oncall_schedule')
-            .select('*')
-            .eq('primary_physician_id', staffId)
-            .gte('duty_date', today)
-            .order('duty_date', { ascending: true })
-            .limit(1);
-        
-        staffDailyActivities.value[staffId] = [
-            ...(assignments || []).map(a => ({
-                type: 'assignment',
-                title: a.assignment_type,
-                time: `${a.start_time.slice(0,5)}-${a.end_time.slice(0,5)}`,
-                location: a.location_name
-            })),
-            ...(oncall || []).map(o => ({
-                type: 'oncall',
-                title: 'On-call Duty',
-                time: `${o.start_time.slice(0,5)}-${o.end_time.slice(0,5)}`,
-                location: 'Hospital-wide'
-            }))
-        ];
-    }
-};
-
+        };
 const getTodaysSchedule = (staffId) => {
     const today = new Date().toISOString().split('T')[0];
     return onCallSchedule.value.find(o => 
